@@ -28,6 +28,19 @@ export const tasks = pgTable("tasks", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
+export const workspaceItems = pgTable("workspace_items", {
+  id: serial("id").primaryKey(),
+  section: varchar("section", { length: 20 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  body: text("body").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("To do"),
+  createdBy: integer("created_by").notNull().references(() => members.id),
+  updatedBy: integer("updated_by").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
 export const activity = pgTable("activity", {
   id: serial("id").primaryKey(),
   actorId: integer("actor_id").notNull().references(() => members.id),
