@@ -9,7 +9,6 @@ import { activity, members, tasks, updates, workspaceItems } from "../lib/schema
 
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
-const taskStatus = z.enum(["To do", "In progress", "Done"]);
 const workspaceSection = z.enum(["events", "flavors", "catalogue", "merch"]);
 
 async function actor() {
@@ -49,9 +48,9 @@ export async function createTask(formData: FormData) {
 
 export async function updateTask(formData: FormData) {
   const member = await actor();
-  const input = z.object({ id: z.coerce.number().int().positive(), title, status: taskStatus }).parse(Object.fromEntries(formData));
-  await db!.update(tasks).set({ title: input.title, status: input.status, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), isNull(tasks.deletedAt)));
-  await db!.insert(activity).values({ actorId: member.id, entityType: "task", entityId: input.id, action: "updated", summary: `updated task “${input.title}” to ${input.status}` });
+  const input = z.object({ id: z.coerce.number().int().positive(), title }).parse(Object.fromEntries(formData));
+  await db!.update(tasks).set({ title: input.title, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), isNull(tasks.deletedAt)));
+  await db!.insert(activity).values({ actorId: member.id, entityType: "task", entityId: input.id, action: "updated", summary: `updated task “${input.title}”` });
   refresh();
 }
 
@@ -66,7 +65,7 @@ export async function deleteRecord(formData: FormData) {
 
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor();
-  const input = z.object({ section: workspaceSection, title, body, status: taskStatus }).parse(Object.fromEntries(formData));
+  const input = z.object({ section: workspaceSection, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(workspaceItems).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
   await db!.insert(activity).values({ actorId: member.id, entityType: input.section, entityId: record.id, action: "created", summary: `created ${input.section.slice(0, -1)} “${record.title}”` });
   refresh();
@@ -74,9 +73,9 @@ export async function createWorkspaceItem(formData: FormData) {
 
 export async function updateWorkspaceItem(formData: FormData) {
   const member = await actor();
-  const input = z.object({ id: z.coerce.number().int().positive(), section: workspaceSection, title, body, status: taskStatus }).parse(Object.fromEntries(formData));
-  await db!.update(workspaceItems).set({ title: input.title, body: input.body, status: input.status, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), isNull(workspaceItems.deletedAt), eq(workspaceItems.section, input.section)));
-  await db!.insert(activity).values({ actorId: member.id, entityType: input.section, entityId: input.id, action: "updated", summary: `updated ${input.section.slice(0, -1)} “${input.title}” to ${input.status}` });
+  const input = z.object({ id: z.coerce.number().int().positive(), section: workspaceSection, title, body }).parse(Object.fromEntries(formData));
+  await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), isNull(workspaceItems.deletedAt), eq(workspaceItems.section, input.section)));
+  await db!.insert(activity).values({ actorId: member.id, entityType: input.section, entityId: input.id, action: "updated", summary: `updated ${input.section.slice(0, -1)} “${input.title}”` });
   refresh();
 }
 
