@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentMember } from "../lib/auth";
 import { db, memberSeed } from "../lib/db";
-import { activity, members, tasks, updates, workspaceItems } from "../lib/schema";
+import { del } from "@vercel/blob";
+import { activity, attachments, members, tasks, updates, workspaceItems } from "../lib/schema";
 
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
@@ -88,14 +89,26 @@ export async function deleteWorkspaceItem(formData: FormData) {
   refresh();
 }
 
+export async function deleteAttachment(formData: FormData) {
+  const member = await actor();
+  const input = z.object({ id: z.coerce.number().int().positive(), filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));
+  const [attachment] = await db!.select().from(attachments).where(and(eq(attachments.id, input.id), isNull(attachments.deletedAt)));
+  if (!attachment) return;
+  await del(attachment.url);
+  await db!.update(attachments).set({ deletedAt: new Date() }).where(eq(attachments.id, attachment.id));
+  await db!.insert(activity).values({ actorId: member.id, entityType: "attachment", entityId: attachment.id, action: "deleted", summary: `deleted PDF “${attachment.filename}”` });
+  refresh();
+}
+
 export async function workspaceData() {
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
-  const [allUpdates, allTasks, allWorkspaceItems, allActivity] = await Promise.all([
+  const [allUpdates, allTasks, allWorkspaceItems, allAttachments, allActivity] = await Promise.all([
     db.select({ update: updates, author: members.name }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(isNull(updates.deletedAt)).orderBy(desc(updates.updatedAt)),
     db.select({ task: tasks, author: members.name }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(isNull(tasks.deletedAt)).orderBy(desc(tasks.updatedAt)),
     db.select({ item: workspaceItems, author: members.name }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(isNull(workspaceItems.deletedAt)).orderBy(desc(workspaceItems.updatedAt)),
+    db.select({ attachment: attachments, author: members.name }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(isNull(attachments.deletedAt)).orderBy(desc(attachments.createdAt)),
     db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id)).orderBy(desc(activity.createdAt)).limit(20),
   ]);
-  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, activity: allActivity };
+  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, attachments: allAttachments, activity: allActivity };
 }

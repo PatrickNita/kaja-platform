@@ -2,37 +2,27 @@ import Image from "next/image";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { createTask, createUpdate, createWorkspaceItem, deleteRecord, deleteWorkspaceItem, editUpdate, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { createTask, createUpdate, createWorkspaceItem, deleteAttachment, deleteRecord, deleteWorkspaceItem, editUpdate, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { PdfUploader } from "./pdf-uploader";
 import { WelcomeIntro } from "./welcome-intro";
 
 export const dynamic = "force-dynamic";
 
 const sections = [
-  { key: "updates", label: "Updates" },
-  { key: "tasks", label: "Tasks" },
-  { key: "events", label: "Events" },
-  { key: "flavors", label: "Flavors" },
-  { key: "catalogue", label: "Catalogue" },
-  { key: "merch", label: "Merch" },
+  { key: "updates", label: "Updates" }, { key: "tasks", label: "Tasks" }, { key: "events", label: "Events" }, { key: "flavors", label: "Flavors" }, { key: "catalogue", label: "Catalogue" }, { key: "merch", label: "Merch" }, { key: "uploads", label: "Uploads" },
 ] as const;
-const catalogueGroups = [
-  { key: "live", label: "Live Catalogue" },
-  { key: "upcoming", label: "Upcoming" },
-  { key: "ideas", label: "Ideas" },
-] as const;
-
+const catalogueGroups = [{ key: "live", label: "Live Catalogue" }, { key: "upcoming", label: "Upcoming" }, { key: "ideas", label: "Ideas" }] as const;
 type Section = (typeof sections)[number]["key"];
 type CatalogueGroup = (typeof catalogueGroups)[number]["key"];
 type Data = NonNullable<Awaited<ReturnType<typeof workspaceData>>>;
 type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: string };
 
-function date(value: Date) {
-  return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Chisinau" }).format(value);
-}
+function date(value: Date) { return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Chisinau" }).format(value); }
+function fileSize(bytes: number) { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`; }
 
 function WorkspaceSection({ section, title, items, catalogueGroup }: { section: string; title: string; items: WorkspaceItemRow[]; catalogueGroup?: CatalogueGroup }) {
   const itemLabel = section === "catalogue" ? "catalogue item" : title.slice(0, -1).toLowerCase();
-  return <section className="panel"><div className="panel-head"><h2>{title}</h2><span className="count">{items.length} active</span></div><form action={createWorkspaceItem} className="form"><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<input name="title" required maxLength={160} placeholder={`${itemLabel[0]!.toUpperCase()}${itemLabel.slice(1)} title`} /><textarea name="body" required maxLength={4000} placeholder={`Describe this ${itemLabel}.`} /><button className="button">Add {itemLabel}</button></form><div className="items">{items.length === 0 ? <p className="empty">No records yet.</p> : items.map(({ item, author }) => <article key={item.id} className="item"><h3 className="item-title">{item.title}</h3><p>{item.body}</p><div className="meta"><span>Created by {author}</span><span>·</span><span>{date(item.updatedAt)}</span></div><details><summary>Edit {itemLabel}</summary><form action={updateWorkspaceItem} className="form edit-form"><input type="hidden" name="id" value={item.id} /><input type="hidden" name="section" value={section} /><input name="title" defaultValue={item.title} required maxLength={160} /><textarea name="body" defaultValue={item.body} required maxLength={4000} /><button className="button">Save changes</button></form><form action={deleteWorkspaceItem} className="edit-form"><input type="hidden" name="id" value={item.id} /><input type="hidden" name="section" value={section} /><input type="hidden" name="title" value={item.title} /><button className="button ghost danger">Delete {itemLabel}</button></form></details></article>)}</div></section>;
+  return <section className="panel"><div className="panel-head"><h2>{title}</h2><span className="count">{items.length} active</span></div><form action={createWorkspaceItem} className="form"><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<input name="title" required maxLength={160} placeholder={`${itemLabel[0]!.toUpperCase()}${itemLabel.slice(1)} title`} /><textarea name="body" required maxLength={4000} placeholder={`Describe this ${itemLabel}.`} /><button className="button">Add {itemLabel}</button></form><div className="items">{items.map(({ item, author }) => <article key={item.id} className="item"><h3 className="item-title">{item.title}</h3><p>{item.body}</p><div className="meta"><span>Created by {author}</span><span>·</span><span>{date(item.updatedAt)}</span></div><details><summary>Edit {itemLabel}</summary><form action={updateWorkspaceItem} className="form edit-form"><input type="hidden" name="id" value={item.id} /><input type="hidden" name="section" value={section} /><input name="title" defaultValue={item.title} required maxLength={160} /><textarea name="body" defaultValue={item.body} required maxLength={4000} /><button className="button">Save changes</button></form><form action={deleteWorkspaceItem} className="edit-form"><input type="hidden" name="id" value={item.id} /><input type="hidden" name="section" value={section} /><input type="hidden" name="title" value={item.title} /><button className="button ghost danger">Delete {itemLabel}</button></form></details></article>)}</div></section>;
 }
 
 function UpdatesSection({ data }: { data: Data }) {
@@ -43,8 +33,10 @@ function TasksSection({ data }: { data: Data }) {
   return <section className="panel"><div className="panel-head"><h2>Tasks</h2><span className="count">{data.tasks.length} active</span></div><form action={createTask} className="form compact"><input name="title" required maxLength={160} placeholder="Add a task" /><button className="button">Add task</button></form><div className="items">{data.tasks.length === 0 ? <p className="empty">No tasks yet. Turn work into something visible.</p> : data.tasks.map(({ task, author }) => <article key={task.id} className="item"><h3 className="item-title">{task.title}</h3><div className="meta"><span>Created by {author}</span><span>·</span><span>{date(task.updatedAt)}</span></div><details><summary>Edit task</summary><form action={updateTask} className="form edit-form"><input type="hidden" name="id" value={task.id} /><input name="title" defaultValue={task.title} required maxLength={160} /><button className="button">Save task</button></form><form action={deleteRecord} className="edit-form"><input type="hidden" name="id" value={task.id} /><input type="hidden" name="type" value="task" /><input type="hidden" name="title" value={task.title} /><button className="button ghost danger">Delete task</button></form></details></article>)}</div></section>;
 }
 
-function CatalogueSection({ data }: { data: Data }) {
-  return <div className="catalogue-grid">{catalogueGroups.map((group) => <WorkspaceSection key={group.key} section="catalogue" title={group.label} catalogueGroup={group.key} items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group.key)} />)}</div>;
+function CatalogueSection({ data }: { data: Data }) { return <div className="catalogue-grid">{catalogueGroups.map((group) => <WorkspaceSection key={group.key} section="catalogue" title={group.label} catalogueGroup={group.key} items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group.key)} />)}</div>; }
+
+function UploadsSection({ data }: { data: Data }) {
+  return <section className="panel"><div className="panel-head"><h2>Uploads</h2><span className="count">{data.attachments.length} PDFs</span></div><PdfUploader /><div className="items">{data.attachments.map(({ attachment, author }) => <article key={attachment.id} className="item attachment"><div><h3 className="item-title">{attachment.filename}</h3><div className="meta"><span>Uploaded by {author}</span><span>·</span><span>{date(attachment.createdAt)}</span><span>·</span><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Download PDF</a><form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="filename" value={attachment.filename} /><button className="button ghost danger">Delete</button></form></div></article>)}</div></section>;
 }
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
@@ -55,6 +47,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const requestedView = (await searchParams).view;
   const view: Section = sections.some((section) => section.key === requestedView) ? requestedView as Section : "tasks";
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <UpdatesSection data={data} /> : view === "tasks" ? <TasksSection data={data} /> : view === "catalogue" ? <CatalogueSection data={data} /> : <WorkspaceSection section={view} title={sections.find((section) => section.key === view)!.label} items={sectionItems} />;
+  const content = view === "updates" ? <UpdatesSection data={data} /> : view === "tasks" ? <TasksSection data={data} /> : view === "catalogue" ? <CatalogueSection data={data} /> : view === "uploads" ? <UploadsSection data={data} /> : <WorkspaceSection section={view} title={sections.find((section) => section.key === view)!.label} items={sectionItems} />;
   return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="workspace-nav" aria-label="Workspace sections">{sections.map((section) => <a key={section.key} href={`/?view=${section.key}`} aria-current={view === section.key ? "page" : undefined} className={view === section.key ? "active" : undefined}>{section.label}</a>)}</nav></header><div className="workspace-content"><div className="workspace-main">{content}</div><aside className="panel activity-panel"><div className="panel-head"><h2>Activity</h2><span className="count">Last 20 actions</span></div><div className="activity">{data.activity.length === 0 ? <p className="empty">Changes made by the team will appear here.</p> : data.activity.map(({ event, actor }) => <div className="event" key={event.id}><b>{actor}</b> {event.summary}<div className="meta">{date(event.createdAt)}</div></div>)}</div></aside></div></main></>;
 }

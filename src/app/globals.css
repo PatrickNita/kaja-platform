@@ -22,6 +22,12 @@ h1 { font-size:clamp(2.4rem,6vw,5.5rem); line-height:.9; letter-spacing:-.075em;
 .workspace-main { min-width:0; }
 .catalogue-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
 .catalogue-grid .panel { min-width:0; }
+.pdf-uploader { display:grid; gap:8px; padding:18px; border:1px dashed #aaa; margin-bottom:16px; }
+.pdf-uploader p { margin:0; font-size:12px; color:var(--muted); }
+.pdf-uploader .upload-error { color:#8c0000; }
+.attachment { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.attachment-actions { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+.attachment-actions form { margin:0; }
 .stack { display:grid; gap:22px; }
 .panel { background:white; border:1px solid var(--line); padding:22px; }
 .panel-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:20px; }
@@ -72,4 +78,4 @@ summary { font-size:12px; cursor:pointer; color:#555; }
 @keyframes welcome-copy-in { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .welcome-intro, .welcome-intro--leaving, .welcome-intro__logo, .welcome-intro p { animation-duration:1ms; animation-delay:0ms; } }
 @media (max-width:1000px) { .catalogue-grid { grid-template-columns:1fr; } }
-@media (max-width:800px) { .workspace-shell { padding-bottom:36px; } .workspace-header { margin-bottom:20px; } .workspace-brand { min-height:76px; } .logo { width:130px; } .workspace-content { grid-template-columns:1fr; } .activity-panel { order:2; } .form.compact { grid-template-columns:1fr; } h1 { font-size:3rem; } }
+@media (max-width:800px) { .workspace-shell { padding-bottom:36px; } .workspace-header { margin-bottom:20px; } .workspace-brand { min-height:76px; } .logo { width:130px; } .workspace-content { grid-template-columns:1fr; } .activity-panel { order:2; } .form.compact { grid-template-columns:1fr; } .attachment { flex-direction:column; } .attachment-actions { width:100%; flex-wrap:wrap; } h1 { font-size:3rem; } }

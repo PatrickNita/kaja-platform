@@ -42,6 +42,17 @@ export const workspaceItems = pgTable("workspace_items", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
+export const attachments = pgTable("attachments", {
+  id: serial("id").primaryKey(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  pathname: text("pathname").notNull(),
+  url: text("url").notNull(),
+  size: integer("size").notNull(),
+  uploadedBy: integer("uploaded_by").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => [uniqueIndex("attachments_pathname_unique").on(table.pathname)]);
+
 export const activity = pgTable("activity", {
   id: serial("id").primaryKey(),
   actorId: integer("actor_id").notNull().references(() => members.id),
