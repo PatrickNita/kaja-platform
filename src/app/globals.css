@@ -20,6 +20,8 @@ h1 { font-size:clamp(2.4rem,6vw,5.5rem); line-height:.9; letter-spacing:-.075em;
 .intro { max-width:560px; font-size:17px; line-height:1.45; margin:22px 0 44px; color:#454545; }
 .workspace-content { display:grid; grid-template-columns:minmax(0, 1fr) minmax(300px, .45fr); gap:22px; align-items:start; }
 .workspace-main { min-width:0; }
+.catalogue-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; }
+.catalogue-grid .panel { min-width:0; }
 .stack { display:grid; gap:22px; }
 .panel { background:white; border:1px solid var(--line); padding:22px; }
 .panel-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:20px; }
@@ -69,4 +71,5 @@ summary { font-size:12px; cursor:pointer; color:#555; }
 @keyframes welcome-logo-in { from { opacity:0; transform:scale(.9) translateY(16px); } to { opacity:1; transform:scale(1) translateY(0); } }
 @keyframes welcome-copy-in { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .welcome-intro, .welcome-intro--leaving, .welcome-intro__logo, .welcome-intro p { animation-duration:1ms; animation-delay:0ms; } }
+@media (max-width:1000px) { .catalogue-grid { grid-template-columns:1fr; } }
 @media (max-width:800px) { .workspace-shell { padding-bottom:36px; } .workspace-header { margin-bottom:20px; } .workspace-brand { min-height:76px; } .logo { width:130px; } .workspace-content { grid-template-columns:1fr; } .activity-panel { order:2; } .form.compact { grid-template-columns:1fr; } h1 { font-size:3rem; } }

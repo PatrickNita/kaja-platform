@@ -31,6 +31,7 @@ export const tasks = pgTable("tasks", {
 export const workspaceItems = pgTable("workspace_items", {
   id: serial("id").primaryKey(),
   section: varchar("section", { length: 20 }).notNull(),
+  catalogueGroup: varchar("catalogue_group", { length: 20 }),
   title: varchar("title", { length: 160 }).notNull(),
   body: text("body").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("To do"),

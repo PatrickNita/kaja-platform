@@ -10,6 +10,7 @@ import { activity, members, tasks, updates, workspaceItems } from "../lib/schema
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
 const workspaceSection = z.enum(["events", "flavors", "catalogue", "merch"]);
+const catalogueGroup = z.enum(["live", "upcoming", "ideas"]);
 
 async function actor() {
   const member = await currentMember();
@@ -65,8 +66,8 @@ export async function deleteRecord(formData: FormData) {
 
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor();
-  const input = z.object({ section: workspaceSection, title, body }).parse(Object.fromEntries(formData));
-  const [record] = await db!.insert(workspaceItems).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
+  const input = z.object({ section: workspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
+  const [record] = await db!.insert(workspaceItems).values({ ...input, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
   await db!.insert(activity).values({ actorId: member.id, entityType: input.section, entityId: record.id, action: "created", summary: `created ${input.section.slice(0, -1)} “${record.title}”` });
   refresh();
 }
