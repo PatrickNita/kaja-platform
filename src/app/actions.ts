@@ -55,6 +55,7 @@ export async function deleteRecord(formData: FormData) {
 }
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
+  if (input.section === "catalogue" && input.catalogueGroup !== "ideas" && member.slug !== "patrick") throw new Error("Doar Patrick poate adăuga produse în Catalog activ sau În curând.");
   const [record] = await db!.insert(workspaceItems).values({ ...input, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
   await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: record.id, action: "created", summary: `a creat o înregistrare „${record.title}”` }); refresh();
 }

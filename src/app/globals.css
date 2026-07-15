@@ -61,6 +61,7 @@ input:focus, textarea:focus, select:focus { border-color:#000; box-shadow:0 0 0 
 .event { padding:13px 0; border-top:1px solid var(--line); font-size:13px; line-height:1.4; }
 .event:first-child { border-top:0; }
 .event b { font-weight:800; }
+.activity-link { color:var(--ink); font-weight:800; text-decoration:underline; text-underline-offset:3px; }
 details { margin-top:12px; }
 summary { font-size:12px; cursor:pointer; color:#555; }
 .edit-form { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }

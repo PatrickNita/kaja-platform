@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       const title = payload.title?.trim();
       const description = payload.body?.trim();
       if (!sessionMember || !db || !brands.includes(payload.brand as Brand) || !title || title.length > 160 || !description || description.length > 4000) throw new Error("A title, description, and valid brand are required.");
+      if (sessionMember.slug !== "patrick") throw new Error("Doar Patrick poate adăuga produse merch.");
       return {
         allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
         maximumSizeInBytes: 10 * 1024 * 1024,
