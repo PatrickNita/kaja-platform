@@ -12,6 +12,7 @@ const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
 const brand = z.enum(["kaja", "hexenwerk"]);
 const workspaceSection = z.enum(["events", "flavors", "catalogue", "merch"]);
+const creatableWorkspaceSection = z.enum(["events", "flavors", "catalogue"]);
 const catalogueGroup = z.enum(["live", "upcoming", "ideas"]);
 
 async function actor() {
@@ -51,12 +52,12 @@ export async function deleteRecord(formData: FormData) {
   await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.type, entityId: input.id, action: "deleted", summary: `deleted ${input.type} “${input.title}”` }); refresh();
 }
 export async function createWorkspaceItem(formData: FormData) {
-  const member = await actor(); const input = z.object({ brand, section: workspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(workspaceItems).values({ ...input, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
   await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: record.id, action: "created", summary: `created ${input.section.slice(0, -1)} “${record.title}”` }); refresh();
 }
 export async function updateWorkspaceItem(formData: FormData) {
-  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: workspaceSection, title, body }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: creatableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
   await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: input.id, action: "updated", summary: `updated ${input.section.slice(0, -1)} “${input.title}”` }); refresh();
 }
@@ -67,14 +68,6 @@ export async function deleteWorkspaceItem(formData: FormData) {
   if (item.merchImageUrl) await del(item.merchImageUrl);
   await db!.update(workspaceItems).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
   await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: item.id, action: "deleted", summary: `deleted ${input.section.slice(0, -1)} “${input.title}”` }); refresh();
-}
-export async function deleteMerchImage(formData: FormData) {
-  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand }).parse(Object.fromEntries(formData));
-  const [item] = await db!.select().from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, "merch"), isNull(workspaceItems.deletedAt)));
-  if (!item?.merchImageUrl) return;
-  await del(item.merchImageUrl);
-  await db!.update(workspaceItems).set({ merchImageUrl: null, merchImagePathname: null, updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "merch", entityId: item.id, action: "deleted", summary: `removed image from merch “${item.title}”` }); refresh();
 }
 export async function deleteAttachment(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));

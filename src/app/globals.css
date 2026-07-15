@@ -28,6 +28,7 @@ h1 { font-size:clamp(2.4rem,6vw,5.5rem); line-height:.9; letter-spacing:-.075em;
 .pdf-uploader, .image-uploader { display:grid; gap:8px; padding:18px; border:1px dashed #aaa; margin-bottom:16px; }
 .pdf-uploader p, .image-uploader p { margin:0; font-size:12px; color:var(--muted); }
 .pdf-uploader .upload-error, .image-uploader .upload-error { color:#8c0000; }
+.upload-success { color:#176b2c !important; }
 .attachment { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .attachment-actions { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
 .attachment-actions form { margin:0; }
@@ -62,9 +63,8 @@ summary { font-size:12px; cursor:pointer; color:#555; }
 .danger { color:#8c0000; border-color:#8c0000; }
 .empty { color:var(--muted); font-size:14px; margin:0; }
 .merch-preview { display:block; width:100%; max-height:300px; object-fit:cover; border:1px solid var(--line); margin:0 0 14px; }
-.merch-media { display:flex; align-items:flex-start; gap:10px; margin-top:14px; }
-.merch-media .image-uploader { flex:1; margin:0; padding:12px; }
-.merch-media form { margin:0; }
+.merch-composer { margin-bottom:16px; }
+.merch-preview--draft { margin:8px 0 0; max-height:220px; }
 .landing { min-height:100vh; display:grid; place-items:center; padding:28px; background:#050505; color:white; }
 .landing-card { border:1px solid #303030; padding:32px; max-width:620px; background:#0d0d0d; }
 .landing-card .logo { width:240px; margin-bottom:48px; }
@@ -86,4 +86,4 @@ summary { font-size:12px; cursor:pointer; color:#555; }
 @keyframes welcome-copy-in { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .welcome-intro, .welcome-intro--leaving, .welcome-intro__logo, .welcome-intro p { animation-duration:1ms; animation-delay:0ms; } }
 @media (max-width:1000px) { .catalogue-grid { grid-template-columns:1fr; } }
-@media (max-width:800px) { .workspace-shell { padding-bottom:36px; } .workspace-header { margin-bottom:20px; } .workspace-brand { min-height:76px; } .logo { width:130px; } .workspace-content { grid-template-columns:1fr; } .activity-panel { order:2; position:static; max-height:60vh; } .form.compact { grid-template-columns:1fr; } .attachment { flex-direction:column; } .attachment-actions { width:100%; flex-wrap:wrap; } .merch-media { flex-direction:column; } .merch-media .image-uploader { width:100%; } h1 { font-size:3rem; } }
+@media (max-width:800px) { .workspace-shell { padding-bottom:36px; } .workspace-header { margin-bottom:20px; } .workspace-brand { min-height:76px; } .logo { width:130px; } .workspace-content { grid-template-columns:1fr; } .activity-panel { order:2; position:static; max-height:60vh; } .form.compact { grid-template-columns:1fr; } .attachment { flex-direction:column; } .attachment-actions { width:100%; flex-wrap:wrap; } h1 { font-size:3rem; } }
