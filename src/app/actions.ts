@@ -10,19 +10,19 @@ import { activity, attachments, comments, members, tasks, updates, workspaceItem
 
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
-const brand = z.enum(["kaja", "hexenwerk"]);
-const workspaceSection = z.enum(["events", "flavors", "catalogue", "merch"]);
-const creatableWorkspaceSection = z.enum(["events", "flavors", "catalogue"]);
+const brand = z.enum(["kaja", "hexenwerk", "virginia"]);
+const workspaceSection = z.enum(["events", "catalogue", "merch"]);
+const creatableWorkspaceSection = z.enum(["events", "catalogue"]);
 const catalogueGroup = z.enum(["live", "upcoming", "ideas"]);
-const commentEntity = z.enum(["update", "task", "events", "flavors", "catalogue", "merch"]);
+const commentEntity = z.enum(["update", "task", "events", "catalogue", "merch"]);
 const commentBody = z.string().trim().min(1).max(1000);
 
 async function actor() {
   const member = await currentMember();
-  if (!member || !db) throw new Error("Your member session has expired.");
+  if (!member || !db) throw new Error("Sesiunea de membru a expirat.");
   await db.insert(members).values(member).onConflictDoNothing();
   const [record] = await db.select().from(members).where(eq(members.slug, member.slug));
-  if (!record) throw new Error("Member could not be loaded.");
+  if (!record) throw new Error("Membrul nu a putut fi încărcat.");
   return record;
 }
 function refresh() { revalidatePath("/"); }
@@ -30,38 +30,38 @@ function refresh() { revalidatePath("/"); }
 export async function createUpdate(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(updates).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "update", entityId: record.id, action: "created", summary: `added update “${record.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "update", entityId: record.id, action: "created", summary: `a adăugat actualizarea „${record.title}”` }); refresh();
 }
 export async function editUpdate(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
   await db!.update(updates).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "update", entityId: input.id, action: "edited", summary: `edited update “${input.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "update", entityId: input.id, action: "edited", summary: `a editat actualizarea „${input.title}”` }); refresh();
 }
 export async function createTask(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, title }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(tasks).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "task", entityId: record.id, action: "created", summary: `created task “${record.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "task", entityId: record.id, action: "created", summary: `a creat sarcina „${record.title}”` }); refresh();
 }
 export async function updateTask(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title }).parse(Object.fromEntries(formData));
   await db!.update(tasks).set({ title: input.title, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "task", entityId: input.id, action: "updated", summary: `updated task “${input.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: "task", entityId: input.id, action: "updated", summary: `a actualizat sarcina „${input.title}”` }); refresh();
 }
 export async function deleteRecord(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, type: z.enum(["task", "update"]), title }).parse(Object.fromEntries(formData));
   if (input.type === "task") await db!.update(tasks).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand)));
   else await db!.update(updates).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand)));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.type, entityId: input.id, action: "deleted", summary: `deleted ${input.type} “${input.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.type, entityId: input.id, action: "deleted", summary: `a șters o înregistrare` }); refresh();
 }
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(workspaceItems).values({ ...input, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: record.id, action: "created", summary: `created ${input.section.slice(0, -1)} “${record.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: record.id, action: "created", summary: `a creat o înregistrare „${record.title}”` }); refresh();
 }
 export async function updateWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: creatableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
   await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: input.id, action: "updated", summary: `updated ${input.section.slice(0, -1)} “${input.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: input.id, action: "updated", summary: `a actualizat o înregistrare „${input.title}”` }); refresh();
 }
 export async function deleteWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: workspaceSection, title }).parse(Object.fromEntries(formData));
@@ -69,7 +69,7 @@ export async function deleteWorkspaceItem(formData: FormData) {
   if (!item) return;
   if (item.merchImageUrl) await del(item.merchImageUrl);
   await db!.update(workspaceItems).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: item.id, action: "deleted", summary: `deleted ${input.section.slice(0, -1)} “${input.title}”` }); refresh();
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters o înregistrare` }); refresh();
 }
 export async function deleteAttachment(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));
@@ -85,9 +85,9 @@ export async function createComment(formData: FormData) {
   if (input.entityType === "update") exists = Boolean((await db!.select({ id: updates.id }).from(updates).where(and(eq(updates.id, input.entityId), eq(updates.brand, input.brand), isNull(updates.deletedAt))).limit(1))[0]);
   else if (input.entityType === "task") exists = Boolean((await db!.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, input.entityId), eq(tasks.brand, input.brand), isNull(tasks.deletedAt))).limit(1))[0]);
   else exists = Boolean((await db!.select({ id: workspaceItems.id }).from(workspaceItems).where(and(eq(workspaceItems.id, input.entityId), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.entityType), isNull(workspaceItems.deletedAt))).limit(1))[0]);
-  if (!exists) throw new Error("This entry is no longer available.");
+  if (!exists) throw new Error("Această înregistrare nu mai este disponibilă.");
   const [comment] = await db!.insert(comments).values({ brand: input.brand, entityType: input.entityType, entityId: input.entityId, authorId: member.id, body: input.body }).returning();
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.entityType, entityId: input.entityId, action: "commented", summary: `commented on ${input.entityType}` });
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.entityType, entityId: input.entityId, action: "commented", summary: "a adăugat un comentariu" });
   refresh();
 }
 export async function deleteComment(formData: FormData) {
@@ -96,10 +96,10 @@ export async function deleteComment(formData: FormData) {
   const [comment] = await db!.select().from(comments).where(and(eq(comments.id, input.id), eq(comments.brand, input.brand), eq(comments.authorId, member.id), isNull(comments.deletedAt)));
   if (!comment) return;
   await db!.update(comments).set({ deletedAt: new Date() }).where(eq(comments.id, comment.id));
-  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: `deleted a comment on ${input.entityType}` });
+  await db!.insert(activity).values({ brand: input.brand, actorId: member.id, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: "a șters un comentariu" });
   refresh();
 }
-export async function workspaceData(brandName: "kaja" | "hexenwerk") {
+export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
   const [allUpdates, allTasks, allWorkspaceItems, allAttachments, allActivity, allComments] = await Promise.all([

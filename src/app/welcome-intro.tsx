@@ -30,10 +30,10 @@ export function WelcomeIntro({ memberName, memberSlug }: WelcomeIntroProps) {
   if (!visible) return null;
 
   return (
-    <div className={`welcome-intro${leaving ? " welcome-intro--leaving" : ""}`} aria-live="polite" aria-label={`Welcome, ${memberName}`}>
+    <div className={`welcome-intro${leaving ? " welcome-intro--leaving" : ""}`} aria-live="polite" aria-label={`Bun venit, ${memberName}`}>
       <div className="welcome-intro__content">
         <Image className="welcome-intro__logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority />
-        <p>Welcome, {memberName}</p>
+        <p>Bun venit, {memberName}</p>
       </div>
     </div>
   );

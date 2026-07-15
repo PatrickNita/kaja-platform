@@ -6,7 +6,7 @@ import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
 import { activity, attachments, members } from "../../../lib/schema";
 
-const brands = ["kaja", "hexenwerk"] as const;
+const brands = ["kaja", "hexenwerk", "virginia"] as const;
 
 export async function POST(request: Request) {
   const body = await request.json() as HandleUploadBody;
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       const member = await currentMember();
       if (!member) throw new Error("Unauthorized upload.");
       const payload = JSON.parse(clientPayload || "{}") as { filename?: string; brand?: string };
-      if (!payload.filename?.toLowerCase().endsWith(".pdf") || !brands.includes(payload.brand as typeof brands[number])) throw new Error("Only PDF files are allowed.");
+      if (!payload.filename?.toLowerCase().endsWith(".pdf") || !brands.includes(payload.brand as typeof brands[number])) throw new Error("Sunt permise doar fișierele PDF.");
       return { allowedContentTypes: ["application/pdf"], maximumSizeInBytes: 25 * 1024 * 1024, addRandomSuffix: true, tokenPayload: JSON.stringify({ slug: member.slug, filename: payload.filename, brand: payload.brand }) };
     },
     onUploadCompleted: async ({ blob, tokenPayload }) => {

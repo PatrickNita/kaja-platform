@@ -6,7 +6,7 @@ import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
 import { activity, members, workspaceItems } from "../../../lib/schema";
 
-const brands = ["kaja", "hexenwerk"] as const;
+const brands = ["kaja", "hexenwerk", "virginia"] as const;
 type Brand = (typeof brands)[number];
 
 export async function POST(request: Request) {
