@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
@@ -69,3 +69,14 @@ export const activity = pgTable("activity", {
   summary: text("summary").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull(),
+  entityType: varchar("entity_type", { length: 20 }).notNull(),
+  entityId: integer("entity_id").notNull(),
+  authorId: integer("author_id").notNull().references(() => members.id),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => [index("comments_brand_entity_created_idx").on(table.brand, table.entityType, table.entityId, table.createdAt)]);
