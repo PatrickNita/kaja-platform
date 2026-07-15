@@ -8,6 +8,7 @@ export const members = pgTable("members", {
 
 export const updates = pgTable("updates", {
   id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   title: varchar("title", { length: 160 }).notNull(),
   body: text("body").notNull(),
   createdBy: integer("created_by").notNull().references(() => members.id),
@@ -19,6 +20,7 @@ export const updates = pgTable("updates", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   title: varchar("title", { length: 160 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("To do"),
   createdBy: integer("created_by").notNull().references(() => members.id),
@@ -30,11 +32,14 @@ export const tasks = pgTable("tasks", {
 
 export const workspaceItems = pgTable("workspace_items", {
   id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   section: varchar("section", { length: 20 }).notNull(),
   catalogueGroup: varchar("catalogue_group", { length: 20 }),
   title: varchar("title", { length: 160 }).notNull(),
   body: text("body").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("To do"),
+  merchImageUrl: text("merch_image_url"),
+  merchImagePathname: text("merch_image_pathname"),
   createdBy: integer("created_by").notNull().references(() => members.id),
   updatedBy: integer("updated_by").notNull().references(() => members.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -44,6 +49,7 @@ export const workspaceItems = pgTable("workspace_items", {
 
 export const attachments = pgTable("attachments", {
   id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   filename: varchar("filename", { length: 255 }).notNull(),
   pathname: text("pathname").notNull(),
   url: text("url").notNull(),
@@ -55,6 +61,7 @@ export const attachments = pgTable("attachments", {
 
 export const activity = pgTable("activity", {
   id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   actorId: integer("actor_id").notNull().references(() => members.id),
   entityType: varchar("entity_type", { length: 20 }).notNull(),
   entityId: integer("entity_id").notNull(),
