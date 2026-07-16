@@ -185,7 +185,9 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .attachment { flex-direction:column; }
   .attachment-actions { width:100%; flex-wrap:wrap; }
   .attachment-actions .button { flex:1 1 auto; }
-  .card-actions { gap:9px; }
-  .card-actions > form, .card-actions .card-edit { flex:1 1 calc(50% - 5px); }
-  .card-actions .card-edit[open] { flex-basis:100%; }
+  .card-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:9px; }
+  .card-actions > form, .card-actions .card-edit { min-width:0; }
+  .card-actions > form .button, .card-actions .card-edit > summary { width:100%; }
+  .card-actions .card-edit[open] { grid-column:1 / -1; }
+  .comment-form { gap:12px; margin-top:16px; }
 }
