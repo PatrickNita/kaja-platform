@@ -27,6 +27,7 @@ type ReactionRow = Data["reactions"][number];
 type CommentEntity = "update" | "task" | "events" | "catalogue" | "merch";
 
 function date(value: Date) { return new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Chisinau" }).format(value); }
+function relativeTime(value: Date) { const minutes = Math.max(0, Math.floor((Date.now() - value.getTime()) / 60_000)); if (minutes < 1) return "Acum câteva secunde"; if (minutes < 60) return `Acum ${minutes} ${minutes === 1 ? "minut" : "minute"}`; const hours = Math.floor(minutes / 60); if (hours < 24) return `Acum ${hours} ${hours === 1 ? "oră" : "ore"}`; const days = Math.floor(hours / 24); return `Acum ${days} ${days === 1 ? "zi" : "zile"}`; }
 function fileSize(bytes: number) { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`; }
 function canManage(memberSlug: string, authorSlug: string) { return memberSlug === "patrick" || memberSlug === authorSlug; }
 function preview(value: string) { return value.length > 50 ? `${value.slice(0, 50).trimEnd()}…` : value; }
@@ -43,14 +44,7 @@ function Comments({ brand, entityType, entityId, comments, reactions, memberSlug
       const hearts = reactions.filter(({ reaction }) => reaction.commentId === comment.id);
       const hasHeart = hearts.some(({ memberSlug: slug }) => slug === memberSlug);
       return <div className="comment" key={comment.id}>
-        <div className="comment-meta"><b>{author}</b><span>{date(comment.createdAt)}</span></div>
-        <div className="comment-body-row">
-          <div className="comment-reactions">
-            <form action={toggleCommentHeart}><input type="hidden" name="brand" value={brand} /><input type="hidden" name="commentId" value={comment.id} /><button className={`heart-button${hasHeart ? " active" : ""}`} aria-label={hasHeart ? "Retrage inima" : "Dă inimă"} aria-pressed={hasHeart}>{hasHeart ? "♥" : "♡"}</button></form>
-            {hearts.length > 0 ? <details className="reaction-likers"><summary>{hearts.length}</summary><div>{hearts.map(({ reaction, memberName }) => <span key={reaction.id}>{memberName}</span>)}</div></details> : <span className="reaction-count">0</span>}
-          </div>
-          <p>{comment.body}</p>
-        </div>
+        <div className="comment-line"><b>{author}</b><p>{comment.body}</p><div className="comment-reactions"><form action={toggleCommentHeart}><input type="hidden" name="brand" value={brand} /><input type="hidden" name="commentId" value={comment.id} /><button className={`heart-button${hasHeart ? " active" : ""}`} aria-label={hasHeart ? "Retrage inima" : "Dă inimă"} aria-pressed={hasHeart}>{hasHeart ? "♥" : "♡"}</button></form>{hearts.length > 0 ? <details className="reaction-likers"><summary>{hearts.length}</summary><div>{hearts.map(({ reaction, memberName }) => <span key={reaction.id}>{memberName}</span>)}</div></details> : <span className="reaction-count">0</span>}</div><span className="comment-time">{relativeTime(comment.createdAt)}</span></div>
         {authorSlug === memberSlug && <form action={deleteComment}><input type="hidden" name="id" value={comment.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="entityType" value={entityType} /><input type="hidden" name="entityId" value={entityId} /><ConfirmDeleteButton className="text-button danger" itemName="acest comentariu">Șterge comentariul</ConfirmDeleteButton></form>}
       </div>;
     })}</div>
