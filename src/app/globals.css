@@ -109,7 +109,9 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
 .comment form { margin-top:7px; }
 .comment-reactions { display:flex; align-items:center; gap:4px; flex:0 0 auto; }
 .comment-reactions form { margin:0; }
-.heart-button { display:grid; place-items:center; width:22px; height:22px; padding:0; border:1px solid var(--line-strong); border-radius:50%; background:transparent; color:#aaa; font-size:14px; line-height:1; }
+.heart-button { display:grid; place-items:center; width:22px; height:22px; padding:0; border:1px solid var(--line-strong); border-radius:50%; background:transparent; color:#aaa; line-height:1; }
+.heart-button svg { display:block; width:12px; height:12px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
+.heart-button.active svg { fill:currentColor; }
 .heart-button.active { border-color:#fff; color:#fff; }
 .reaction-count, .reaction-likers summary { color:var(--muted); font-size:11px; font-weight:800; }
 .reaction-likers { position:relative; margin:0; }
