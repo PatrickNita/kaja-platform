@@ -66,7 +66,15 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .item { padding:17px 0; border-top:1px solid var(--line); }
 .card { padding:0; border:0; }
 .item:first-child { border-top:0; }
-.item-title { color:#fafaf7; font-weight:800; font-size:16px; letter-spacing:-.02em; margin:0 0 7px; }
+.entry-card { margin:0; }
+.entry-card > summary { display:block; cursor:pointer; list-style:none; }
+.entry-card > summary::-webkit-details-marker { display:none; }
+.entry-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.item-title { color:#fafaf7; font-weight:800; font-size:16px; letter-spacing:-.02em; margin:0; }
+.entry-author { flex:0 0 auto; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.04em; text-align:right; }
+.entry-preview { margin-top:9px !important; }
+.comment-preview { margin-top:13px; color:#9f9f99; font-size:11px; font-weight:800; line-height:1.4; }
+.entry-card-content { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
 .item p { color:#b8b8b2; line-height:1.55; margin:0; white-space:pre-wrap; }
 .meta { color:var(--muted); font-size:11px; margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
 .status { display:inline-flex; border:1px solid var(--line-strong); border-radius:999px; padding:4px 8px; color:#c9c9c3; text-transform:uppercase; letter-spacing:.08em; font-size:9px; font-weight:800; }
@@ -84,8 +92,8 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .edit-form { margin-top:12px; padding-top:14px; border-top:1px dashed var(--line-strong); }
 details { margin-top:13px; }
 summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
-.comments { margin-top:15px; padding-top:13px; border-top:1px solid var(--line); }
-.comments summary { font-weight:800; }
+.comments { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+.comments h4 { margin:0; color:#e6e6e0; font-size:12px; font-weight:800; }
 .comment-list { display:grid; gap:12px; margin-top:13px; }
 .comment { border-left:2px solid #e8e8e3; padding-left:11px; }
 .comment > div { display:flex; justify-content:space-between; gap:8px; color:#e4e4df; font-size:11px; }
