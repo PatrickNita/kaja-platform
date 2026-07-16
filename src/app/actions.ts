@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentMember } from "../lib/auth";
 import { db, memberSeed } from "../lib/db";
-import { activity, attachments, comments, members, tasks, updates, workspaceItems } from "../lib/schema";
+import { activity, attachments, commentReactions, comments, members, tasks, updates, workspaceItems } from "../lib/schema";
 import { notifyTelegram } from "../lib/telegram";
 
 const title = z.string().trim().min(1).max(160);
@@ -141,16 +141,27 @@ export async function deleteComment(formData: FormData) {
   await logActivity(member, { brand: input.brand, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: `a șters un comentariu la „${target.title}”`, title: target.title, catalogueGroup: target.catalogueGroup });
   refresh();
 }
+export async function toggleCommentHeart(formData: FormData) {
+  const member = await actor();
+  const input = z.object({ brand, commentId: z.coerce.number().int().positive() }).parse(Object.fromEntries(formData));
+  const [comment] = await db!.select({ id: comments.id }).from(comments).where(and(eq(comments.id, input.commentId), eq(comments.brand, input.brand), isNull(comments.deletedAt)));
+  if (!comment) return;
+  const [reaction] = await db!.select({ id: commentReactions.id }).from(commentReactions).where(and(eq(commentReactions.commentId, comment.id), eq(commentReactions.memberId, member.id)));
+  if (reaction) await db!.delete(commentReactions).where(eq(commentReactions.id, reaction.id));
+  else await db!.insert(commentReactions).values({ brand: input.brand, commentId: comment.id, memberId: member.id });
+  refresh();
+}
 export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
-  const [allUpdates, allTasks, allWorkspaceItems, allAttachments, allActivity, allComments] = await Promise.all([
+  const [allUpdates, allTasks, allWorkspaceItems, allAttachments, allActivity, allComments, allReactions] = await Promise.all([
     db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(and(eq(updates.brand, brandName), isNull(updates.deletedAt))).orderBy(desc(updates.updatedAt)),
     db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(desc(tasks.updatedAt)),
     db.select({ item: workspaceItems, author: members.name, authorSlug: members.slug }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt))).orderBy(desc(workspaceItems.updatedAt)),
     db.select({ attachment: attachments, author: members.name, authorSlug: members.slug }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(and(eq(attachments.brand, brandName), isNull(attachments.deletedAt))).orderBy(desc(attachments.createdAt)),
     db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id)).where(eq(activity.brand, brandName)).orderBy(desc(activity.createdAt)).limit(100),
     db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(and(eq(comments.brand, brandName), isNull(comments.deletedAt))).orderBy(comments.createdAt),
+    db.select({ reaction: commentReactions, memberName: members.name, memberSlug: members.slug }).from(commentReactions).innerJoin(members, eq(commentReactions.memberId, members.id)).where(eq(commentReactions.brand, brandName)).orderBy(commentReactions.createdAt),
   ]);
-  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, attachments: allAttachments, activity: allActivity, comments: allComments };
+  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, attachments: allAttachments, activity: allActivity, comments: allComments, reactions: allReactions };
 }

@@ -25,6 +25,7 @@ a { color:inherit; }
 .workspace-content { display:grid; gap:24px; align-items:start; }
 .workspace-main { min-width:0; }
 .panel { background:linear-gradient(145deg, rgba(28,28,28,.96), rgba(16,16,16,.96)); border:1px solid var(--line); border-radius:16px; padding:clamp(18px, 2.1vw, 30px); box-shadow:0 22px 55px rgba(0,0,0,.18); }
+.panel.content-section { background:transparent; border:0; border-radius:0; padding:0; box-shadow:none; }
 .panel-head { display:flex; justify-content:space-between; align-items:baseline; gap:16px; margin-bottom:22px; }
 h2 { margin:0; color:#fff; font-size:clamp(21px, 2vw, 27px); letter-spacing:-.05em; }
 .count { color:var(--muted); font-size:11px; font-weight:700; white-space:nowrap; }
@@ -72,9 +73,10 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .entry-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .item-title { color:#fafaf7; font-weight:800; font-size:16px; letter-spacing:-.02em; margin:0; }
 .entry-author { flex:0 0 auto; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.04em; text-align:right; }
-.entry-preview { margin-top:9px !important; }
-.comment-preview { margin-top:13px; color:#9f9f99; font-size:11px; font-weight:800; line-height:1.4; }
-.entry-card-content { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+.entry-preview { margin-top:5px !important; }
+.entry-card[open] .entry-preview { display:none; }
+.comment-preview { margin-top:8px; color:#9f9f99; font-size:11px; font-weight:800; line-height:1.4; }
+.entry-card-content { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
 .item p { color:#b8b8b2; line-height:1.55; margin:0; white-space:pre-wrap; }
 .meta { color:var(--muted); font-size:11px; margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
 .status { display:inline-flex; border:1px solid var(--line-strong); border-radius:999px; padding:4px 8px; color:#c9c9c3; text-transform:uppercase; letter-spacing:.08em; font-size:9px; font-weight:800; }
@@ -82,17 +84,17 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .merch-composer { margin-bottom:16px; }
 .merch-preview--draft { margin:8px 0 0; max-height:220px; }
 
-.card-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:15px; }
+.card-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .card-actions form { margin:0; }
 .card-actions .card-edit { flex:1 0 calc(50% - 4px); margin:0; padding:0; border:0; }
 .card-actions .card-edit[open] { flex-basis:100%; }
-.card-edit summary { display:inline-flex; align-items:center; justify-content:center; min-height:42px; width:100%; border:1px solid var(--line-strong); border-radius:8px; color:#e7e7e1; cursor:pointer; font-size:12px; font-weight:800; list-style:none; }
+.card-edit summary { display:inline-flex; align-items:center; justify-content:center; min-height:36px; width:100%; border:1px solid var(--line-strong); border-radius:8px; color:#e7e7e1; cursor:pointer; font-size:11px; font-weight:800; list-style:none; }
 .card-edit summary:hover { background:#242424; border-color:#6a6a66; }
 .card-edit summary::-webkit-details-marker { display:none; }
 .edit-form { margin-top:12px; padding-top:14px; border-top:1px dashed var(--line-strong); }
 details { margin-top:13px; }
 summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
-.comments { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+.comments { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
 .comments h4 { margin:0; color:#e6e6e0; font-size:12px; font-weight:800; }
 .comment-list { display:grid; gap:12px; margin-top:13px; }
 .comment { border-left:2px solid #e8e8e3; padding-left:11px; }
@@ -100,8 +102,20 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
 .comment > div span { color:var(--muted); }
 .comment p { margin:6px 0 0; color:#c3c3bd; font-size:13px; }
 .comment form { margin-top:7px; }
-.comment-form { display:grid; gap:9px; margin-top:13px; }
-.comment-form textarea { min-height:76px; }
+.comment-actions { display:flex; align-items:center; gap:9px; margin-top:8px; }
+.comment-actions form { margin:0; }
+.heart-button { display:grid; place-items:center; width:28px; height:28px; padding:0; border:1px solid var(--line-strong); border-radius:50%; background:transparent; color:#aaa; font-size:17px; line-height:1; }
+.heart-button.active { border-color:#fff; color:#fff; }
+.reaction-count, .reaction-likers summary { color:var(--muted); font-size:11px; font-weight:800; }
+.reaction-likers { position:relative; margin:0; }
+.reaction-likers summary { cursor:pointer; list-style:none; }
+.reaction-likers summary::-webkit-details-marker { display:none; }
+.reaction-likers > div { display:none; position:absolute; z-index:5; bottom:calc(100% + 8px); left:0; min-width:130px; padding:9px 10px; border:1px solid var(--line-strong); border-radius:8px; background:#191919; box-shadow:0 12px 30px rgba(0,0,0,.35); }
+.reaction-likers:hover > div, .reaction-likers:focus-within > div, .reaction-likers[open] > div { display:grid; gap:5px; }
+.reaction-likers > div span { color:#e4e4df; font-size:11px; font-weight:800; }
+.comment-form { display:grid; gap:9px; margin-top:12px; }
+.comment-form textarea { min-height:48px; height:48px; resize:none; overflow:hidden; padding-block:12px; }
+.comment-form .button, .card-actions .button { min-height:36px; padding:8px 11px; font-size:11px; }
 .text-button { padding:0; border:0; background:transparent; color:inherit; font-size:11px; font-weight:800; }
 
 .activity-panel { max-height:440px; display:flex; flex-direction:column; }
@@ -111,7 +125,8 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
 .event b { color:#fff; font-weight:800; }
 .activity-link { color:#fff; font-weight:800; text-decoration:underline; text-decoration-color:#777; text-underline-offset:4px; }
 
-.attachment { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.attachment-grid { gap:14px; }
+.attachment { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:17px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(145deg, #1a1a1a, #131313); }
 .attachment-actions { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
 .attachment-actions form { margin:0; }
 .stack { display:grid; gap:24px; }
@@ -174,12 +189,25 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .mobile-catalogue-list a { min-height:42px; text-transform:none; font-size:12px; }
   .panel { border-radius:13px; padding:18px; }
   .panel-head { margin-bottom:18px; }
+  .content-section .panel-head { margin-bottom:16px; }
+  .content-section .panel-head h2 { font-size:20px; }
+  .content-section .count { font-size:10px; }
   .catalogue-submenu { margin-bottom:2px; }
   .card-grid { grid-template-columns:1fr; gap:13px; margin-top:16px; }
-  .card-wrap { padding:16px; border-radius:12px; }
+  .card-wrap { padding:14px; border-radius:12px; }
   .card-wrap:hover { transform:none; }
-  .item-title { font-size:17px; }
-  .item p { font-size:14px; }
+  .item-title { font-size:15px; }
+  .entry-author { font-size:9px; }
+  .entry-preview, .item p { font-size:13px; }
+  .comment-preview { margin-top:7px; font-size:10px; }
+  .entry-card-content { margin-top:10px; padding-top:10px; }
+  .comments { margin-top:10px; padding-top:10px; }
+  .comments h4 { font-size:11px; }
+  .comment-list { gap:10px; margin-top:11px; }
+  .comment p { font-size:12px; }
+  .comment > div, .comment-actions { font-size:10px; }
+  .comment-form textarea { font-size:12px; }
+  .comment-form .button, .card-actions .button, .card-edit summary { font-size:10px; }
   .activity-panel { max-height:58vh; }
   .form.compact { grid-template-columns:1fr; }
   .attachment { flex-direction:column; }
@@ -189,5 +217,5 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .card-actions > form, .card-actions .card-edit { min-width:0; }
   .card-actions > form .button, .card-actions .card-edit > summary { width:100%; }
   .card-actions .card-edit[open] { grid-column:1 / -1; }
-  .comment-form { gap:12px; margin-top:16px; }
+  .comment-form { gap:9px; margin-top:12px; }
 }

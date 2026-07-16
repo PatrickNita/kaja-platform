@@ -80,3 +80,14 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (table) => [index("comments_brand_entity_created_idx").on(table.brand, table.entityType, table.entityId, table.createdAt)]);
+
+export const commentReactions = pgTable("comment_reactions", {
+  id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull(),
+  commentId: integer("comment_id").notNull().references(() => comments.id),
+  memberId: integer("member_id").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("comment_reactions_comment_member_unique").on(table.commentId, table.memberId),
+  index("comment_reactions_brand_comment_created_idx").on(table.brand, table.commentId, table.createdAt),
+]);
