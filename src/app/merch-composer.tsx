@@ -3,6 +3,7 @@
 import { upload } from "@vercel/blob/client";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { AutoResizeTextarea } from "./comment-textarea";
 
 export function MerchComposer({ brand }: { brand: "kaja" | "hexenwerk" | "virginia" }) {
   const input = useRef<HTMLInputElement>(null);
@@ -45,5 +46,5 @@ export function MerchComposer({ brand }: { brand: "kaja" | "hexenwerk" | "virgin
     } catch { setError("Încărcarea imaginii a eșuat. Produsul merch nu a fost creat."); } finally { setProgress(null); }
   }
 
-  return <form className="form merch-composer" onSubmit={createMerch}><input value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={160} placeholder="Titlu produs merch" disabled={progress !== null} /><textarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} placeholder="Descrie produsul merch." disabled={progress !== null} /><div className="image-uploader"><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseImage} required disabled={progress !== null} /><p>Obligatoriu: JPEG, PNG sau WebP · maximum 10 MB</p>{preview && <img className="merch-preview merch-preview--draft" src={preview} alt="Previzualizare produs merch nou" />}{progress !== null && <p>Se încarcă {progress}%</p>}{error && <p className="upload-error">{error}</p>}{success && <p className="upload-success">{success}</p>}</div><button className="button" disabled={!file || progress !== null}>Creează produsul merch</button></form>;
+  return <form className="form merch-composer" onSubmit={createMerch}><AutoResizeTextarea className="field-title" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={160} placeholder="Titlu produs merch" disabled={progress !== null} /><AutoResizeTextarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} placeholder="Descrie produsul merch." disabled={progress !== null} /><div className="image-uploader"><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseImage} required disabled={progress !== null} /><p>Obligatoriu: JPEG, PNG sau WebP · maximum 10 MB</p>{preview && <img className="merch-preview merch-preview--draft" src={preview} alt="Previzualizare produs merch nou" />}{progress !== null && <p>Se încarcă {progress}%</p>}{error && <p className="upload-error">{error}</p>}{success && <p className="upload-success">{success}</p>}</div><button className="button" disabled={!file || progress !== null}>Creează produsul merch</button></form>;
 }

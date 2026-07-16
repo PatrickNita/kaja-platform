@@ -1,8 +1,11 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useEffect, useRef } from "react";
 
-export function CommentTextarea() {
+type Props = ComponentProps<"textarea">;
+
+export function AutoResizeTextarea({ className, onInput, rows = 1, ...props }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const resize = () => {
@@ -11,7 +14,16 @@ export function CommentTextarea() {
     ref.current.style.height = `${Math.max(48, ref.current.scrollHeight)}px`;
   };
 
-  useEffect(resize, []);
+  useEffect(resize, [props.defaultValue, props.value]);
 
-  return <textarea ref={ref} name="body" required maxLength={1000} rows={1} placeholder="Scrie un comentariu" onInput={resize} />;
+  const handleInput: NonNullable<Props["onInput"]> = (event) => {
+    resize();
+    onInput?.(event);
+  };
+
+  return <textarea ref={ref} className={`auto-resize-textarea${className ? ` ${className}` : ""}`} rows={rows} onInput={handleInput} {...props} />;
+}
+
+export function CommentTextarea() {
+  return <AutoResizeTextarea name="body" required maxLength={1000} placeholder="Scrie un comentariu" />;
 }
