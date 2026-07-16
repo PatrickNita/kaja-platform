@@ -140,6 +140,7 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .workspace-header { margin:0 -16px 24px; }
   .workspace-brand { min-height:72px; padding:15px 16px; }
   .logo { width:128px; }
+  .workspace-brand .identity { display:none; }
   .brand-switcher, .workspace-nav { display:none; }
   .mobile-menu { display:block; }
   .mobile-menu-button { position:fixed; top:15px; right:16px; z-index:40; min-height:42px; border:1px solid #fff; border-radius:999px; background:#fff; color:#080808; padding:9px 14px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; box-shadow:0 8px 24px rgba(0,0,0,.25); }
@@ -157,7 +158,8 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .mobile-brand-options a:first-child { border-top:0; }
   .mobile-brand-options a:hover, .mobile-brand-options a.active { color:#050505; background:#fff; }
   .mobile-section-list { border-top:1px solid var(--line); }
-  .mobile-section-list > div, .mobile-section-list > a { border-bottom:1px solid var(--line); }
+  .mobile-section-list > a { border-bottom:1px solid var(--line); }
+  .mobile-section-list > div { border-bottom:0; }
   .mobile-section-list a, .mobile-section-list button { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:52px; color:#aaa; border:0; background:transparent; padding:13px 0; text-decoration:none; text-transform:uppercase; font-size:12px; font-weight:800; letter-spacing:.07em; text-align:left; }
   .mobile-section-list a.active, .mobile-section-list button.active { color:#fff; }
   .mobile-catalogue-list { padding:0 0 10px 13px; }
