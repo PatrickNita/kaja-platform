@@ -14,6 +14,7 @@ const body = z.string().trim().min(1).max(4000);
 const brand = z.enum(["kaja", "hexenwerk", "virginia"]);
 const workspaceSection = z.enum(["events", "catalogue", "merch"]);
 const creatableWorkspaceSection = z.enum(["events", "catalogue"]);
+const editableWorkspaceSection = z.enum(["events", "catalogue", "merch"]);
 const catalogueGroup = z.enum(["live", "upcoming", "ideas"]);
 const commentEntity = z.enum(["update", "task", "events", "catalogue", "merch"]);
 const commentBody = z.string().trim().min(1).max(1000);
@@ -67,7 +68,7 @@ export async function deleteRecord(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, type: z.enum(["task", "update"]), title }).parse(Object.fromEntries(formData));
   if (input.type === "task") await db!.update(tasks).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand)));
   else await db!.update(updates).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand)));
-  await logActivity(member, { brand: input.brand, entityType: input.type, entityId: input.id, action: "deleted", summary: "a șters o înregistrare", title: input.title }); refresh();
+  await logActivity(member, { brand: input.brand, entityType: input.type, entityId: input.id, action: "deleted", summary: `a șters ${input.type === "update" ? "actualizarea" : "sarcina"} „${input.title}”`, title: input.title }); refresh();
 }
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
@@ -76,7 +77,7 @@ export async function createWorkspaceItem(formData: FormData) {
   await logActivity(member, { brand: input.brand, entityType: input.section, entityId: record.id, action: "created", summary: `a creat o înregistrare „${record.title}”`, title: record.title, catalogueGroup: record.catalogueGroup }); refresh();
 }
 export async function updateWorkspaceItem(formData: FormData) {
-  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: creatableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: editableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
   const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) return;
   await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
@@ -88,7 +89,7 @@ export async function deleteWorkspaceItem(formData: FormData) {
   if (!item) return;
   if (item.merchImageUrl) await del(item.merchImageUrl);
   await db!.update(workspaceItems).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
-  await logActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: "a șters o înregistrare", title: item.title, catalogueGroup: item.catalogueGroup }); refresh();
+  await logActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters ${input.section === "events" ? "evenimentul" : input.section === "merch" ? "produsul merch" : item.catalogueGroup === "ideas" ? "ideea" : item.catalogueGroup === "upcoming" ? "produsul din În curând" : "produsul din Catalog activ"} „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }); refresh();
 }
 export async function deleteAttachment(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));
@@ -114,7 +115,7 @@ export async function deleteComment(formData: FormData) {
   const target = await targetDetails(input);
   if (!target) return;
   await db!.update(comments).set({ deletedAt: new Date() }).where(eq(comments.id, comment.id));
-  await logActivity(member, { brand: input.brand, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: "a șters un comentariu", title: target.title, catalogueGroup: target.catalogueGroup });
+  await logActivity(member, { brand: input.brand, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: `a șters un comentariu la „${target.title}”`, title: target.title, catalogueGroup: target.catalogueGroup });
   refresh();
 }
 export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {

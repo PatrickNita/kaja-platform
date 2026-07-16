@@ -71,6 +71,12 @@ details { margin-top:12px; }
 summary { font-size:12px; cursor:pointer; color:#555; }
 .edit-form { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
 .card-edit { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); }
+.card-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.card-actions form { margin:0; }
+.card-actions .card-edit { flex:1 0 calc(50% - 4px); margin:0; padding:0; border:0; }
+.card-actions .card-edit[open] { flex-basis:100%; }
+.card-edit summary { list-style:none; }
+.card-edit summary::-webkit-details-marker { display:none; }
 .comments { margin-top:14px; padding-top:12px; border-top:1px solid var(--line); }
 .comments summary { font-weight:700; }
 .comment-list { display:grid; gap:10px; margin-top:12px; }
