@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
 import { activity, attachments, members } from "../../../lib/schema";
+import { notifyTelegram } from "../../../lib/telegram";
 
 const brands = ["kaja", "hexenwerk", "virginia"] as const;
 
@@ -30,7 +31,10 @@ export async function POST(request: Request) {
       if (!member) return;
       const storedBlob = await head(blob.url);
       const [attachment] = await db.insert(attachments).values({ brand: payload.brand, filename: payload.filename, pathname: blob.pathname, url: blob.url, size: storedBlob.size, uploadedBy: member.id }).onConflictDoNothing().returning();
-      if (attachment) await db.insert(activity).values({ brand: payload.brand, actorId: member.id, entityType: "attachment", entityId: attachment.id, action: "uploaded", summary: `uploaded PDF “${attachment.filename}”` });
+      if (attachment) {
+        await db.insert(activity).values({ brand: payload.brand, actorId: member.id, entityType: "attachment", entityId: attachment.id, action: "uploaded", summary: `a încărcat PDF-ul „${attachment.filename}”` });
+        await notifyTelegram({ memberName: member.name, brand: payload.brand, entityType: "attachment", action: "uploaded", title: attachment.filename });
+      }
     },
   });
   return NextResponse.json(response);

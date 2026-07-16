@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
 import { activity, members, workspaceItems } from "../../../lib/schema";
+import { notifyTelegram } from "../../../lib/telegram";
 
 const brands = ["kaja", "hexenwerk", "virginia"] as const;
 type Brand = (typeof brands)[number];
@@ -49,7 +50,8 @@ export async function POST(request: Request) {
           createdBy: member.id,
           updatedBy: member.id,
         }).returning();
-        await db.insert(activity).values({ brand: payload.brand, actorId: member.id, entityType: "merch", entityId: item.id, action: "created", summary: `created merch “${item.title}” with image` });
+        await db.insert(activity).values({ brand: payload.brand, actorId: member.id, entityType: "merch", entityId: item.id, action: "created", summary: `a creat produsul merch „${item.title}”` });
+        await notifyTelegram({ memberName: member.name, brand: payload.brand, entityType: "merch", action: "created", title: item.title });
       } catch (error) {
         await del(blob.url);
         throw error;
