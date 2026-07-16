@@ -28,6 +28,9 @@ async function actor() {
   return record;
 }
 function refresh() { revalidatePath("/"); }
+function assertCanManage(member: { id: number; slug: string }, ownerId: number) {
+  if (member.slug !== "patrick" && member.id !== ownerId) throw new Error("Poți modifica sau șterge doar înregistrările create de tine.");
+}
 async function logActivity(member: { id: number; name: string }, event: { brand: "kaja" | "hexenwerk" | "virginia"; entityType: "update" | "task" | "events" | "catalogue" | "merch" | "attachment"; entityId: number; action: "created" | "edited" | "updated" | "deleted" | "uploaded" | "commented" | "comment_deleted"; summary: string; title: string; catalogueGroup?: string | null }) {
   await db!.insert(activity).values({ brand: event.brand, actorId: member.id, entityType: event.entityType, entityId: event.entityId, action: event.action, summary: event.summary });
   await notifyTelegram({ memberName: member.name, ...event });
@@ -51,6 +54,9 @@ export async function createUpdate(formData: FormData) {
 }
 export async function editUpdate(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
+  const [record] = await db!.select({ createdBy: updates.createdBy }).from(updates).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
+  if (!record) return;
+  assertCanManage(member, record.createdBy);
   await db!.update(updates).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
   await logActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "edited", summary: `a editat actualizarea „${input.title}”`, title: input.title }); refresh();
 }
@@ -61,14 +67,28 @@ export async function createTask(formData: FormData) {
 }
 export async function updateTask(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title }).parse(Object.fromEntries(formData));
+  const [record] = await db!.select({ createdBy: tasks.createdBy }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+  if (!record) return;
+  assertCanManage(member, record.createdBy);
   await db!.update(tasks).set({ title: input.title, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
   await logActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "updated", summary: `a actualizat sarcina „${input.title}”`, title: input.title }); refresh();
 }
 export async function deleteRecord(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, type: z.enum(["task", "update"]), title }).parse(Object.fromEntries(formData));
-  if (input.type === "task") await db!.update(tasks).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand)));
-  else await db!.update(updates).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand)));
-  await logActivity(member, { brand: input.brand, entityType: input.type, entityId: input.id, action: "deleted", summary: `a șters ${input.type === "update" ? "actualizarea" : "sarcina"} „${input.title}”`, title: input.title }); refresh();
+  if (input.type === "task") {
+    const [record] = await db!.select({ createdBy: tasks.createdBy, title: tasks.title }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+    if (!record) return;
+    assertCanManage(member, record.createdBy);
+    await db!.update(tasks).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(tasks.id, input.id));
+    await logActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "deleted", summary: `a șters sarcina „${record.title}”`, title: record.title });
+  } else {
+    const [record] = await db!.select({ createdBy: updates.createdBy, title: updates.title }).from(updates).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
+    if (!record) return;
+    assertCanManage(member, record.createdBy);
+    await db!.update(updates).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(updates.id, input.id));
+    await logActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "deleted", summary: `a șters actualizarea „${record.title}”`, title: record.title });
+  }
+  refresh();
 }
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
@@ -78,8 +98,9 @@ export async function createWorkspaceItem(formData: FormData) {
 }
 export async function updateWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: editableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
-  const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
+  const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup, createdBy: workspaceItems.createdBy }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) return;
+  assertCanManage(member, item.createdBy);
   await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   await logActivity(member, { brand: input.brand, entityType: input.section, entityId: input.id, action: "updated", summary: `a actualizat o înregistrare „${input.title}”`, title: input.title, catalogueGroup: item.catalogueGroup }); refresh();
 }
@@ -87,12 +108,14 @@ export async function deleteWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: workspaceSection, title }).parse(Object.fromEntries(formData));
   const [item] = await db!.select().from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) return;
+  assertCanManage(member, item.createdBy);
   if (item.merchImageUrl) await del(item.merchImageUrl);
   await db!.update(workspaceItems).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
   await logActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters ${input.section === "events" ? "evenimentul" : input.section === "merch" ? "produsul merch" : item.catalogueGroup === "ideas" ? "ideea" : item.catalogueGroup === "upcoming" ? "produsul din În curând" : "produsul din Catalog activ"} „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }); refresh();
 }
 export async function deleteAttachment(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));
+  if (member.slug !== "patrick") throw new Error("Doar Patrick poate șterge PDF-uri.");
   const [attachment] = await db!.select().from(attachments).where(and(eq(attachments.id, input.id), eq(attachments.brand, input.brand), isNull(attachments.deletedAt)));
   if (!attachment) return;
   await del(attachment.url); await db!.update(attachments).set({ deletedAt: new Date() }).where(eq(attachments.id, attachment.id));
@@ -122,10 +145,10 @@ export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia"
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
   const [allUpdates, allTasks, allWorkspaceItems, allAttachments, allActivity, allComments] = await Promise.all([
-    db.select({ update: updates, author: members.name }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(and(eq(updates.brand, brandName), isNull(updates.deletedAt))).orderBy(desc(updates.updatedAt)),
-    db.select({ task: tasks, author: members.name }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(desc(tasks.updatedAt)),
-    db.select({ item: workspaceItems, author: members.name }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt))).orderBy(desc(workspaceItems.updatedAt)),
-    db.select({ attachment: attachments, author: members.name }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(and(eq(attachments.brand, brandName), isNull(attachments.deletedAt))).orderBy(desc(attachments.createdAt)),
+    db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(and(eq(updates.brand, brandName), isNull(updates.deletedAt))).orderBy(desc(updates.updatedAt)),
+    db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(desc(tasks.updatedAt)),
+    db.select({ item: workspaceItems, author: members.name, authorSlug: members.slug }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt))).orderBy(desc(workspaceItems.updatedAt)),
+    db.select({ attachment: attachments, author: members.name, authorSlug: members.slug }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(and(eq(attachments.brand, brandName), isNull(attachments.deletedAt))).orderBy(desc(attachments.createdAt)),
     db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id)).where(eq(activity.brand, brandName)).orderBy(desc(activity.createdAt)).limit(100),
     db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(and(eq(comments.brand, brandName), isNull(comments.deletedAt))).orderBy(comments.createdAt),
   ]);

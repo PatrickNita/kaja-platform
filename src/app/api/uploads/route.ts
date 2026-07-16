@@ -1,5 +1,5 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
-import { head } from "@vercel/blob";
+import { del, head } from "@vercel/blob";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentMember } from "../../../lib/auth";
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     onBeforeGenerateToken: async (_pathname, clientPayload) => {
       const member = await currentMember();
       if (!member) throw new Error("Unauthorized upload.");
+      if (member.slug !== "patrick") throw new Error("Doar Patrick poate încărca PDF-uri.");
       const payload = JSON.parse(clientPayload || "{}") as { filename?: string; brand?: string };
       if (!payload.filename?.toLowerCase().endsWith(".pdf") || !brands.includes(payload.brand as typeof brands[number])) throw new Error("Sunt permise doar fișierele PDF.");
       return { allowedContentTypes: ["application/pdf"], maximumSizeInBytes: 25 * 1024 * 1024, addRandomSuffix: true, tokenPayload: JSON.stringify({ slug: member.slug, filename: payload.filename, brand: payload.brand }) };
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     onUploadCompleted: async ({ blob, tokenPayload }) => {
       if (!db || !tokenPayload || blob.contentType !== "application/pdf") return;
       const payload = JSON.parse(tokenPayload) as { slug: string; filename: string; brand: typeof brands[number] };
+      if (payload.slug !== "patrick") { await del(blob.url); return; }
       const seededMember = memberSeed.find((member) => member.slug === payload.slug);
       if (!seededMember) return;
       await db.insert(members).values(seededMember).onConflictDoNothing();
