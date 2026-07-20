@@ -76,6 +76,7 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .entry-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .item-title { color:#fafaf7; font-weight:800; font-size:16px; letter-spacing:-.02em; margin:0; }
 .entry-author { flex:0 0 auto; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.04em; text-align:right; }
+.entry-preview, .entry-card-content > p { font-size:13px; }
 .entry-preview { margin-top:5px !important; }
 .entry-card[open] .entry-preview { display:none; }
 .entry-card[open] .comment-preview { display:none; }
@@ -88,10 +89,11 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .merch-composer { margin:0; }
 .merch-preview--draft { margin:8px 0 0; max-height:220px; }
 
-.card-actions { display:flex; flex-wrap:wrap; gap:8px; margin:0; }
+.card-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin:0; }
 .card-actions form { margin:0; }
-.card-actions .card-edit { flex:1 0 calc(50% - 4px); margin:0; padding:0; border:0; }
-.card-actions .card-edit[open] { flex-basis:100%; }
+.card-actions > form, .card-actions .card-edit { min-width:0; margin:0; padding:0; border:0; }
+.card-actions > form .button, .card-actions .card-edit > summary { width:100%; }
+.card-actions .card-edit[open] { grid-column:1 / -1; }
 .card-edit summary { display:inline-flex; align-items:center; justify-content:center; min-height:36px; width:100%; border:1px solid var(--line-strong); border-radius:8px; color:#e7e7e1; cursor:pointer; font-size:11px; font-weight:800; list-style:none; }
 .card-edit summary:hover { background:#242424; border-color:#6a6a66; }
 .card-edit summary::-webkit-details-marker { display:none; }
@@ -218,9 +220,5 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .form.compact { grid-template-columns:1fr; }
   .attachment { flex-direction:column; }
   .attachment-actions { flex-wrap:wrap; }
-  .card-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:9px; }
-  .card-actions > form, .card-actions .card-edit { min-width:0; }
-  .card-actions > form .button, .card-actions .card-edit > summary { width:100%; }
-  .card-actions .card-edit[open] { grid-column:1 / -1; }
   .comment-form { gap:var(--entry-gap); margin:0; }
 }
