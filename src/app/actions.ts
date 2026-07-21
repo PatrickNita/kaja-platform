@@ -6,15 +6,16 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentMember } from "../lib/auth";
 import { db, memberSeed } from "../lib/db";
-import { activity, attachments, commentReactions, comments, members, tasks, updates, workspaceItems } from "../lib/schema";
+import { activity, attachments, commentReactions, comments, members, tasks, updates, workspaceItemImages, workspaceItems } from "../lib/schema";
 import { notifyTelegram } from "../lib/telegram";
+import { canManageWorkspaceItem, supportsImageGallery } from "../lib/workspace-permissions";
 
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
 const brand = z.enum(["kaja", "hexenwerk", "virginia"]);
-const workspaceSection = z.enum(["events", "catalogue", "merch"]);
-const creatableWorkspaceSection = z.enum(["events", "catalogue"]);
-const editableWorkspaceSection = z.enum(["events", "catalogue", "merch"]);
+const workspaceSection = z.enum(["events", "catalogue", "merch", "information"]);
+const creatableWorkspaceSection = z.enum(["events", "catalogue", "information"]);
+const editableWorkspaceSection = z.enum(["events", "catalogue", "merch", "information"]);
 const catalogueGroup = z.enum(["live", "upcoming", "ideas"]);
 const commentEntity = z.enum(["update", "task", "events", "catalogue", "merch"]);
 const commentBody = z.string().trim().min(1).max(1000);
@@ -31,7 +32,7 @@ function refresh() { revalidatePath("/"); }
 function assertCanManage(member: { id: number; slug: string }, ownerId: number) {
   if (member.slug !== "patrick" && member.id !== ownerId) throw new Error("Poți modifica sau șterge doar înregistrările create de tine.");
 }
-async function logActivity(member: { id: number; name: string }, event: { brand: "kaja" | "hexenwerk" | "virginia"; entityType: "update" | "task" | "events" | "catalogue" | "merch" | "attachment"; entityId: number; action: "created" | "edited" | "updated" | "deleted" | "uploaded" | "commented" | "comment_deleted"; summary: string; title: string; catalogueGroup?: string | null }) {
+async function logActivity(member: { id: number; name: string }, event: { brand: "kaja" | "hexenwerk" | "virginia"; entityType: "update" | "task" | "events" | "catalogue" | "merch" | "information" | "attachment"; entityId: number; action: "created" | "edited" | "updated" | "deleted" | "uploaded" | "commented" | "comment_deleted" | "image_uploaded" | "image_deleted"; summary: string; title: string; catalogueGroup?: string | null }) {
   await db!.insert(activity).values({ brand: event.brand, actorId: member.id, entityType: event.entityType, entityId: event.entityId, action: event.action, summary: event.summary });
   await notifyTelegram({ memberName: member.name, ...event });
 }
@@ -92,15 +93,20 @@ export async function deleteRecord(formData: FormData) {
 }
 export async function createWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
+  if (input.section === "information" && member.slug !== "patrick") throw new Error("Doar Patrick poate adăuga informații.");
   if (input.section === "catalogue" && input.catalogueGroup !== "ideas" && member.slug !== "patrick") throw new Error("Doar Patrick poate adăuga produse în Catalog activ sau În curând.");
   const [record] = await db!.insert(workspaceItems).values({ ...input, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
-  await logActivity(member, { brand: input.brand, entityType: input.section, entityId: record.id, action: "created", summary: `a creat o înregistrare „${record.title}”`, title: record.title, catalogueGroup: record.catalogueGroup }); refresh();
+  await logActivity(member, { brand: input.brand, entityType: input.section, entityId: record.id, action: "created", summary: input.section === "information" ? `a creat informația „${record.title}”` : `a creat o înregistrare „${record.title}”`, title: record.title, catalogueGroup: record.catalogueGroup }); refresh();
+  return { id: record.id };
+}
+export async function createWorkspaceItemForm(formData: FormData) {
+  await createWorkspaceItem(formData);
 }
 export async function updateWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: editableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
   const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup, createdBy: workspaceItems.createdBy }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) return;
-  assertCanManage(member, item.createdBy);
+  if (!canManageWorkspaceItem(member, { ...item, section: input.section })) throw new Error("Nu ai permisiunea să modifici această înregistrare.");
   await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   await logActivity(member, { brand: input.brand, entityType: input.section, entityId: input.id, action: "updated", summary: `a actualizat o înregistrare „${input.title}”`, title: input.title, catalogueGroup: item.catalogueGroup }); refresh();
 }
@@ -108,10 +114,30 @@ export async function deleteWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: workspaceSection, title }).parse(Object.fromEntries(formData));
   const [item] = await db!.select().from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) return;
-  assertCanManage(member, item.createdBy);
-  if (item.merchImageUrl) await del(item.merchImageUrl);
+  if (!canManageWorkspaceItem(member, item)) throw new Error("Nu ai permisiunea să ștergi această înregistrare.");
+  const itemImages = await db!.select().from(workspaceItemImages).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, input.brand), isNull(workspaceItemImages.deletedAt)));
+  const imageUrls = new Set(itemImages.map((image) => image.url));
+  if (item.merchImageUrl) imageUrls.add(item.merchImageUrl);
+  for (const imageUrl of imageUrls) await del(imageUrl);
+  if (itemImages.length) await db!.update(workspaceItemImages).set({ deletedAt: new Date() }).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, input.brand), isNull(workspaceItemImages.deletedAt)));
   await db!.update(workspaceItems).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
-  await logActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters ${input.section === "events" ? "evenimentul" : input.section === "merch" ? "produsul merch" : item.catalogueGroup === "ideas" ? "ideea" : item.catalogueGroup === "upcoming" ? "produsul din În curând" : "produsul din Catalog activ"} „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }); refresh();
+  await logActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters ${input.section === "information" ? "informația" : input.section === "events" ? "evenimentul" : input.section === "merch" ? "produsul merch" : item.catalogueGroup === "ideas" ? "ideea" : item.catalogueGroup === "upcoming" ? "produsul din În curând" : "produsul din Catalog activ"} „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }); refresh();
+}
+export async function deleteWorkspaceItemImage(formData: FormData) {
+  const member = await actor();
+  const input = z.object({ id: z.coerce.number().int().positive(), itemId: z.coerce.number().int().positive(), brand }).parse(Object.fromEntries(formData));
+  const [item] = await db!.select().from(workspaceItems).where(and(eq(workspaceItems.id, input.itemId), eq(workspaceItems.brand, input.brand), isNull(workspaceItems.deletedAt)));
+  if (!item || !supportsImageGallery(item)) throw new Error("Galeria nu este disponibilă pentru această înregistrare.");
+  if (!canManageWorkspaceItem(member, item)) throw new Error("Nu ai permisiunea să modifici această galerie.");
+  const images = await db!.select().from(workspaceItemImages).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, input.brand), isNull(workspaceItemImages.deletedAt)));
+  const image = images.find((entry) => entry.id === input.id);
+  if (!image) return;
+  if (item.section === "merch" && images.length <= 1) throw new Error("Un produs Merch trebuie să păstreze cel puțin o imagine.");
+  await del(image.url);
+  await db!.update(workspaceItemImages).set({ deletedAt: new Date() }).where(eq(workspaceItemImages.id, image.id));
+  if (item.merchImageUrl === image.url) await db!.update(workspaceItems).set({ merchImageUrl: null, merchImagePathname: null, updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
+  await logActivity(member, { brand: input.brand, entityType: item.section as "events" | "catalogue" | "merch", entityId: item.id, action: "image_deleted", summary: `a șters o imagine din „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup });
+  refresh();
 }
 export async function deleteAttachment(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));
@@ -154,14 +180,15 @@ export async function toggleCommentHeart(formData: FormData) {
 export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
-  const [allUpdates, allTasks, allWorkspaceItems, allAttachments, allActivity, allComments, allReactions] = await Promise.all([
+  const [allUpdates, allTasks, allWorkspaceItems, allImages, allAttachments, allActivity, allComments, allReactions] = await Promise.all([
     db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(and(eq(updates.brand, brandName), isNull(updates.deletedAt))).orderBy(desc(updates.updatedAt)),
     db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(desc(tasks.updatedAt)),
     db.select({ item: workspaceItems, author: members.name, authorSlug: members.slug }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt))).orderBy(desc(workspaceItems.updatedAt)),
+    db.select().from(workspaceItemImages).where(and(eq(workspaceItemImages.brand, brandName), isNull(workspaceItemImages.deletedAt))).orderBy(workspaceItemImages.itemId, workspaceItemImages.position, workspaceItemImages.createdAt),
     db.select({ attachment: attachments, author: members.name, authorSlug: members.slug }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(and(eq(attachments.brand, brandName), isNull(attachments.deletedAt))).orderBy(desc(attachments.createdAt)),
     db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id)).where(eq(activity.brand, brandName)).orderBy(desc(activity.createdAt)).limit(100),
     db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(and(eq(comments.brand, brandName), isNull(comments.deletedAt))).orderBy(comments.createdAt),
     db.select({ reaction: commentReactions, memberName: members.name, memberSlug: members.slug }).from(commentReactions).innerJoin(members, eq(commentReactions.memberId, members.id)).where(eq(commentReactions.brand, brandName)).orderBy(commentReactions.createdAt),
   ]);
-  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, attachments: allAttachments, activity: allActivity, comments: allComments, reactions: allReactions };
+  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, images: allImages, attachments: allAttachments, activity: allActivity, comments: allComments, reactions: allReactions };
 }

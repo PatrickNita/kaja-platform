@@ -3,19 +3,20 @@ import type { ReactNode } from "react";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { createComment, createTask, createUpdate, createWorkspaceItem, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, toggleCommentHeart, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { createComment, createTask, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, toggleCommentHeart, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { MerchComposer } from "./merch-composer";
-import { MerchGrid } from "./merch-grid";
+import { ModalEntryGrid } from "./merch-grid";
 import { MobileMenu } from "./mobile-menu";
 import { OpenEntryFromHash } from "./open-entry-from-hash";
 import { PdfUploader } from "./pdf-uploader";
 import { WelcomeIntro } from "./welcome-intro";
+import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
 export const dynamic = "force-dynamic";
 
-const sections = [{ key: "updates", label: "Actualizări" }, { key: "tasks", label: "Sarcini" }, { key: "events", label: "Evenimente" }, { key: "catalogue", label: "Catalog" }, { key: "merch", label: "Merch" }, { key: "uploads", label: "Încărcări" }] as const;
+const sections = [{ key: "updates", label: "Actualizări" }, { key: "tasks", label: "Sarcini" }, { key: "events", label: "Evenimente" }, { key: "catalogue", label: "Catalog" }, { key: "merch", label: "Merch" }, { key: "information", label: "Informații" }, { key: "uploads", label: "Încărcări" }] as const;
 const brands = [{ key: "kaja", label: "KAJA" }, { key: "hexenwerk", label: "HEXENWERK" }, { key: "virginia", label: "VIRGINIA" }] as const;
 const catalogueGroups = [{ key: "live", label: "Catalog activ" }, { key: "upcoming", label: "În curând" }, { key: "ideas", label: "Idei" }] as const;
 type Section = (typeof sections)[number]["key"];
@@ -26,11 +27,13 @@ type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: stri
 type CommentRow = Data["comments"][number];
 type ReactionRow = Data["reactions"][number];
 type CommentEntity = "update" | "task" | "events" | "catalogue" | "merch";
+type EntryEntity = CommentEntity | "information";
 
 function date(value: Date) { return new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Chisinau" }).format(value); }
 function relativeTime(value: Date) { const minutes = Math.max(0, Math.floor((Date.now() - value.getTime()) / 60_000)); if (minutes < 1) return "Acum câteva secunde"; if (minutes < 60) return `Acum ${minutes} ${minutes === 1 ? "minut" : "minute"}`; const hours = Math.floor(minutes / 60); if (hours < 24) return `Acum ${hours} ${hours === 1 ? "oră" : "ore"}`; const days = Math.floor(hours / 24); return `Acum ${days} ${days === 1 ? "zi" : "zile"}`; }
 function fileSize(bytes: number) { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`; }
 function canManage(memberSlug: string, authorSlug: string) { return memberSlug === "patrick" || memberSlug === authorSlug; }
+function canManageWorkspace(memberSlug: string, authorSlug: string, section: string, catalogueGroup?: string | null) { return memberSlug === "patrick" || (memberSlug === authorSlug && section !== "information" && section !== "merch" && !(section === "catalogue" && catalogueGroup !== "ideas")); }
 function preview(value: string) { return value.length > 50 ? `${value.slice(0, 50).trimEnd()}…` : value; }
 
 function Composer({ label, children }: { label: string; children: ReactNode }) {
@@ -53,24 +56,34 @@ function Comments({ brand, entityType, entityId, comments, reactions, memberSlug
   </section>;
 }
 
-function EntryCard({ brand, type, id, title, body, author, comments, reactions, memberSlug, media, children }: { brand: Brand; type: CommentEntity; id: number; title: string; body?: string; author: string; comments: CommentRow[]; reactions: ReactionRow[]; memberSlug: string; media?: ReactNode; children?: ReactNode }) {
-  const own = comments.filter(({ comment }) => comment.entityType === type && comment.entityId === id);
+function EntryCard({ brand, type, id, title, body, author, comments, reactions, memberSlug, media, detailsMedia, modal = false, children }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; comments?: CommentRow[]; reactions?: ReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; modal?: boolean; children?: ReactNode }) {
+  const commentType = type === "information" ? null : type;
+  const own = commentType ? (comments || []).filter(({ comment }) => comment.entityType === commentType && comment.entityId === id) : [];
   const last = own.at(-1);
-  return <article className="item card"><details id={`entry-${type}-${id}`} className="entry-card"><summary>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author">{author}</span></div>{body && <p className="entry-preview">{preview(body)}</p>}<div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div></summary><div className="entry-card-content">{type === "merch" && <button type="button" className="merch-modal-close" data-merch-close aria-label={`Închide produsul ${title}`}>×</button>}{body && <p>{body}</p>}<Comments brand={brand} entityType={type} entityId={id} comments={comments} reactions={reactions} memberSlug={memberSlug} />{children}</div></details></article>;
+  return <article className="item card"><details id={`entry-${type}-${id}`} className="entry-card"><summary>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author">{author}</span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}</summary><div className="entry-card-content">{modal && <button type="button" className="entry-modal-close" data-entry-close aria-label={`Închide ${title}`}>×</button>}{detailsMedia}{body && <p>{body}</p>}{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}{children}</div></details></article>;
 }
 
-function WorkspaceActions({ brand, section, item, memberSlug, authorSlug }: { brand: Brand; section: "events" | "catalogue" | "merch"; item: WorkspaceItemRow["item"]; memberSlug: string; authorSlug: string }) {
-  if (!canManage(memberSlug, authorSlug)) return null;
+function WorkspaceActions({ brand, section, item, memberSlug, authorSlug }: { brand: Brand; section: "events" | "catalogue" | "merch" | "information"; item: WorkspaceItemRow["item"]; memberSlug: string; authorSlug: string }) {
+  if (!canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup)) return null;
   return <div className="card-actions"><details className="card-edit"><summary className="button ghost">Modifică</summary><form action={updateWorkspaceItem} className="form edit-form"><input type="hidden" name="id" value={item.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} /><AutoResizeTextarea className="field-title" name="title" defaultValue={item.title} required maxLength={160} /><AutoResizeTextarea name="body" defaultValue={item.body} required maxLength={4000} /><button className="button">Salvează modificările</button></form></details><form action={deleteWorkspaceItem}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} /><input type="hidden" name="title" value={item.title} /><ConfirmDeleteButton itemName={item.title}>Șterge</ConfirmDeleteButton></form></div>;
 }
 
-function WorkspaceSection({ brand, section, title, items, comments, reactions, memberSlug, catalogueGroup, hideHeader = false }: { brand: Brand; section: "events" | "catalogue" | "merch"; title: string; items: WorkspaceItemRow[]; comments: CommentRow[]; reactions: ReactionRow[]; memberSlug: string; catalogueGroup?: CatalogueGroup; hideHeader?: boolean }) {
+function WorkspaceSection({ brand, section, title, items, images, comments, reactions, memberSlug, catalogueGroup, hideHeader = false }: { brand: Brand; section: "events" | "catalogue" | "merch" | "information"; title: string; items: WorkspaceItemRow[]; images: Data["images"]; comments: CommentRow[]; reactions: ReactionRow[]; memberSlug: string; catalogueGroup?: CatalogueGroup; hideHeader?: boolean }) {
   const label = section === "catalogue" ? "produs din catalog" : title.toLowerCase();
-  const toggleLabel = section === "merch" ? "Adaugă produs merch" : `Adaugă ${label}`;
-  const canCreate = memberSlug === "patrick" || (section !== "merch" && (section !== "catalogue" || catalogueGroup === "ideas"));
-  const composer = section === "merch" ? <MerchComposer brand={brand} /> : <form action={createWorkspaceItem} className="form"><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
-  const cards = items.map(({ item, author, authorSlug }) => <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} comments={comments} reactions={reactions} memberSlug={memberSlug} media={section === "merch" && item.merchImageUrl ? <img className="merch-preview" src={`/api/merch-images/${item.id}`} alt={`Previzualizare ${item.title}`} /> : undefined}><WorkspaceActions brand={brand} section={section} item={item} memberSlug={memberSlug} authorSlug={authorSlug} /></EntryCard></div>);
-  return <section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2><span className="count">{items.length} active</span></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{section === "merch" ? <MerchGrid>{cards}</MerchGrid> : <div className="items card-grid">{cards}</div>}</section>;
+  const toggleLabel = section === "merch" ? "Adaugă produs merch" : section === "information" ? "Adaugă informație" : `Adaugă ${label}`;
+  const canCreate = memberSlug === "patrick" || (section === "events" || (section === "catalogue" && catalogueGroup === "ideas"));
+  const galleryEnabled = section === "merch" || section === "events" || (section === "catalogue" && catalogueGroup !== "ideas");
+  const modalEnabled = section === "information" || galleryEnabled;
+  const composer = section === "merch" ? <MerchComposer brand={brand} /> : galleryEnabled && (section === "events" || section === "catalogue") ? <GalleryComposer brand={brand} section={section} catalogueGroup={catalogueGroup === "ideas" ? undefined : catalogueGroup} /> : <form action={createWorkspaceItemForm} className="form"><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
+  const cards = items.map(({ item, author, authorSlug }) => {
+    const itemImages = images.filter((image) => image.itemId === item.id);
+    const firstImage = itemImages[0];
+    const manageable = canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup);
+    const media = firstImage ? <div className="entry-media-preview"><img src={`/api/item-images/${firstImage.id}`} alt={`Previzualizare ${item.title}`} />{itemImages.length > 1 && <span>{itemImages.length} imagini</span>}</div> : undefined;
+    const detailsMedia = galleryEnabled ? <EntryGallery brand={brand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
+    return <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} modal={modalEnabled}><WorkspaceActions brand={brand} section={section} item={item} memberSlug={memberSlug} authorSlug={authorSlug} /></EntryCard></div>;
+  });
+  return <section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2><span className="count">{items.length} active</span></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section>;
 }
 
 function UpdatesSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
@@ -90,12 +103,12 @@ function Activity({ data }: { data: Data }) {
     if (!entry) return null;
     return { title: entry.title, href: `/?brand=${brand}&view=${entry.section}${entry.section === "catalogue" ? `&catalogue=${entry.catalogueGroup || "live"}` : ""}#entry-${entry.section}-${id}` };
   };
-  return <aside className="panel activity-panel"><div className="panel-head"><h2>Activitate</h2><span className="count">Ultimele 100 acțiuni</span></div><div className="activity">{data.activity.map(({ event, actor }) => { const entry = ["commented", "created", "uploaded", "edited", "updated"].includes(event.action) ? target(event.entityType, event.entityId, event.brand as Brand) : null; const text = event.action === "commented" ? `a comentat la ${entry?.title}` : event.action === "uploaded" ? `a încărcat ${entry?.title}` : event.action === "edited" || event.action === "updated" ? `a modificat ${entry?.title}` : `a creat ${entry?.title}`; return <div className="event" key={event.id}><b>{actor}</b> {entry ? <a className="activity-link" href={entry.href}>{text}</a> : event.summary}</div>; })}</div></aside>;
+  return <aside className="panel activity-panel"><div className="panel-head"><h2>Activitate</h2><span className="count">Ultimele 100 acțiuni</span></div><div className="activity">{data.activity.map(({ event, actor }) => { const entry = ["commented", "created", "uploaded", "edited", "updated", "image_uploaded", "image_deleted"].includes(event.action) ? target(event.entityType, event.entityId, event.brand as Brand) : null; const text = event.action === "commented" ? `a comentat la ${entry?.title}` : event.action === "uploaded" ? `a încărcat ${entry?.title}` : event.action === "image_uploaded" ? `a adăugat o imagine la ${entry?.title}` : event.action === "image_deleted" ? `a șters o imagine din ${entry?.title}` : event.action === "edited" || event.action === "updated" ? `a modificat ${entry?.title}` : `a creat ${entry?.title}`; return <div className="event" key={event.id}><b>{actor}</b> {entry ? <a className="activity-link" href={entry.href}>{text}</a> : event.summary}</div>; })}</div></aside>;
 }
 
 function CatalogueSection({ brand, data, memberSlug, group }: { brand: Brand; data: Data; memberSlug: string; group: CatalogueGroup }) {
   const active = catalogueGroups.find((entry) => entry.key === group)!;
-  return <><nav className="catalogue-submenu" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <a key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brand}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</a>)}</nav><WorkspaceSection brand={brand} section="catalogue" title={active.label} catalogueGroup={group} hideHeader items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} comments={data.comments} reactions={data.reactions} memberSlug={memberSlug} /></>;
+  return <><nav className="catalogue-submenu" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <a key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brand}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</a>)}</nav><WorkspaceSection brand={brand} section="catalogue" title={active.label} catalogueGroup={group} hideHeader items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} memberSlug={memberSlug} /></>;
 }
 
 function UploadsSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
@@ -113,6 +126,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const data = await workspaceData(brand);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><Activity data={data} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} comments={data.comments} reactions={data.reactions} memberSlug={member.slug} />;
+  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><Activity data={data} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} memberSlug={member.slug} />;
   return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><OpenEntryFromHash /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} /><div className="workspace-content">{content}</div></main></>;
 }

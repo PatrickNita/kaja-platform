@@ -47,6 +47,21 @@ export const workspaceItems = pgTable("workspace_items", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
+export const workspaceItemImages = pgTable("workspace_item_images", {
+  id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull(),
+  itemId: integer("item_id").notNull().references(() => workspaceItems.id),
+  pathname: text("pathname").notNull(),
+  url: text("url").notNull(),
+  position: integer("position").notNull().default(0),
+  uploadedBy: integer("uploaded_by").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("workspace_item_images_pathname_unique").on(table.pathname),
+  index("workspace_item_images_brand_item_position_idx").on(table.brand, table.itemId, table.position),
+]);
+
 export const attachments = pgTable("attachments", {
   id: serial("id").primaryKey(),
   brand: varchar("brand", { length: 20 }).notNull().default("kaja"),

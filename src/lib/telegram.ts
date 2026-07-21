@@ -1,6 +1,6 @@
 type Brand = "kaja" | "hexenwerk" | "virginia";
-type EntityType = "update" | "task" | "events" | "catalogue" | "merch" | "attachment";
-type Action = "created" | "edited" | "updated" | "deleted" | "uploaded" | "commented" | "comment_deleted";
+type EntityType = "update" | "task" | "events" | "catalogue" | "merch" | "information" | "attachment";
+type Action = "created" | "edited" | "updated" | "deleted" | "uploaded" | "commented" | "comment_deleted" | "image_uploaded" | "image_deleted";
 
 const verbs: Record<Action, string> = {
   created: "a creat",
@@ -10,6 +10,8 @@ const verbs: Record<Action, string> = {
   uploaded: "a încărcat",
   commented: "a comentat la",
   comment_deleted: "a șters un comentariu la",
+  image_uploaded: "a adăugat o imagine la",
+  image_deleted: "a șters o imagine din",
 };
 
 function entityLabel(entityType: EntityType, catalogueGroup?: string) {
@@ -17,6 +19,7 @@ function entityLabel(entityType: EntityType, catalogueGroup?: string) {
   if (entityType === "task") return "Sarcina";
   if (entityType === "events") return "Evenimentul";
   if (entityType === "merch") return "produsul Merch";
+  if (entityType === "information") return "Informația";
   if (entityType === "attachment") return "PDF-ul";
   if (catalogueGroup === "ideas") return "Ideea";
   if (catalogueGroup === "upcoming") return "produsul din În curând";

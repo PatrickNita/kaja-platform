@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-export function MerchGrid({ children }: { children: ReactNode }) {
+export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { children: ReactNode; label: string; twoColumnMobile?: boolean }) {
   const grid = useRef<HTMLDivElement>(null);
   const previousBodyOverflow = useRef<string | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -11,9 +11,9 @@ export function MerchGrid({ children }: { children: ReactNode }) {
     const element = grid.current;
     if (!element) return;
 
-    const entries = () => Array.from(element.querySelectorAll<HTMLDetailsElement>(".merch-grid > .card-wrap .entry-card"));
+    const entries = () => Array.from(element.querySelectorAll<HTMLDetailsElement>(".modal-entry-grid > .card-wrap .entry-card"));
     const clearModal = () => {
-      element.classList.remove("merch-modal-open");
+      element.classList.remove("entry-modal-open");
       entries().forEach((entry) => {
         entry.removeAttribute("role");
         entry.removeAttribute("aria-modal");
@@ -27,7 +27,7 @@ export function MerchGrid({ children }: { children: ReactNode }) {
     };
     const syncModal = () => {
       const cards = entries().map((entry) => entry.closest<HTMLElement>(".card-wrap")).filter((card): card is HTMLElement => card !== null);
-      cards.forEach((card) => card.classList.remove("merch-card-modal"));
+      cards.forEach((card) => card.classList.remove("entry-card-modal"));
       const active = entries().find((entry) => entry.open);
       if (!active) {
         clearModal();
@@ -36,15 +36,15 @@ export function MerchGrid({ children }: { children: ReactNode }) {
 
       const card = active.closest<HTMLElement>(".card-wrap");
       if (!card) return;
-      card.classList.add("merch-card-modal");
-      element.classList.add("merch-modal-open");
+      card.classList.add("entry-card-modal");
+      element.classList.add("entry-modal-open");
       active.setAttribute("role", "dialog");
       active.setAttribute("aria-modal", "true");
       if (previousBodyOverflow.current === null) {
         previousBodyOverflow.current = document.body.style.overflow;
         previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         document.body.style.overflow = "hidden";
-        requestAnimationFrame(() => card.querySelector<HTMLElement>("[data-merch-close]")?.focus());
+        requestAnimationFrame(() => card.querySelector<HTMLElement>("[data-entry-close]")?.focus());
       }
     };
     const closeActive = () => {
@@ -62,7 +62,7 @@ export function MerchGrid({ children }: { children: ReactNode }) {
       syncModal();
     };
     const handleClick = (event: MouseEvent) => {
-      if ((event.target as HTMLElement).closest("[data-merch-close]")) {
+      if ((event.target as HTMLElement).closest("[data-entry-close]")) {
         event.preventDefault();
         closeActive();
       }
@@ -70,7 +70,7 @@ export function MerchGrid({ children }: { children: ReactNode }) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeActive();
     };
-    const backdrop = element.querySelector<HTMLButtonElement>(".merch-modal-backdrop");
+    const backdrop = element.querySelector<HTMLButtonElement>(".entry-modal-backdrop");
 
     element.addEventListener("toggle", handleToggle, true);
     element.addEventListener("click", handleClick);
@@ -86,5 +86,5 @@ export function MerchGrid({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <div ref={grid} className="merch-grid-shell"><button className="merch-modal-backdrop" type="button" aria-label="Închide produsul merch" /><div className="items card-grid merch-grid">{children}</div></div>;
+  return <div ref={grid} className="modal-entry-grid-shell"><button className="entry-modal-backdrop" type="button" aria-label={`Închide ${label}`} /><div className={`items card-grid modal-entry-grid${twoColumnMobile ? " two-column-mobile" : ""}`}>{children}</div></div>;
 }
