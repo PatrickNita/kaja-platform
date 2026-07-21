@@ -88,6 +88,12 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .merch-preview { display:block; width:100%; max-height:300px; object-fit:cover; border:1px solid var(--line); border-radius:8px; margin:0 0 15px; }
 .merch-composer { margin:0; }
 .merch-preview--draft { margin:8px 0 0; max-height:220px; }
+.merch-grid { display:flex; flex-wrap:wrap; gap:16px; }
+.merch-grid .card-wrap { flex:0 0 calc((100% - 48px) / 4); transition:flex-basis .28s ease, border-color .2s ease, transform .2s ease; }
+.merch-grid .merch-preview { height:clamp(132px, 13vw, 220px); max-height:none; object-fit:cover; transition:height .28s ease, object-fit .28s ease; }
+.merch-grid .card-wrap.merch-card-active { flex-basis:calc((100% - 48px) * .4); border-color:#666661; }
+.merch-grid .card-wrap.merch-card-row-peer { flex-basis:calc((100% - 48px) * .2); }
+.merch-grid .merch-card-active .merch-preview { height:clamp(320px, 35vw, 620px); object-fit:contain; background:#090909; }
 
 .card-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin:0; }
 .card-actions form { margin:0; }
@@ -165,7 +171,13 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
 @keyframes welcome-copy-in { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition-duration:1ms !important; } .welcome-intro, .welcome-intro--leaving, .welcome-intro__logo, .welcome-intro p { animation-duration:1ms; animation-delay:0ms; } }
 
-@media (max-width:1023px) { .card-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .workspace-shell { padding-inline:24px; } }
+@media (max-width:1023px) {
+  .card-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .workspace-shell { padding-inline:24px; }
+  .merch-grid .card-wrap { flex-basis:calc((100% - 16px) / 2); }
+  .merch-grid .card-wrap.merch-card-active { flex-basis:100%; }
+  .merch-grid .merch-card-active .merch-preview { height:min(118vw, 560px); }
+}
 @media (max-width:800px) {
   .workspace-shell { padding:0 16px 42px; }
   .workspace-header { margin:0 -16px 24px; }

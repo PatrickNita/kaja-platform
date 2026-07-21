@@ -7,6 +7,7 @@ import { createComment, createTask, createUpdate, createWorkspaceItem, deleteAtt
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { MerchComposer } from "./merch-composer";
+import { MerchGrid } from "./merch-grid";
 import { MobileMenu } from "./mobile-menu";
 import { OpenEntryFromHash } from "./open-entry-from-hash";
 import { PdfUploader } from "./pdf-uploader";
@@ -68,7 +69,8 @@ function WorkspaceSection({ brand, section, title, items, comments, reactions, m
   const toggleLabel = section === "merch" ? "Adaugă produs merch" : `Adaugă ${label}`;
   const canCreate = memberSlug === "patrick" || (section !== "merch" && (section !== "catalogue" || catalogueGroup === "ideas"));
   const composer = section === "merch" ? <MerchComposer brand={brand} /> : <form action={createWorkspaceItem} className="form"><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
-  return <section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2><span className="count">{items.length} active</span></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}<div className="items card-grid">{items.map(({ item, author, authorSlug }) => <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} comments={comments} reactions={reactions} memberSlug={memberSlug} media={section === "merch" && item.merchImageUrl ? <img className="merch-preview" src={`/api/merch-images/${item.id}`} alt={`Previzualizare ${item.title}`} /> : undefined}><WorkspaceActions brand={brand} section={section} item={item} memberSlug={memberSlug} authorSlug={authorSlug} /></EntryCard></div>)}</div></section>;
+  const cards = items.map(({ item, author, authorSlug }) => <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} comments={comments} reactions={reactions} memberSlug={memberSlug} media={section === "merch" && item.merchImageUrl ? <img className="merch-preview" src={`/api/merch-images/${item.id}`} alt={`Previzualizare ${item.title}`} /> : undefined}><WorkspaceActions brand={brand} section={section} item={item} memberSlug={memberSlug} authorSlug={authorSlug} /></EntryCard></div>);
+  return <section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2><span className="count">{items.length} active</span></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{section === "merch" ? <MerchGrid>{cards}</MerchGrid> : <div className="items card-grid">{cards}</div>}</section>;
 }
 
 function UpdatesSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
