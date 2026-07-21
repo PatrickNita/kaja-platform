@@ -72,13 +72,14 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
     };
     const backdrop = element.querySelector<HTMLButtonElement>(".entry-modal-backdrop");
 
-    element.addEventListener("toggle", handleToggle, true);
+    const entryElements = entries();
+    entryElements.forEach((entry) => entry.addEventListener("toggle", handleToggle));
     element.addEventListener("click", handleClick);
     backdrop?.addEventListener("click", closeActive);
     document.addEventListener("keydown", handleKeyDown);
     syncModal();
     return () => {
-      element.removeEventListener("toggle", handleToggle, true);
+      entryElements.forEach((entry) => entry.removeEventListener("toggle", handleToggle));
       element.removeEventListener("click", handleClick);
       backdrop?.removeEventListener("click", closeActive);
       document.removeEventListener("keydown", handleKeyDown);
