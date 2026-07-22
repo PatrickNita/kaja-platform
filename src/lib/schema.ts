@@ -23,6 +23,7 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   title: varchar("title", { length: 160 }).notNull(),
+  body: text("body").notNull().default(""),
   status: varchar("status", { length: 20 }).notNull().default("To do"),
   createdBy: integer("created_by").notNull().references(() => members.id),
   updatedBy: integer("updated_by").notNull().references(() => members.id),

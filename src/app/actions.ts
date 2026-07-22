@@ -81,16 +81,16 @@ export async function editUpdate(formData: FormData) {
   await recordActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "edited", summary: `a editat propunerea „${input.title}”`, title: input.title }); refresh();
 }
 export async function createTask(formData: FormData) {
-  const member = await actor(); const input = z.object({ brand, title }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ brand, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(tasks).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
   await recordActivity(member, { brand: input.brand, entityType: "task", entityId: record.id, action: "created", summary: `a creat sarcina „${record.title}”`, title: record.title }); refresh();
 }
 export async function updateTask(formData: FormData) {
-  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.select({ createdBy: tasks.createdBy }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
   if (!record) return;
   assertCanManage(member, record.createdBy);
-  await db!.update(tasks).set({ title: input.title, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+  await db!.update(tasks).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
   await recordActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "updated", summary: `a actualizat sarcina „${input.title}”`, title: input.title }); refresh();
 }
 export async function deleteRecord(formData: FormData) {
