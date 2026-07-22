@@ -198,7 +198,7 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
 .comment-form textarea::placeholder { font-size:inherit; }
 .text-button { padding:0; border:0; background:transparent; color:inherit; font-size:11px; font-weight:800; }
 
-.activity-panel { max-height:440px; display:flex; flex-direction:column; }
+.activity-panel { height:440px; display:flex; flex-direction:column; }
 .activity-header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:14px; }
 .activity-filters { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
 .activity-filters button { appearance:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:30px; padding:6px 9px; border:1px solid var(--line-strong); border-radius:999px; background:transparent; color:#9f9f99; font:inherit; font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:border-color .18s ease, background .18s ease, color .18s ease; }
@@ -316,7 +316,7 @@ summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
   .comment-line > p { font-size:12px; }
   .comment-form textarea { font-size:12px; }
   .button { font-size:10px; }
-  .activity-panel { max-height:58vh; }
+  .activity-panel { height:58vh; }
   .activity-header { align-items:flex-start; flex-direction:column; }
   .activity-filters { justify-content:flex-start; width:100%; }
   .activity-filters button { flex:1 1 auto; }
