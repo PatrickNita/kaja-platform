@@ -100,7 +100,13 @@ function AttentionControl({ brand, entityType, entityId, active, interactive }: 
     <input type="hidden" name="brand" value={brand} />
     <input type="hidden" name="entityType" value={entityType} />
     <input type="hidden" name="entityId" value={entityId} />
-    <button type="submit" className={`attention-toggle${active ? " active" : ""}`} aria-pressed={active} aria-label={active ? "Retrage solicitarea de atenție" : "Solicită mai multă atenție"} title={active ? "Retrage solicitarea de atenție" : "Solicită mai multă atenție"}>⚠️</button>
+    <button type="submit" className={`attention-toggle${active ? " active" : ""}`} aria-pressed={active} aria-label={active ? "Retrage solicitarea de atenție" : "Solicită mai multă atenție"} title={active ? "Retrage solicitarea de atenție" : "Solicită mai multă atenție"}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3.5 22 20.5H2L12 3.5Z" />
+        <path d="M12 9v5.5" />
+        <circle cx="12" cy="17.5" r=".8" />
+      </svg>
+    </button>
   </form>;
 }
 
@@ -160,7 +166,7 @@ function Activity({ rows, filter, workspaceBrand }: { rows: ActivityData; filter
       const targetExists = "targetExists" in row ? Boolean(row.targetExists) : true;
       const canLink = event.action !== "deleted" && targetExists;
       const content = <>{textFor(event)} <span className="activity-brand">în {brands.find((entry) => entry.key === event.brand)?.label || event.brand.toUpperCase()}</span></>;
-      return <div className="event" key={event.id}>{event.action === "attention_requested" && <span className="activity-attention" aria-hidden="true">⚠️ </span>}<b>{actor}</b> {canLink ? <a className="activity-link" href={hrefFor(event)}>{content}</a> : content}</div>;
+      return <div className={`event${event.action === "deleted" ? " event-deleted" : ""}`} key={event.id}>{event.action === "attention_requested" && <span className="activity-attention" aria-hidden="true">⚠️ </span>}<b>{actor}</b> {canLink ? <a className="activity-link" href={hrefFor(event)}>{content}</a> : content}</div>;
     })}</div>
   </aside>;
 }
@@ -187,5 +193,5 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
   const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><Activity rows={globalActivity} filter={activityFilter} workspaceBrand={brand} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
+  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
 }
