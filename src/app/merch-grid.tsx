@@ -14,6 +14,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
     const entries = () => Array.from(element.querySelectorAll<HTMLDetailsElement>(".modal-entry-grid > .card-wrap .entry-card"));
     const clearModal = () => {
       element.classList.remove("entry-modal-open");
+      entries().forEach((entry) => entry.closest<HTMLElement>(".card-wrap")?.classList.remove("entry-card-modal"));
       entries().forEach((entry) => {
         entry.removeAttribute("role");
         entry.removeAttribute("aria-modal");

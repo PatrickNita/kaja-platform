@@ -51,7 +51,7 @@ async function targetDetails(input: { brand: "kaja" | "hexenwerk" | "virginia"; 
 export async function createUpdate(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.insert(updates).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
-  await logActivity(member, { brand: input.brand, entityType: "update", entityId: record.id, action: "created", summary: `a adăugat actualizarea „${record.title}”`, title: record.title }); refresh();
+  await logActivity(member, { brand: input.brand, entityType: "update", entityId: record.id, action: "created", summary: `a adăugat propunerea „${record.title}”`, title: record.title }); refresh();
 }
 export async function editUpdate(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
@@ -59,7 +59,7 @@ export async function editUpdate(formData: FormData) {
   if (!record) return;
   assertCanManage(member, record.createdBy);
   await db!.update(updates).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
-  await logActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "edited", summary: `a editat actualizarea „${input.title}”`, title: input.title }); refresh();
+  await logActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "edited", summary: `a editat propunerea „${input.title}”`, title: input.title }); refresh();
 }
 export async function createTask(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, title }).parse(Object.fromEntries(formData));
@@ -87,7 +87,7 @@ export async function deleteRecord(formData: FormData) {
     if (!record) return;
     assertCanManage(member, record.createdBy);
     await db!.update(updates).set({ deletedAt: new Date(), updatedBy: member.id, updatedAt: new Date() }).where(eq(updates.id, input.id));
-    await logActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "deleted", summary: `a șters actualizarea „${record.title}”`, title: record.title });
+    await logActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "deleted", summary: `a șters propunerea „${record.title}”`, title: record.title });
   }
   refresh();
 }
