@@ -97,7 +97,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       const hash = window.location.hash.slice(1);
       if (!hash) {
         if (activeEntryId.current) clearModal();
-        return;
+        return false;
       }
 
       let id: string;
@@ -105,15 +105,17 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
         id = decodeURIComponent(hash);
       } catch {
         if (activeEntryId.current) clearModal();
-        return;
+        return false;
       }
 
       const target = entryById(id);
       if (target) {
         openModal(target, target.querySelector<HTMLElement>("summary") ?? undefined);
+        return true;
       } else if (activeEntryId.current) {
         clearModal();
       }
+      return false;
     };
 
     const handleClick = (event: MouseEvent) => {
@@ -162,7 +164,11 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("hashchange", openFromHash);
     observer.observe(element, { childList: true, subtree: true });
-    openFromHash();
+    const openedFromHash = openFromHash();
+    if (!openedFromHash) {
+      const preHydrationEntry = entries().find((entry) => entry.open);
+      if (preHydrationEntry) openModal(preHydrationEntry, preHydrationEntry.querySelector<HTMLElement>("summary") ?? undefined);
+    }
 
     return () => {
       observer.disconnect();
