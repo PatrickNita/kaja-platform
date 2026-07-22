@@ -133,7 +133,7 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .gallery-upload-form .upload-error { color:var(--danger); }
 
 @keyframes entry-backdrop-in { from { opacity:0; } to { opacity:1; } }
-@keyframes entry-modal-in { from { opacity:0; transform:translate(-50%, calc(-50% + 12px)) scale(.985); } to { opacity:1; transform:translate(-50%, -50%) scale(1); } }
+@keyframes entry-modal-in { from { opacity:0; transform:translate(-50%, -50%) scale(.985); } to { opacity:1; transform:translate(-50%, -50%) scale(1); } }
 @keyframes gallery-image-in { from { opacity:.65; transform:scale(.99); } to { opacity:1; transform:scale(1); } }
 
 .card-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin:0; }
