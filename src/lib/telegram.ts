@@ -23,9 +23,11 @@ export type TelegramAction =
   | "comment_deleted"
   | "image_uploaded"
   | "image_deleted"
-  | "reacted";
+  | "reacted"
+  | "attention_requested";
 
 export type TelegramDigestEventInput = {
+  activityId: number;
   actorId: number;
   memberName: string;
   brand: TelegramBrand;
@@ -42,7 +44,7 @@ export type TelegramDigestQueueMessage = {
   generation: string;
 };
 
-type DigestEvent = Omit<TelegramDigestEventInput, "reactionType"> & {
+type DigestEvent = Omit<TelegramDigestEventInput, "reactionType" | "activityId"> & {
   id: number;
   reactionType: string | null;
   createdAt: Date;
@@ -105,24 +107,26 @@ function actionPhrase(group: DigestGroup, visibleTitleCount = group.titles.lengt
   if (group.action === "comment_deleted") return `a șters un comentariu de la ${noun}`;
   if (group.action === "image_uploaded") return `a adăugat o imagine la ${noun}`;
   if (group.action === "image_deleted") return `a șters o imagine din ${noun}`;
+  if (group.action === "attention_requested") return `cere mai multă atenție la ${noun}`;
   const emoji = group.reactionType ? reactionEmoji[group.reactionType] : undefined;
   return `a reacționat${emoji ? ` cu ${emoji}` : ""} la ${noun}`;
 }
 
 function formatGroupLine(group: DigestGroup, maxLength = 900) {
   const allTitles = group.titles;
+  const member = group.action === "attention_requested" ? `⚠️ ${group.memberName}` : group.memberName;
   let visible = allTitles.length;
 
   while (visible > 1) {
     const suffix = visible < allTitles.length ? ` … (+${allTitles.length - visible} titluri)` : "";
-    const line = `• ${group.memberName} ${actionPhrase(group, visible)} ${titleList(allTitles.slice(0, visible))}${suffix}.`;
+    const line = `• ${member} ${actionPhrase(group, visible)} ${titleList(allTitles.slice(0, visible))}${suffix}.`;
     if (line.length <= maxLength) return line;
     visible -= 1;
   }
 
   const omitted = Math.max(0, allTitles.length - 1);
   const suffix = omitted ? ` … (+${omitted} titluri)` : "";
-  const prefix = `• ${group.memberName} ${actionPhrase(group, 1)} `;
+  const prefix = `• ${member} ${actionPhrase(group, 1)} `;
   const available = Math.max(24, maxLength - prefix.length - suffix.length - 3);
   const firstTitle = cleanTitle(allTitles[0] ?? "Înregistrare");
   const shortened = firstTitle.length > available ? `${firstTitle.slice(0, Math.max(1, available - 1)).trimEnd()}…` : firstTitle;
@@ -216,6 +220,7 @@ export async function enqueueTelegramDigest(input: TelegramDigestEventInput) {
   try {
     await db.batch([
       db.insert(telegramOutbox).values({
+        activityId: input.activityId,
         actorId: input.actorId,
         memberName: input.memberName,
         brand: input.brand,
@@ -256,6 +261,48 @@ export async function enqueueTelegramDigest(input: TelegramDigestEventInput) {
     await scheduleTelegramDigest({ actorId: input.actorId, generation }, TELEGRAM_DIGEST_DELAY_SECONDS, "initial");
   } catch (error) {
     console.error("Telegram digest scheduling failed", error);
+  }
+}
+
+/** Invalidates the current timer after a retractable event is removed. */
+export async function resetTelegramDigestAfterCancellation(actorId: number) {
+  if (!db) return;
+  const now = new Date();
+  const generation = randomUUID();
+  const dueAt = new Date(now.getTime() + TELEGRAM_DIGEST_DELAY_SECONDS * 1000);
+  try {
+    // Schedule first so a Queue outage leaves the previous generation valid;
+    // other pending events still retain their existing delivery path.
+    await scheduleTelegramDigest({ actorId, generation }, TELEGRAM_DIGEST_DELAY_SECONDS, "initial");
+  } catch (error) {
+    console.error("Telegram digest rescheduling failed", error);
+    return;
+  }
+
+  try {
+    await db.insert(telegramDebounce).values({
+      actorId,
+      generation,
+      lastActivityAt: now,
+      dueAt,
+      sentGeneration: null,
+      processingGeneration: null,
+      processingAt: null,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: telegramDebounce.actorId,
+      set: {
+        generation,
+        lastActivityAt: now,
+        dueAt,
+        sentGeneration: null,
+        processingGeneration: null,
+        processingAt: null,
+        updatedAt: now,
+      },
+    });
+  } catch (error) {
+    console.error("Telegram digest timer reset failed", error);
   }
 }
 
@@ -366,6 +413,11 @@ export async function processTelegramDigest(message: TelegramDigestQueueMessage)
   const text = formatTelegramDigest(events);
 
   try {
+    const [latestState] = await db.select({
+      generation: telegramDebounce.generation,
+      processingGeneration: telegramDebounce.processingGeneration,
+    }).from(telegramDebounce).where(eq(telegramDebounce.actorId, message.actorId)).limit(1);
+    if (!latestState || latestState.generation !== message.generation || latestState.processingGeneration !== message.generation) return;
     if (text) await sendTelegramMessage(text);
     await completeDigest(message.actorId, message.generation, rows.map((row) => row.id));
   } catch (error) {

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const members = pgTable("members", {
@@ -82,8 +83,14 @@ export const activity = pgTable("activity", {
   entityId: integer("entity_id").notNull(),
   action: varchar("action", { length: 24 }).notNull(),
   summary: text("summary").notNull(),
+  title: text("title"),
+  catalogueGroup: varchar("catalogue_group", { length: 20 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [
+  index("activity_created_id_idx").on(table.createdAt.desc(), table.id.desc()),
+  index("activity_brand_created_id_idx").on(table.brand, table.createdAt.desc(), table.id.desc()),
+  uniqueIndex("activity_attention_entity_unique").on(table.brand, table.entityType, table.entityId).where(sql`${table.action} = 'attention_requested'`),
+]);
 
 export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
@@ -122,6 +129,7 @@ export const entryReactions = pgTable("entry_reactions", {
 
 export const telegramOutbox = pgTable("telegram_outbox", {
   id: serial("id").primaryKey(),
+  activityId: integer("activity_id").references(() => activity.id, { onDelete: "cascade" }),
   actorId: integer("actor_id").notNull().references(() => members.id),
   memberName: varchar("member_name", { length: 64 }).notNull(),
   brand: varchar("brand", { length: 20 }).notNull(),
@@ -135,6 +143,7 @@ export const telegramOutbox = pgTable("telegram_outbox", {
   sentAt: timestamp("sent_at", { withTimezone: true }),
 }, (table) => [
   index("telegram_outbox_actor_sent_created_idx").on(table.actorId, table.sentAt, table.createdAt),
+  uniqueIndex("telegram_outbox_activity_unique").on(table.activityId).where(sql`${table.activityId} is not null`),
 ]);
 
 export const telegramDebounce = pgTable("telegram_debounce", {

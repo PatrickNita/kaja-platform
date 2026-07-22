@@ -17,17 +17,24 @@ export type ActivityEvent = {
 
 export async function recordActivity(member: { id: number; name: string }, event: ActivityEvent) {
   if (!db) throw new Error("Baza de date nu este configurată.");
-  await db.insert(activity).values({
+  const insert = db.insert(activity).values({
     brand: event.brand,
     actorId: member.id,
     entityType: event.entityType,
     entityId: event.entityId,
     action: event.action,
     summary: event.summary,
+    title: event.title,
+    catalogueGroup: event.catalogueGroup ?? null,
   });
+  const [saved] = event.action === "attention_requested"
+    ? await insert.onConflictDoNothing().returning({ id: activity.id })
+    : await insert.returning({ id: activity.id });
+  if (!saved) return null;
 
   try {
     await enqueueTelegramDigest({
+      activityId: saved.id,
       actorId: member.id,
       memberName: member.name,
       brand: event.brand,
@@ -41,4 +48,5 @@ export async function recordActivity(member: { id: number; name: string }, event
   } catch (error) {
     console.error("Telegram digest scheduling failed", error);
   }
+  return saved.id;
 }
