@@ -83,7 +83,11 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 .entry-preview { margin-top:5px !important; }
 .entry-card[open] .entry-preview { display:none; }
 .entry-card[open] .comment-preview { display:none; }
+.entry-card[open] .entry-reaction-preview { display:none; }
 .comment-preview { margin-top:8px; color:#9f9f99; font-size:11px; font-weight:800; line-height:1.4; }
+.entry-reaction-preview { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:8px; }
+.entry-reaction-preview > span { display:inline-flex; align-items:center; gap:3px; min-height:23px; padding:3px 7px; border:1px solid var(--line); border-radius:999px; background:#101010; color:#d8d8d2; font-size:11px; line-height:1; }
+.entry-reaction-preview b { color:#a9a9a3; font-size:10px; font-weight:800; }
 .entry-card-content { display:grid; gap:var(--entry-gap); margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
 .item p { color:#b8b8b2; line-height:1.55; margin:0; white-space:pre-wrap; }
 .meta { color:var(--muted); font-size:11px; margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
@@ -144,6 +148,16 @@ input:focus, textarea:focus, select:focus { background:#151515; border-color:#ff
 details { margin-top:13px; }
 summary { color:#c8c8c2; cursor:pointer; font-size:12px; }
 .comments { display:grid; gap:var(--entry-gap); margin:0; padding-top:12px; border-top:1px solid var(--line); }
+.entry-reactions { display:flex; align-items:center; flex-wrap:nowrap; gap:6px; max-width:100%; margin:0; overflow-x:auto; padding:1px 0 3px; scrollbar-width:none; }
+.entry-reactions::-webkit-scrollbar { display:none; }
+.entry-reactions form { flex:0 0 auto; margin:0; }
+.entry-reaction-chip { display:inline-flex; align-items:center; justify-content:center; gap:6px; width:34px; min-width:34px; min-height:32px; padding:5px; border:1px solid var(--line-strong); border-radius:999px; background:#111; color:#c2c2bc; font-size:11px; line-height:1; white-space:nowrap; transition:border-color .18s ease, background .18s ease, color .18s ease, transform .18s ease; }
+.entry-reaction-chip:hover { transform:translateY(-1px); border-color:#777771; background:#202020; color:#fff; }
+.entry-reaction-chip.has-reactions { width:auto; max-width:280px; padding-inline:9px; }
+.entry-reaction-chip.active { border-color:#fff; background:#fff; color:#080808; }
+.entry-reaction-chip.active:hover { background:#deded8; color:#080808; }
+.entry-reaction-emoji { flex:0 0 auto; font-size:15px; line-height:1; }
+.entry-reaction-names { overflow:hidden; text-overflow:ellipsis; color:inherit; font-size:10px; font-weight:800; line-height:1.2; }
 .comments h4 { margin:0; color:#e6e6e0; font-size:12px; font-weight:800; }
 .comment-list { display:grid; gap:var(--entry-gap); margin:0; }
 .comment { border-left:2px solid #e8e8e3; padding-left:11px; }

@@ -106,3 +106,44 @@ export const commentReactions = pgTable("comment_reactions", {
   uniqueIndex("comment_reactions_comment_member_unique").on(table.commentId, table.memberId),
   index("comment_reactions_brand_comment_created_idx").on(table.brand, table.commentId, table.createdAt),
 ]);
+
+export const entryReactions = pgTable("entry_reactions", {
+  id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull(),
+  entityType: varchar("entity_type", { length: 20 }).notNull(),
+  entityId: integer("entity_id").notNull(),
+  reactionType: varchar("reaction_type", { length: 20 }).notNull(),
+  memberId: integer("member_id").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("entry_reactions_entity_member_type_unique").on(table.brand, table.entityType, table.entityId, table.memberId, table.reactionType),
+  index("entry_reactions_brand_entity_created_idx").on(table.brand, table.entityType, table.entityId, table.createdAt),
+]);
+
+export const telegramOutbox = pgTable("telegram_outbox", {
+  id: serial("id").primaryKey(),
+  actorId: integer("actor_id").notNull().references(() => members.id),
+  memberName: varchar("member_name", { length: 64 }).notNull(),
+  brand: varchar("brand", { length: 20 }).notNull(),
+  entityType: varchar("entity_type", { length: 20 }).notNull(),
+  entityId: integer("entity_id").notNull(),
+  action: varchar("action", { length: 24 }).notNull(),
+  title: text("title").notNull(),
+  catalogueGroup: varchar("catalogue_group", { length: 20 }),
+  reactionType: varchar("reaction_type", { length: 20 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+}, (table) => [
+  index("telegram_outbox_actor_sent_created_idx").on(table.actorId, table.sentAt, table.createdAt),
+]);
+
+export const telegramDebounce = pgTable("telegram_debounce", {
+  actorId: integer("actor_id").primaryKey().references(() => members.id),
+  generation: varchar("generation", { length: 64 }).notNull(),
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull(),
+  dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+  sentGeneration: varchar("sent_generation", { length: 64 }),
+  processingGeneration: varchar("processing_generation", { length: 64 }),
+  processingAt: timestamp("processing_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});

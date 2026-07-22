@@ -2,10 +2,10 @@ import { del, head } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { recordActivity } from "../../../lib/activity";
 import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
-import { activity, members, workspaceItemImages, workspaceItems } from "../../../lib/schema";
-import { notifyTelegram } from "../../../lib/telegram";
+import { members, workspaceItemImages, workspaceItems } from "../../../lib/schema";
 import { canManageWorkspaceItem, supportsImageGallery } from "../../../lib/workspace-permissions";
 
 const brands = ["kaja", "hexenwerk", "virginia"] as const;
@@ -58,8 +58,7 @@ export async function POST(request: Request) {
           const [item] = await db.insert(workspaceItems).values({ brand: payload.brand, section: "merch", title: payload.title!, body: payload.body!, merchImageUrl: blob.url, merchImagePathname: blob.pathname, createdBy: member.id, updatedBy: member.id }).returning();
           createdItemId = item.id;
           await db.insert(workspaceItemImages).values({ brand: payload.brand, itemId: item.id, pathname: blob.pathname, url: blob.url, position: 0, uploadedBy: member.id });
-          await db.insert(activity).values({ brand: payload.brand, actorId: member.id, entityType: "merch", entityId: item.id, action: "created", summary: `a creat produsul merch „${item.title}”` });
-          await notifyTelegram({ memberName: member.name, brand: payload.brand, entityType: "merch", action: "created", title: item.title });
+          await recordActivity(member, { brand: payload.brand, entityType: "merch", entityId: item.id, action: "created", summary: `a creat produsul merch „${item.title}”`, title: item.title });
           return;
         }
 
@@ -67,8 +66,7 @@ export async function POST(request: Request) {
         if (!item || !supportsImageGallery(item) || !canManageWorkspaceItem(member, item)) throw new Error("Înregistrarea nu mai este disponibilă.");
         const [lastImage] = await db.select({ position: workspaceItemImages.position }).from(workspaceItemImages).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, payload.brand), isNull(workspaceItemImages.deletedAt))).orderBy(desc(workspaceItemImages.position)).limit(1);
         await db.insert(workspaceItemImages).values({ brand: payload.brand, itemId: item.id, pathname: blob.pathname, url: blob.url, position: (lastImage?.position ?? -1) + 1, uploadedBy: member.id });
-        await db.insert(activity).values({ brand: payload.brand, actorId: member.id, entityType: item.section, entityId: item.id, action: "image_uploaded", summary: `a adăugat o imagine la „${item.title}”` });
-        await notifyTelegram({ memberName: member.name, brand: payload.brand, entityType: item.section as "events" | "catalogue" | "merch", action: "image_uploaded", title: item.title, catalogueGroup: item.catalogueGroup });
+        await recordActivity(member, { brand: payload.brand, entityType: item.section as "events" | "catalogue" | "merch", entityId: item.id, action: "image_uploaded", summary: `a adăugat o imagine la „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup });
       } catch (error) {
         if (createdItemId) {
           await db.delete(workspaceItemImages).where(eq(workspaceItemImages.itemId, createdItemId));

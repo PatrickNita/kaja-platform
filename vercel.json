@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "src/app/api/queues/telegram-digest/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "telegram-digest",
+          "retryAfterSeconds": 60,
+          "initialDelaySeconds": 0
+        }
+      ]
+    }
+  }
+}
