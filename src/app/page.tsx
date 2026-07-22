@@ -6,6 +6,7 @@ import { workspaceItems } from "../lib/schema";
 import { activityData, createComment, createTask, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
+import { ActivityPanel } from "./activity-panel";
 import { EntryInlineEditor } from "./entry-inline-editor";
 import { MerchComposer } from "./merch-composer";
 import { ModalEntryGrid } from "./merch-grid";
@@ -205,27 +206,6 @@ function TasksSection({ brand, data, memberSlug }: { brand: Brand; data: Data; m
   </section>;
 }
 
-function Activity({ rows, filter, workspaceBrand }: { rows: ActivityData; filter: ActivityFilter; workspaceBrand: Brand }) {
-  const hrefFor = (event: ActivityData[number]["event"]) => {
-    const brand = event.brand as Brand;
-    if (event.entityType === "update") return `/?brand=${brand}&view=updates#entry-update-${event.entityId}`;
-    if (event.entityType === "task") return `/?brand=${brand}&view=tasks#entry-task-${event.entityId}`;
-    if (event.entityType === "attachment") return `/?brand=${brand}&view=uploads#attachment-${event.entityId}`;
-    return `/?brand=${brand}&view=${event.entityType}${event.entityType === "catalogue" ? `&catalogue=${event.catalogueGroup || "live"}` : ""}#entry-${event.entityType}-${event.entityId}`;
-  };
-  const textFor = (event: ActivityData[number]["event"]) => event.action === "commented" && event.title?.trim() ? `a comentat la „${event.title}”` : event.summary;
-  return <aside className="panel activity-panel">
-    <div className="activity-header"><h2>Activitate</h2><nav className="activity-filters" aria-label="Filtrează activitatea după brand">{activityFilters.map((entry) => <a key={entry.key} className={filter === entry.key ? "active" : undefined} aria-current={filter === entry.key ? "page" : undefined} href={`/?brand=${workspaceBrand}&view=updates&activity=${entry.key}`}>{entry.label}</a>)}</nav></div>
-    <div className="activity">{rows.map((row) => {
-      const { event, actor } = row;
-      const targetExists = "targetExists" in row ? Boolean(row.targetExists) : true;
-      const canLink = event.action !== "deleted" && targetExists;
-      const content = <>{textFor(event)} <span className="activity-brand">în {brands.find((entry) => entry.key === event.brand)?.label || event.brand.toUpperCase()}</span></>;
-      return <div className={`event${event.action === "deleted" ? " event-deleted" : ""}`} key={event.id}>{event.action === "attention_requested" && <span className="activity-attention" aria-hidden="true">⚠️ </span>}<b>{actor}</b> {canLink ? <a className="activity-link" href={hrefFor(event)}>{content}</a> : content}</div>;
-    })}</div>
-  </aside>;
-}
-
 function CatalogueSection({ brand, data, memberSlug, group }: { brand: Brand; data: Data; memberSlug: string; group: CatalogueGroup }) {
   const active = catalogueGroups.find((entry) => entry.key === group)!;
   return <><nav className="catalogue-submenu" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <a key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brand}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</a>)}</nav><WorkspaceSection brand={brand} section="catalogue" title={active.label} catalogueGroup={group} hideHeader items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={memberSlug} /></>;
@@ -247,6 +227,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const [data, globalActivity] = await Promise.all([workspaceData(brand), view === "updates" ? activityData(activityFilter) : Promise.resolve([] as ActivityData)]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><Activity rows={globalActivity} filter={activityFilter} workspaceBrand={brand} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
   return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
 }
