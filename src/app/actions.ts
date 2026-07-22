@@ -1,7 +1,7 @@
 "use server";
 
 import { del } from "@vercel/blob";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentMember } from "../lib/auth";
@@ -46,6 +46,25 @@ function assertCanManage(member: { id: number; slug: string }, ownerId: number) 
 type Brand = z.infer<typeof brand>;
 type EntryEntity = z.infer<typeof entryReactionEntity>;
 
+function synchronizeActivityTitle(input: { brand: Brand; entityType: EntryEntity; entityId: number; title: string }) {
+  return db!.update(activity).set({
+    title: input.title,
+    summary: sql<string>`case
+      when strpos(${activity.summary}, '„') > 0
+        and strpos(reverse(${activity.summary}), '”') > 0
+        and length(${activity.summary}) - strpos(reverse(${activity.summary}), '”') + 1 > strpos(${activity.summary}, '„')
+      then left(${activity.summary}, strpos(${activity.summary}, '„') - 1)
+        || '„' || ${input.title} || '”'
+        || substring(${activity.summary} from length(${activity.summary}) - strpos(reverse(${activity.summary}), '”') + 2)
+      else ${activity.summary}
+    end`,
+  }).where(and(
+    eq(activity.brand, input.brand),
+    eq(activity.entityType, input.entityType),
+    eq(activity.entityId, input.entityId),
+  ));
+}
+
 async function targetDetails(input: { brand: Brand; entityType: EntryEntity; entityId: number }): Promise<{ title: string; catalogueGroup?: string | null; createdBy: number } | null> {
   if (input.entityType === "update") {
     return (await db!.select({ title: updates.title, createdBy: updates.createdBy }).from(updates).where(and(eq(updates.id, input.entityId), eq(updates.brand, input.brand), isNull(updates.deletedAt))).limit(1))[0] ?? null;
@@ -77,8 +96,11 @@ export async function editUpdate(formData: FormData) {
   const [record] = await db!.select({ createdBy: updates.createdBy }).from(updates).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
   if (!record) throw new Error("Înregistrarea nu mai există.");
   assertCanManage(member, record.createdBy);
-  await db!.update(updates).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
-  await recordActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "edited", summary: `a editat propunerea „${input.title}”`, title: input.title }); refresh();
+  await db!.batch([
+    db!.update(updates).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt))),
+    synchronizeActivityTitle({ brand: input.brand, entityType: "update", entityId: input.id, title: input.title }),
+  ] as const);
+  refresh();
 }
 export async function createTask(formData: FormData) {
   const member = await actor(); const input = z.object({ brand, title, body }).parse(Object.fromEntries(formData));
@@ -90,8 +112,11 @@ export async function updateTask(formData: FormData) {
   const [record] = await db!.select({ createdBy: tasks.createdBy }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
   if (!record) throw new Error("Înregistrarea nu mai există.");
   assertCanManage(member, record.createdBy);
-  await db!.update(tasks).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
-  await recordActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "updated", summary: `a actualizat sarcina „${input.title}”`, title: input.title }); refresh();
+  await db!.batch([
+    db!.update(tasks).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt))),
+    synchronizeActivityTitle({ brand: input.brand, entityType: "task", entityId: input.id, title: input.title }),
+  ] as const);
+  refresh();
 }
 export async function deleteRecord(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, type: z.enum(["task", "update"]), title }).parse(Object.fromEntries(formData));
@@ -139,8 +164,11 @@ export async function updateWorkspaceItem(formData: FormData) {
   const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup, createdBy: workspaceItems.createdBy }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) throw new Error("Înregistrarea nu mai există.");
   if (!canManageWorkspaceItem(member, { ...item, section: input.section })) throw new Error("Nu ai permisiunea să modifici această înregistrare.");
-  await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
-  await recordActivity(member, { brand: input.brand, entityType: input.section, entityId: input.id, action: "updated", summary: `a actualizat o înregistrare „${input.title}”`, title: input.title, catalogueGroup: item.catalogueGroup }); refresh();
+  await db!.batch([
+    db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt))),
+    synchronizeActivityTitle({ brand: input.brand, entityType: input.section, entityId: input.id, title: input.title }),
+  ] as const);
+  refresh();
 }
 export async function deleteWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: workspaceSection, title }).parse(Object.fromEntries(formData));
