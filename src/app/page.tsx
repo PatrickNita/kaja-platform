@@ -6,6 +6,7 @@ import { workspaceItems } from "../lib/schema";
 import { activityData, createComment, createTask, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
+import { EntryInlineEditor } from "./entry-inline-editor";
 import { MerchComposer } from "./merch-composer";
 import { ModalEntryGrid } from "./merch-grid";
 import { MobileMenu } from "./mobile-menu";
@@ -33,6 +34,11 @@ type AttentionRow = Data["attention"][number];
 type CommentEntity = "update" | "task" | "events" | "catalogue" | "merch";
 type EntryEntity = CommentEntity | "information";
 type EntryReactionType = "heart" | "like" | "dislike" | "poop" | "question";
+type EntryEditConfig = {
+  action: (formData: FormData) => Promise<void>;
+  hiddenFields: Array<{ name: string; value: string | number }>;
+  deleteControl: ReactNode;
+};
 
 const entryReactionOptions = [
   { type: "heart", emoji: "❤️", label: "Inimă" },
@@ -110,18 +116,45 @@ function AttentionControl({ brand, entityType, entityId, active, interactive }: 
   </form>;
 }
 
-function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, modal = false, children }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; modal?: boolean; children?: ReactNode }) {
+function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, modal = false, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; modal?: boolean; edit?: EntryEditConfig }) {
   const commentType = type === "information" ? null : type;
   const own = commentType ? (comments || []).filter(({ comment }) => comment.entityType === commentType && comment.entityId === id) : [];
   const ownEntryReactions = entryReactions.filter(({ reaction }) => reaction.entityType === type && reaction.entityId === id);
   const last = own.at(-1);
   const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}<EntryReactionPreview reactions={ownEntryReactions} /></>;
-  return <><article className="item card entry-card-placeholder" aria-hidden="true">{compactPreview}</article><article className="item card entry-card-surface"><details id={`entry-${type}-${id}`} className="entry-card"><summary>{compactPreview}</summary>{modal && <div className="entry-modal-header"><div className="entry-modal-title-group"><h3 className="item-title">{title}</h3><span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={memberSlug === authorSlug} /></span></div><button type="button" className="entry-modal-close" data-entry-close aria-label={`Închide ${title}`}>×</button></div>}<div className="entry-card-content">{detailsMedia}{body && <p>{body}</p>}<EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}{children}</div></details></article></>;
+  const authorControls = <span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={memberSlug === authorSlug} /></span>;
+  const interactiveContent = <><EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
+  return <><article className="item card entry-card-placeholder" aria-hidden="true">{compactPreview}</article><article className="item card entry-card-surface"><details id={`entry-${type}-${id}`} className="entry-card"><summary>{compactPreview}</summary>{modal ? <EntryInlineEditor title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor> : <div className="entry-card-content">{detailsMedia}{body && <p>{body}</p>}{interactiveContent}</div>}</details></article></>;
 }
 
-function WorkspaceActions({ brand, section, item, memberSlug, authorSlug }: { brand: Brand; section: "events" | "catalogue" | "merch" | "information"; item: WorkspaceItemRow["item"]; memberSlug: string; authorSlug: string }) {
-  if (!canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup)) return null;
-  return <div className="card-actions"><details className="card-edit"><summary className="button ghost">Modifică</summary><form action={updateWorkspaceItem} className="form edit-form"><input type="hidden" name="id" value={item.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} /><AutoResizeTextarea className="field-title" name="title" defaultValue={item.title} required maxLength={160} /><AutoResizeTextarea name="body" defaultValue={item.body} required maxLength={4000} /><button className="button">Salvează modificările</button></form></details><form action={deleteWorkspaceItem}><input type="hidden" name="id" value={item.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} /><input type="hidden" name="title" value={item.title} /><ConfirmDeleteButton itemName={item.title}>Șterge</ConfirmDeleteButton></form></div>;
+function recordEditConfig({ brand, type, id, title: itemTitle, action, allowed }: { brand: Brand; type: "update" | "task"; id: number; title: string; action: (formData: FormData) => Promise<void>; allowed: boolean }): EntryEditConfig | undefined {
+  if (!allowed) return undefined;
+  return {
+    action,
+    hiddenFields: [{ name: "id", value: id }, { name: "brand", value: brand }],
+    deleteControl: <form action={deleteRecord}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="brand" value={brand} />
+      <input type="hidden" name="type" value={type} />
+      <input type="hidden" name="title" value={itemTitle} />
+      <ConfirmDeleteButton itemName={itemTitle}>Șterge</ConfirmDeleteButton>
+    </form>,
+  };
+}
+
+function workspaceEditConfig({ brand, section, item, memberSlug, authorSlug }: { brand: Brand; section: "events" | "catalogue" | "merch" | "information"; item: WorkspaceItemRow["item"]; memberSlug: string; authorSlug: string }): EntryEditConfig | undefined {
+  if (!canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup)) return undefined;
+  return {
+    action: updateWorkspaceItem,
+    hiddenFields: [{ name: "id", value: item.id }, { name: "brand", value: brand }, { name: "section", value: section }],
+    deleteControl: <form action={deleteWorkspaceItem}>
+      <input type="hidden" name="id" value={item.id} />
+      <input type="hidden" name="brand" value={brand} />
+      <input type="hidden" name="section" value={section} />
+      <input type="hidden" name="title" value={item.title} />
+      <ConfirmDeleteButton itemName={item.title}>Șterge</ConfirmDeleteButton>
+    </form>,
+  };
 }
 
 function WorkspaceSection({ brand, section, title, items, images, comments, reactions, entryReactions, attention, memberSlug, catalogueGroup, hideHeader = false }: { brand: Brand; section: "events" | "catalogue" | "merch" | "information"; title: string; items: WorkspaceItemRow[]; images: Data["images"]; comments: CommentRow[]; reactions: ReactionRow[]; entryReactions: EntryReactionRow[]; attention: AttentionRow[]; memberSlug: string; catalogueGroup?: CatalogueGroup; hideHeader?: boolean }) {
@@ -137,17 +170,39 @@ function WorkspaceSection({ brand, section, title, items, images, comments, reac
     const manageable = canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup);
     const media = firstImage ? <div className="entry-media-preview"><img src={`/api/item-images/${firstImage.id}`} alt={`Previzualizare ${item.title}`} />{itemImages.length > 1 && <span>{itemImages.length} imagini</span>}</div> : undefined;
     const detailsMedia = galleryEnabled ? <EntryGallery brand={brand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
-    return <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, brand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} modal={modalEnabled}><WorkspaceActions brand={brand} section={section} item={item} memberSlug={memberSlug} authorSlug={authorSlug} /></EntryCard></div>;
+    return <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, brand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} modal={modalEnabled} edit={workspaceEditConfig({ brand, section, item, memberSlug, authorSlug })} /></div>;
   });
   return <section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section>;
 }
 
 function UpdatesSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
-  return <section className="panel content-section"><div className="panel-head"><h2>Propuneri</h2></div><Composer label="Adaugă propuneri"><form action={createUpdate} className="form"><input type="hidden" name="brand" value={brand} /><AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu actualizare" /><AutoResizeTextarea name="body" required maxLength={4000} placeholder="Spune ce s-a schimbat și ce urmează." /><button className="button">Publică propunerea</button></form></Composer><ModalEntryGrid label="propunerea">{data.updates.map(({ update, author, authorSlug }) => <div className="card-wrap" key={update.id}><EntryCard brand={brand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal>{canManage(memberSlug, authorSlug) && <div className="card-actions"><details className="card-edit"><summary className="button ghost">Modifică</summary><form action={editUpdate} className="form edit-form"><input type="hidden" name="id" value={update.id} /><input type="hidden" name="brand" value={brand} /><AutoResizeTextarea className="field-title" name="title" defaultValue={update.title} required maxLength={160} /><AutoResizeTextarea name="body" defaultValue={update.body} required maxLength={4000} /><button className="button">Salvează modificările</button></form></details><form action={deleteRecord}><input type="hidden" name="id" value={update.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="type" value="update" /><input type="hidden" name="title" value={update.title} /><ConfirmDeleteButton itemName={update.title}>Șterge</ConfirmDeleteButton></form></div>}</EntryCard></div>)}</ModalEntryGrid></section>;
+  return <section className="panel content-section">
+    <div className="panel-head"><h2>Propuneri</h2></div>
+    <Composer label="Adaugă propuneri"><form action={createUpdate} className="form">
+      <input type="hidden" name="brand" value={brand} />
+      <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu actualizare" />
+      <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Spune ce s-a schimbat și ce urmează." />
+      <button className="button">Publică propunerea</button>
+    </form></Composer>
+    <ModalEntryGrid label="propunerea">{data.updates.map(({ update, author, authorSlug }) => <div className="card-wrap" key={update.id}>
+      <EntryCard brand={brand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal edit={recordEditConfig({ brand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
+    </div>)}</ModalEntryGrid>
+  </section>;
 }
 
 function TasksSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
-  return <section className="panel content-section"><div className="panel-head"><h2>Sarcini</h2></div><Composer label="Adaugă sarcină"><form action={createTask} className="form"><input type="hidden" name="brand" value={brand} /><AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu sarcină" /><AutoResizeTextarea name="body" required maxLength={4000} placeholder="Descrie sarcina." /><button className="button">Adaugă sarcina</button></form></Composer><ModalEntryGrid label="sarcina">{data.tasks.map(({ task, author, authorSlug }) => <div className="card-wrap" key={task.id}><EntryCard brand={brand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal>{canManage(memberSlug, authorSlug) && <div className="card-actions"><details className="card-edit"><summary className="button ghost">Modifică</summary><form action={updateTask} className="form edit-form"><input type="hidden" name="id" value={task.id} /><input type="hidden" name="brand" value={brand} /><AutoResizeTextarea className="field-title" name="title" defaultValue={task.title} required maxLength={160} /><AutoResizeTextarea name="body" defaultValue={task.body} required maxLength={4000} placeholder="Descrie sarcina." /><button className="button">Salvează modificările</button></form></details><form action={deleteRecord}><input type="hidden" name="id" value={task.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="type" value="task" /><input type="hidden" name="title" value={task.title} /><ConfirmDeleteButton itemName={task.title}>Șterge</ConfirmDeleteButton></form></div>}</EntryCard></div>)}</ModalEntryGrid></section>;
+  return <section className="panel content-section">
+    <div className="panel-head"><h2>Sarcini</h2></div>
+    <Composer label="Adaugă sarcină"><form action={createTask} className="form">
+      <input type="hidden" name="brand" value={brand} />
+      <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu sarcină" />
+      <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Descrie sarcina." />
+      <button className="button">Adaugă sarcina</button>
+    </form></Composer>
+    <ModalEntryGrid label="sarcina">{data.tasks.map(({ task, author, authorSlug }) => <div className="card-wrap" key={task.id}>
+      <EntryCard brand={brand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal edit={recordEditConfig({ brand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: canManage(memberSlug, authorSlug) })} />
+    </div>)}</ModalEntryGrid>
+  </section>;
 }
 
 function Activity({ rows, filter, workspaceBrand }: { rows: ActivityData; filter: ActivityFilter; workspaceBrand: Brand }) {

@@ -16,12 +16,20 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
     const entries = () => Array.from(element.querySelectorAll<HTMLDetailsElement>(".modal-entry-grid > .card-wrap .entry-card"));
     const entryById = (id: string) => entries().find((entry) => entry.id === id);
 
-    const clearModal = ({ restoreFocus = true }: { restoreFocus?: boolean } = {}) => {
+    const resetEditor = (entry: HTMLDetailsElement) => {
+      entry.querySelector<HTMLElement>("[data-entry-inline-editor]")?.dispatchEvent(new CustomEvent("entry-modal-close"));
+    };
+
+    const clearModal = ({ restoreFocus = true, force = false }: { restoreFocus?: boolean; force?: boolean } = {}) => {
+      const activeEntry = activeEntryId.current ? entryById(activeEntryId.current) : undefined;
+      if (!force && activeEntry?.querySelector<HTMLElement>('[data-entry-inline-editor][data-entry-saving="true"]')) return false;
+
       if (focusFrame.current !== null) {
         cancelAnimationFrame(focusFrame.current);
         focusFrame.current = null;
       }
 
+      if (activeEntry) resetEditor(activeEntry);
       activeEntryId.current = null;
       element.classList.remove("entry-modal-open");
       element.querySelectorAll<HTMLElement>(".card-wrap.entry-card-modal").forEach((card) => card.classList.remove("entry-card-modal"));
@@ -38,14 +46,15 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
 
       const focusTarget = previousFocus.current;
       previousFocus.current = null;
-      if (!restoreFocus) return;
+      if (!restoreFocus) return true;
 
       if (focusTarget?.isConnected) {
         focusTarget.focus({ preventScroll: true });
-        return;
+        return true;
       }
 
       element.focus({ preventScroll: true });
+      return true;
     };
 
     const openModal = (entry: HTMLDetailsElement, trigger?: HTMLElement, focusClose = true) => {
@@ -56,6 +65,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       entries().forEach((other) => {
         const otherCard = other.closest<HTMLElement>(".card-wrap");
         if (other !== entry) {
+          resetEditor(other);
           other.open = false;
           other.removeAttribute("role");
           other.removeAttribute("aria-modal");
@@ -175,7 +185,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       element.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("hashchange", openFromHash);
-      clearModal({ restoreFocus: false });
+      clearModal({ restoreFocus: false, force: true });
     };
   }, []);
 

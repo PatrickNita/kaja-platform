@@ -75,7 +75,7 @@ export async function createUpdate(formData: FormData) {
 export async function editUpdate(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.select({ createdBy: updates.createdBy }).from(updates).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
-  if (!record) return;
+  if (!record) throw new Error("Înregistrarea nu mai există.");
   assertCanManage(member, record.createdBy);
   await db!.update(updates).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
   await recordActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "edited", summary: `a editat propunerea „${input.title}”`, title: input.title }); refresh();
@@ -88,7 +88,7 @@ export async function createTask(formData: FormData) {
 export async function updateTask(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
   const [record] = await db!.select({ createdBy: tasks.createdBy }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
-  if (!record) return;
+  if (!record) throw new Error("Înregistrarea nu mai există.");
   assertCanManage(member, record.createdBy);
   await db!.update(tasks).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
   await recordActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "updated", summary: `a actualizat sarcina „${input.title}”`, title: input.title }); refresh();
@@ -137,7 +137,7 @@ export async function createWorkspaceItemForm(formData: FormData) {
 export async function updateWorkspaceItem(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: editableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
   const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup, createdBy: workspaceItems.createdBy }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
-  if (!item) return;
+  if (!item) throw new Error("Înregistrarea nu mai există.");
   if (!canManageWorkspaceItem(member, { ...item, section: input.section })) throw new Error("Nu ai permisiunea să modifici această înregistrare.");
   await db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   await recordActivity(member, { brand: input.brand, entityType: input.section, entityId: input.id, action: "updated", summary: `a actualizat o înregistrare „${input.title}”`, title: input.title, catalogueGroup: item.catalogueGroup }); refresh();
