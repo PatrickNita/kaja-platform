@@ -222,7 +222,6 @@ button.task-member-chip:hover { border-color:#85857f; color:#fff; }
 .task-card-context { display:grid; gap:8px; margin-top:9px; }
 .task-card-context .task-assignee-preview { margin-top:0; }
 .task-brand-badge { display:inline-flex; align-items:center; justify-content:center; justify-self:start; min-height:24px; padding:4px 8px; border:1px solid var(--line-strong); border-radius:999px; background:#171717; color:#d7d7d1; font-size:9px; font-weight:900; letter-spacing:.1em; line-height:1; }
-.task-brand-badge.modal-brand { margin:0; }
 .task-assignee-manager { display:grid; gap:9px; margin:0; padding-bottom:12px; border-bottom:1px solid var(--line); }
 .task-assignee-manager h4, .task-assignee-manager p { margin:0; }
 .task-assignee-manager h4 { color:#e6e6e0; font-size:12px; font-weight:800; }
