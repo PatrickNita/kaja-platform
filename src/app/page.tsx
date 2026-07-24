@@ -86,6 +86,10 @@ function pageTitle({ view, brand, tasks = "all", catalogue = "live" }: { view: S
   return brand === "all" ? "Toate încărcările" : `Încărcări ${brandLabel}`;
 }
 
+function PageHeading({ title, count }: { title: string; count: number }) {
+  return <h2>{title} <span className="page-entry-count">({count})</span></h2>;
+}
+
 function BrandBadge({ brand }: { brand: Brand }) {
   return <span className="task-brand-badge">{brands.find(({ key }) => key === brand)?.label ?? brand.toUpperCase()}</span>;
 }
@@ -221,12 +225,12 @@ function WorkspaceSection({ brandFilter, section, title, displayTitle, items, im
     const detailsMedia = galleryEnabled ? <EntryGallery brand={itemBrand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
     return <div key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} showAuthor={section === "catalogue" && item.catalogueGroup === "ideas"} modal={modalEnabled} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></div>;
   });
-  return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><h2>{displayTitle}</h2></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
+  return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><PageHeading title={displayTitle} count={cards.length} /></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
 }
 
 function UpdatesSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
   return <><BrandFilterNav selected={brandFilter} view="updates" /><section className="panel content-section">
-    <div className="panel-head"><h2>{pageTitle({ view: "updates", brand: brandFilter })}</h2></div>
+    <div className="panel-head"><PageHeading title={pageTitle({ view: "updates", brand: brandFilter })} count={data.updates.length} /></div>
     <Composer label="Adaugă propuneri"><form action={createUpdate} className="form">
       <BrandFormPicker initialBrand={initialBrand(brandFilter)} />
       <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu actualizare" />
@@ -303,7 +307,7 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
     {taskView !== "history" && <BrandFilterNav selected={brandFilter} view="tasks" tasks={taskView} />}
     <nav className="catalogue-submenu filter-nav task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <FilterLink key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : brandFilter)}>{entry.label}</FilterLink>)}</nav>
     <section className="panel content-section">
-      <div className="panel-head"><h2>{pageTitle({ view: "tasks", brand: brandFilter, tasks: taskView })}</h2></div>
+      <div className="panel-head"><PageHeading title={pageTitle({ view: "tasks", brand: brandFilter, tasks: taskView })} count={visibleTasks.length} /></div>
       {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={initialBrand(brandFilter)} members={data.members} /></Composer>}
       <ModalEntryGrid label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
         const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
@@ -324,7 +328,7 @@ function CatalogueSection({ brandFilter, data, memberSlug, group }: { brandFilte
 
 function UploadsSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
   const canManagePdfs = memberSlug === "patrick";
-  return <><BrandFilterNav selected={brandFilter} view="uploads" /><section className="panel content-section"><div className="panel-head"><h2>{pageTitle({ view: "uploads", brand: brandFilter })}</h2></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader initialBrand={initialBrand(brandFilter)} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment }) => {
+  return <><BrandFilterNav selected={brandFilter} view="uploads" /><section className="panel content-section"><div className="panel-head"><PageHeading title={pageTitle({ view: "uploads", brand: brandFilter })} count={data.attachments.length} /></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader initialBrand={initialBrand(brandFilter)} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment }) => {
     const attachmentBrand = attachment.brand as Brand;
     return <article id={`attachment-${attachment.id}`} key={attachment.id} className="item attachment"><div><div className="entry-card-head"><h3 className="item-title">{attachment.filename}</h3><BrandBadge brand={attachmentBrand} /></div><div className="meta"><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Descarcă PDF</a>{canManagePdfs && <form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="brand" value={attachmentBrand} /><input type="hidden" name="filename" value={attachment.filename} /><ConfirmDeleteButton itemName={attachment.filename}>Șterge</ConfirmDeleteButton></form>}</div></article>;
   })}</div></section></>;
