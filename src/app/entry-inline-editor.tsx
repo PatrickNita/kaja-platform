@@ -10,6 +10,7 @@ type HiddenField = {
 };
 
 type Props = {
+  entryId: string;
   title: string;
   body?: string;
   authorControls: ReactNode;
@@ -26,7 +27,7 @@ function errorMessage(error: unknown) {
   return "Modificarea nu a putut fi salvată. Încearcă din nou.";
 }
 
-export function EntryInlineEditor({ title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl }: Props) {
+export function EntryInlineEditor({ entryId, title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const generatedId = useId().replaceAll(":", "");
   const formId = `entry-edit-${generatedId}`;
@@ -34,8 +35,15 @@ export function EntryInlineEditor({ title, body, authorControls, closeLabel, det
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const announceEditing = (nextEditing: boolean) => {
+    window.dispatchEvent(new CustomEvent("entry-edit-state-change", {
+      detail: { entryId, editing: nextEditing },
+    }));
+  };
+
   const cancel = () => {
     if (pending) return;
+    announceEditing(false);
     setEditing(false);
     setError(null);
   };
@@ -49,9 +57,24 @@ export function EntryInlineEditor({ title, body, authorControls, closeLabel, det
       setPending(false);
       setError(null);
     };
+    const handleEditingResume = () => {
+      setEditing(true);
+      setError(null);
+    };
+    const handleEditingStop = () => {
+      setEditing(false);
+      setPending(false);
+      setError(null);
+    };
 
     element.addEventListener("entry-modal-close", handleModalClose);
-    return () => element.removeEventListener("entry-modal-close", handleModalClose);
+    element.addEventListener("entry-edit-resume", handleEditingResume);
+    element.addEventListener("entry-edit-stop", handleEditingStop);
+    return () => {
+      element.removeEventListener("entry-modal-close", handleModalClose);
+      element.removeEventListener("entry-edit-resume", handleEditingResume);
+      element.removeEventListener("entry-edit-stop", handleEditingStop);
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -65,6 +88,7 @@ export function EntryInlineEditor({ title, body, authorControls, closeLabel, det
     setError(null);
     try {
       await editAction(formData);
+      announceEditing(false);
       setEditing(false);
     } catch (saveError) {
       setError(errorMessage(saveError));
@@ -97,7 +121,7 @@ export function EntryInlineEditor({ title, body, authorControls, closeLabel, det
             <button className="button" type="submit" form={formId} disabled={pending}>{pending ? "Se salvează…" : "Salvează modificările"}</button>
             <button className="button ghost" type="button" onClick={cancel} disabled={pending}>Anulează</button>
           </> : <>
-            <button className="button ghost" type="button" onClick={() => { setError(null); setEditing(true); }}>Modifică</button>
+            <button className="button ghost" type="button" onClick={() => { setError(null); announceEditing(true); setEditing(true); }}>Modifică</button>
             {deleteControl}
           </>}
         </div>

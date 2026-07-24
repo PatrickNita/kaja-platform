@@ -7,6 +7,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
   const previousBodyOverflow = useRef<string | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const activeEntryId = useRef<string | null>(null);
+  const editingEntryId = useRef<string | null>(null);
   const focusFrame = useRef<number | null>(null);
 
   useLayoutEffect(() => {
@@ -31,6 +32,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
 
       if (activeEntry) resetEditor(activeEntry);
       activeEntryId.current = null;
+      editingEntryId.current = null;
       element.classList.remove("entry-modal-open");
       element.querySelectorAll<HTMLElement>(".card-wrap.entry-card-modal").forEach((card) => card.classList.remove("entry-card-modal"));
       entries().forEach((entry) => {
@@ -74,6 +76,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       });
 
       if (isNewEntry) {
+        editingEntryId.current = null;
         previousFocus.current = trigger ?? entry.querySelector<HTMLElement>("summary") ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       }
 
@@ -150,6 +153,16 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       if (event.key === "Escape" && activeEntryId.current) closeActive();
     };
 
+    const handleEditStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ entryId?: string; editing?: boolean }>).detail;
+      if (!detail?.entryId || !entryById(detail.entryId)) return;
+
+      editingEntryId.current = detail.editing ? detail.entryId : null;
+      if (!detail.editing) {
+        entryById(detail.entryId)?.querySelector<HTMLElement>("[data-entry-inline-editor]")?.dispatchEvent(new CustomEvent("entry-edit-stop"));
+      }
+    };
+
     const observer = new MutationObserver(() => {
       const id = activeEntryId.current;
       if (!id) return;
@@ -168,12 +181,20 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
         // Reattach the modal state to the replacement without moving focus.
         openModal(active, previousFocus.current ?? undefined, false);
       }
+
+      const editor = active.querySelector<HTMLElement>("[data-entry-inline-editor]");
+      if (editingEntryId.current === id && editor && !editor.classList.contains("is-editing")) {
+        // Preserve edit mode when a Server Component refresh replaces the entry
+        // while comments, reactions or other interactive content are present.
+        editor.dispatchEvent(new CustomEvent("entry-edit-resume"));
+      }
     });
 
     element.addEventListener("click", handleClick, true);
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("hashchange", openFromHash);
     window.addEventListener("workspace-filter-change", closeActive);
+    window.addEventListener("entry-edit-state-change", handleEditStateChange);
     observer.observe(element, { childList: true, subtree: true });
     const openedFromHash = openFromHash();
     if (!openedFromHash) {
@@ -187,6 +208,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("hashchange", openFromHash);
       window.removeEventListener("workspace-filter-change", closeActive);
+      window.removeEventListener("entry-edit-state-change", handleEditStateChange);
       clearModal({ restoreFocus: false, force: true });
     };
   }, []);
