@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { activityData, createComment, createTask, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { activityData, createComment, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { ActivityPanel } from "./activity-panel";
@@ -12,6 +12,7 @@ import { MerchComposer } from "./merch-composer";
 import { ModalEntryGrid } from "./merch-grid";
 import { MobileMenu } from "./mobile-menu";
 import { PdfUploader } from "./pdf-uploader";
+import { TaskComposer } from "./task-composer";
 import { WelcomeIntro } from "./welcome-intro";
 import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
@@ -20,10 +21,12 @@ export const dynamic = "force-dynamic";
 const sections = [{ key: "updates", label: "Propuneri" }, { key: "tasks", label: "Sarcini" }, { key: "events", label: "Evenimente" }, { key: "catalogue", label: "Catalog" }, { key: "merch", label: "Merch" }, { key: "information", label: "Informații" }, { key: "uploads", label: "Încărcări" }] as const;
 const brands = [{ key: "kaja", label: "KAJA" }, { key: "hexenwerk", label: "HEXENWERK" }, { key: "virginia", label: "VIRGINIA" }] as const;
 const catalogueGroups = [{ key: "live", label: "Catalog activ" }, { key: "upcoming", label: "În curând" }, { key: "ideas", label: "Idei" }] as const;
+const taskViews = [{ key: "all", label: "Toate sarcinile" }, { key: "mine", label: "Sarcinile mele" }] as const;
 const activityFilters = [{ key: "all", label: "Toate" }, ...brands] as const;
 type Section = (typeof sections)[number]["key"];
 type Brand = (typeof brands)[number]["key"];
 type CatalogueGroup = (typeof catalogueGroups)[number]["key"];
+type TaskView = (typeof taskViews)[number]["key"];
 type ActivityFilter = (typeof activityFilters)[number]["key"];
 type Data = NonNullable<Awaited<ReturnType<typeof workspaceData>>>;
 type ActivityData = Awaited<ReturnType<typeof activityData>>;
@@ -32,6 +35,7 @@ type CommentRow = Data["comments"][number];
 type ReactionRow = Data["reactions"][number];
 type EntryReactionRow = Data["entryReactions"][number];
 type AttentionRow = Data["attention"][number];
+type TaskAssigneeRow = Data["taskAssignees"][number];
 type CommentEntity = "update" | "task" | "events" | "catalogue" | "merch";
 type EntryEntity = CommentEntity | "information";
 type EntryReactionType = "heart" | "like" | "dislike" | "poop" | "question";
@@ -117,14 +121,14 @@ function AttentionControl({ brand, entityType, entityId, active, interactive }: 
   </form>;
 }
 
-function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, modal = false, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; modal?: boolean; edit?: EntryEditConfig }) {
+function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, previewExtra, detailsExtra, entryReactionsEnabled = true, attentionInteractive, modal = false, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; previewExtra?: ReactNode; detailsExtra?: ReactNode; entryReactionsEnabled?: boolean; attentionInteractive?: boolean; modal?: boolean; edit?: EntryEditConfig }) {
   const commentType = type === "information" ? null : type;
   const own = commentType ? (comments || []).filter(({ comment }) => comment.entityType === commentType && comment.entityId === id) : [];
-  const ownEntryReactions = entryReactions.filter(({ reaction }) => reaction.entityType === type && reaction.entityId === id);
+  const ownEntryReactions = entryReactionsEnabled ? entryReactions.filter(({ reaction }) => reaction.entityType === type && reaction.entityId === id) : [];
   const last = own.at(-1);
-  const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}<EntryReactionPreview reactions={ownEntryReactions} /></>;
-  const authorControls = <span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={memberSlug === authorSlug} /></span>;
-  const interactiveContent = <><EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
+  const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}{previewExtra}{entryReactionsEnabled && <EntryReactionPreview reactions={ownEntryReactions} />}</>;
+  const authorControls = <span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={attentionInteractive ?? memberSlug === authorSlug} /></span>;
+  const interactiveContent = <>{detailsExtra}{entryReactionsEnabled && <EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />}{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
   return <><article className="item card entry-card-placeholder" aria-hidden="true">{compactPreview}</article><article className="item card entry-card-surface"><details id={`entry-${type}-${id}`} className="entry-card"><summary>{compactPreview}</summary>{modal ? <EntryInlineEditor title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor> : <div className="entry-card-content">{detailsMedia}{body && <p>{body}</p>}{interactiveContent}</div>}</details></article></>;
 }
 
@@ -191,19 +195,65 @@ function UpdatesSection({ brand, data, memberSlug }: { brand: Brand; data: Data;
   </section>;
 }
 
-function TasksSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
-  return <section className="panel content-section">
-    <div className="panel-head"><h2>Sarcini</h2></div>
-    <Composer label="Adaugă sarcină"><form action={createTask} className="form">
-      <input type="hidden" name="brand" value={brand} />
-      <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu sarcină" />
-      <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Descrie sarcina." />
-      <button className="button">Adaugă sarcina</button>
-    </form></Composer>
-    <ModalEntryGrid label="sarcina">{data.tasks.map(({ task, author, authorSlug }) => <div className="card-wrap" key={task.id}>
-      <EntryCard brand={brand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal edit={recordEditConfig({ brand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: canManage(memberSlug, authorSlug) })} />
-    </div>)}</ModalEntryGrid>
+function TaskMemberBadges({ assignments, label = true }: { assignments: TaskAssigneeRow[]; label?: boolean }) {
+  return <div className="task-assignee-preview">
+    {label && <span className="task-assignee-label">Responsabili</span>}
+    <div className="task-assignee-list">{assignments.map(({ assignment, memberName }) => <span key={assignment.id} className={`task-member-chip ${assignment.completed ? "completed" : "incomplete"}`}>
+      <span aria-hidden="true">{assignment.completed ? "✓" : "×"}</span>
+      {memberName}
+    </span>)}</div>
+  </div>;
+}
+
+function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, canManage }: { brand: Brand; taskId: number; assignments: TaskAssigneeRow[]; members: Data["members"]; canManage: boolean }) {
+  if (!canManage) return <section className="task-assignee-manager"><h4>Responsabili</h4><TaskMemberBadges assignments={assignments} label={false} /></section>;
+  return <section className="task-assignee-manager">
+    <div><h4>Responsabili</h4><p>Apasă starea pentru finalizare. Folosește × pentru eliminare.</p></div>
+    <div className="task-assignee-list manager">{allMembers.map((member) => {
+      const selected = assignments.find(({ assignment }) => assignment.memberId === member.id);
+      if (!selected) return <form action={setTaskAssignee} key={member.id}>
+        <input type="hidden" name="id" value={taskId} />
+        <input type="hidden" name="brand" value={brand} />
+        <input type="hidden" name="memberSlug" value={member.slug} />
+        <input type="hidden" name="assigned" value="true" />
+        <button className="task-member-chip unassigned" aria-label={`Adaugă responsabilul ${member.name}`}><span aria-hidden="true">+</span>{member.name}</button>
+      </form>;
+      return <div className={`task-member-control ${selected.assignment.completed ? "completed" : "incomplete"}`} key={member.id}>
+        <form action={setTaskAssigneeCompletion}>
+          <input type="hidden" name="id" value={taskId} />
+          <input type="hidden" name="brand" value={brand} />
+          <input type="hidden" name="memberSlug" value={member.slug} />
+          <input type="hidden" name="completed" value={selected.assignment.completed ? "false" : "true"} />
+          <button className={`task-member-chip ${selected.assignment.completed ? "completed" : "incomplete"}`} aria-label={`${selected.assignment.completed ? "Marchează nefinalizat" : "Marchează finalizat"} pentru ${member.name}`}><span aria-hidden="true">{selected.assignment.completed ? "✓" : "×"}</span>{member.name}</button>
+        </form>
+        <form action={setTaskAssignee}>
+          <input type="hidden" name="id" value={taskId} />
+          <input type="hidden" name="brand" value={brand} />
+          <input type="hidden" name="memberSlug" value={member.slug} />
+          <input type="hidden" name="assigned" value="false" />
+          <button className="task-member-remove" disabled={assignments.length <= 1} aria-label={`Elimină responsabilul ${member.name}`}>×</button>
+        </form>
+      </div>;
+    })}</div>
   </section>;
+}
+
+function TasksSection({ brand, data, memberSlug, taskView }: { brand: Brand; data: Data; memberSlug: string; taskView: TaskView }) {
+  const visibleTasks = taskView === "mine"
+    ? data.tasks.filter(({ task }) => data.taskAssignees.some(({ assignment, memberSlug: assignedSlug }) => assignment.taskId === task.id && assignedSlug === memberSlug))
+    : data.tasks;
+  return <>
+    <nav className="catalogue-submenu task-submenu" aria-label="Filtre sarcini">{taskViews.map((entry) => <a key={entry.key} className={entry.key === taskView ? "active" : undefined} href={`/?brand=${brand}&view=tasks&tasks=${entry.key}`}>{entry.label}</a>)}</nav>
+    <section className="panel content-section">
+      {memberSlug === "patrick" && <Composer label="Adaugă sarcină"><TaskComposer brand={brand} members={data.members} /></Composer>}
+      <ModalEntryGrid label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
+        const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
+        return <div className="card-wrap" key={task.id}>
+          <EntryCard brand={brand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} entryReactionsEnabled={false} previewExtra={<TaskMemberBadges assignments={assignments} />} detailsExtra={<TaskAssigneeManager brand={brand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} memberSlug={memberSlug} modal edit={recordEditConfig({ brand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
+        </div>;
+      })}</ModalEntryGrid>
+    </section>
+  </>;
 }
 
 function CatalogueSection({ brand, data, memberSlug, group }: { brand: Brand; data: Data; memberSlug: string; group: CatalogueGroup }) {
@@ -216,17 +266,18 @@ function UploadsSection({ brand, data, memberSlug }: { brand: Brand; data: Data;
   return <section className="panel content-section"><div className="panel-head"><h2>Încărcări</h2></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader brand={brand} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment, author }) => <article id={`attachment-${attachment.id}`} key={attachment.id} className="item attachment"><div><h3 className="item-title">{attachment.filename}</h3><div className="meta"><span>Încărcat de {author}</span><span>·</span><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Descarcă PDF</a>{canManagePdfs && <form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="filename" value={attachment.filename} /><ConfirmDeleteButton itemName={attachment.filename}>Șterge</ConfirmDeleteButton></form>}</div></article>)}</div></section>;
 }
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; activity?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; activity?: string }> }) {
   const member = await currentMember();
   if (!member) return <main className="landing"><section className="landing-card"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><p className="eyebrow">Platformă internă pentru membri</p><h1>O imagine comună asupra muncii.</h1><p>Folosește linkul personal KAJA pentru a intra în spațiul de lucru.</p>{!hasDatabase && <div className="setup">Configurarea bazei de date este în așteptare.</div>}</section></main>;
   const params = await searchParams;
   const brand: Brand = brands.some((entry) => entry.key === params.brand) ? params.brand as Brand : "kaja";
   const view: Section = sections.some((entry) => entry.key === params.view) ? params.view as Section : "tasks";
   const group: CatalogueGroup = catalogueGroups.some((entry) => entry.key === params.catalogue) ? params.catalogue as CatalogueGroup : "live";
+  const taskView: TaskView = taskViews.some((entry) => entry.key === params.tasks) ? params.tasks as TaskView : "all";
   const activityFilter: ActivityFilter = activityFilters.some((entry) => entry.key === params.activity) ? params.activity as ActivityFilter : "all";
   const [data, globalActivity] = await Promise.all([workspaceData(brand), view === "updates" ? activityData(activityFilter) : Promise.resolve([] as ActivityData)]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
+  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} taskView={taskView} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "tasks" ? `&tasks=${taskView}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? `&tasks=${taskView}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} tasks={taskView} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
 }

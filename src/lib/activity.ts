@@ -15,7 +15,7 @@ export type ActivityEvent = {
   reactionType?: TelegramReactionType | null;
 };
 
-export async function recordActivity(member: { id: number; name: string }, event: ActivityEvent) {
+export async function recordActivity(member: { id: number; name: string }, event: ActivityEvent, options: { notifyTelegram?: boolean } = {}) {
   if (!db) throw new Error("Baza de date nu este configurată.");
   const insert = db.insert(activity).values({
     brand: event.brand,
@@ -32,21 +32,23 @@ export async function recordActivity(member: { id: number; name: string }, event
     : await insert.returning({ id: activity.id });
   if (!saved) return null;
 
-  try {
-    await enqueueTelegramDigest({
-      activityId: saved.id,
-      actorId: member.id,
-      memberName: member.name,
-      brand: event.brand,
-      entityType: event.entityType,
-      entityId: event.entityId,
-      action: event.action,
-      title: event.title,
-      catalogueGroup: event.catalogueGroup,
-      reactionType: event.reactionType,
-    });
-  } catch (error) {
-    console.error("Telegram digest scheduling failed", error);
+  if (options.notifyTelegram !== false) {
+    try {
+      await enqueueTelegramDigest({
+        activityId: saved.id,
+        actorId: member.id,
+        memberName: member.name,
+        brand: event.brand,
+        entityType: event.entityType,
+        entityId: event.entityId,
+        action: event.action,
+        title: event.title,
+        catalogueGroup: event.catalogueGroup,
+        reactionType: event.reactionType,
+      });
+    } catch (error) {
+      console.error("Telegram digest scheduling failed", error);
+    }
   }
   return saved.id;
 }

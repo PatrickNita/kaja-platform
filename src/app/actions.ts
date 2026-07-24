@@ -7,7 +7,7 @@ import { z } from "zod";
 import { currentMember } from "../lib/auth";
 import { recordActivity } from "../lib/activity";
 import { db, memberSeed } from "../lib/db";
-import { activity, attachments, commentReactions, comments, entryReactions, members, tasks, updates, workspaceItemImages, workspaceItems } from "../lib/schema";
+import { activity, attachments, commentReactions, comments, entryReactions, members, taskAssignees, tasks, updates, workspaceItemImages, workspaceItems } from "../lib/schema";
 import { resetTelegramDigestAfterCancellation } from "../lib/telegram";
 import { canManageWorkspaceItem, supportsImageGallery } from "../lib/workspace-permissions";
 
@@ -19,8 +19,10 @@ const creatableWorkspaceSection = z.enum(["events", "catalogue", "information"])
 const editableWorkspaceSection = z.enum(["events", "catalogue", "merch", "information"]);
 const catalogueGroup = z.enum(["live", "upcoming", "ideas"]);
 const commentEntity = z.enum(["update", "task", "events", "catalogue", "merch"]);
-const entryReactionEntity = z.enum(["update", "task", "events", "catalogue", "merch", "information"]);
+const entryEntity = z.enum(["update", "task", "events", "catalogue", "merch", "information"]);
+const entryReactionEntity = z.enum(["update", "events", "catalogue", "merch", "information"]);
 const entryReactionType = z.enum(["heart", "like", "dislike", "poop", "question"]);
+const memberSlug = z.enum(["patrick", "ionut", "igor", "andrei"]);
 const commentBody = z.string().trim().min(1).max(1000);
 
 const reactionEmoji = {
@@ -44,7 +46,8 @@ function assertCanManage(member: { id: number; slug: string }, ownerId: number) 
   if (member.slug !== "patrick" && member.id !== ownerId) throw new Error("Poți modifica sau șterge doar înregistrările create de tine.");
 }
 type Brand = z.infer<typeof brand>;
-type EntryEntity = z.infer<typeof entryReactionEntity>;
+type EntryEntity = z.infer<typeof entryEntity>;
+const privateDeletionActions = ["deleted", "comment_deleted", "image_deleted"] as const;
 
 function synchronizeActivityTitle(input: { brand: Brand; entityType: EntryEntity; entityId: number; title: string }) {
   return db!.update(activity).set({
@@ -103,35 +106,91 @@ export async function editUpdate(formData: FormData) {
   refresh();
 }
 export async function createTask(formData: FormData) {
-  const member = await actor(); const input = z.object({ brand, title, body }).parse(Object.fromEntries(formData));
-  const [record] = await db!.insert(tasks).values({ ...input, createdBy: member.id, updatedBy: member.id }).returning();
+  const member = await actor();
+  if (member.slug !== "patrick") throw new Error("Doar Patrick poate crea sarcini.");
+  const input = z.object({ brand, title, body }).parse(Object.fromEntries(formData));
+  const assigneeSlugs = z.array(memberSlug).min(1, "Selectează cel puțin un responsabil.").parse(formData.getAll("assignees"));
+  const uniqueSlugs = [...new Set(assigneeSlugs)];
+  const selectedMembers = await db!.select({ id: members.id, slug: members.slug }).from(members).where(inArray(members.slug, uniqueSlugs));
+  if (selectedMembers.length !== uniqueSlugs.length) throw new Error("Unul dintre responsabili nu este disponibil.");
+  const [nextId] = await db!.select({ id: sql<number>`nextval(pg_get_serial_sequence('tasks', 'id'))::integer` }).from(sql`(select 1) as task_sequence`);
+  if (!nextId) throw new Error("Sarcina nu a putut fi creată.");
+  await db!.batch([
+    db!.insert(tasks).values({ id: nextId.id, ...input, createdBy: member.id, updatedBy: member.id }),
+    db!.insert(taskAssignees).values(selectedMembers.map((selected) => ({ taskId: nextId.id, memberId: selected.id }))),
+  ] as const);
+  const record = { id: nextId.id, title: input.title };
   await recordActivity(member, { brand: input.brand, entityType: "task", entityId: record.id, action: "created", summary: `a creat sarcina „${record.title}”`, title: record.title }); refresh();
 }
 export async function updateTask(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, title, body }).parse(Object.fromEntries(formData));
-  const [record] = await db!.select({ createdBy: tasks.createdBy }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+  if (member.slug !== "patrick") throw new Error("Doar Patrick poate modifica sarcini.");
+  const [record] = await db!.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
   if (!record) throw new Error("Înregistrarea nu mai există.");
-  assertCanManage(member, record.createdBy);
   await db!.batch([
     db!.update(tasks).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt))),
     synchronizeActivityTitle({ brand: input.brand, entityType: "task", entityId: input.id, title: input.title }),
   ] as const);
   refresh();
 }
+export async function setTaskAssignee(formData: FormData) {
+  const member = await actor();
+  if (member.slug !== "patrick") throw new Error("Doar Patrick poate schimba responsabilii unei sarcini.");
+  const input = z.object({
+    id: z.coerce.number().int().positive(),
+    brand,
+    memberSlug,
+    assigned: z.enum(["true", "false"]).transform((value) => value === "true"),
+  }).parse(Object.fromEntries(formData));
+  const [task] = await db!.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+  if (!task) throw new Error("Sarcina nu mai există.");
+  const [selectedMember] = await db!.select({ id: members.id }).from(members).where(eq(members.slug, input.memberSlug));
+  if (!selectedMember) throw new Error("Membrul nu mai este disponibil.");
+
+  if (input.assigned) {
+    await db!.insert(taskAssignees).values({ taskId: task.id, memberId: selectedMember.id }).onConflictDoNothing();
+  } else {
+    const assigned = await db!.select({ id: taskAssignees.id, memberId: taskAssignees.memberId }).from(taskAssignees).where(eq(taskAssignees.taskId, task.id));
+    if (assigned.length <= 1) throw new Error("O sarcină trebuie să păstreze cel puțin un responsabil.");
+    await db!.delete(taskAssignees).where(and(eq(taskAssignees.taskId, task.id), eq(taskAssignees.memberId, selectedMember.id)));
+  }
+  refresh();
+}
+export async function setTaskAssigneeCompletion(formData: FormData) {
+  const member = await actor();
+  if (member.slug !== "patrick") throw new Error("Doar Patrick poate schimba starea responsabililor.");
+  const input = z.object({
+    id: z.coerce.number().int().positive(),
+    brand,
+    memberSlug,
+    completed: z.enum(["true", "false"]).transform((value) => value === "true"),
+  }).parse(Object.fromEntries(formData));
+  const [task] = await db!.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+  if (!task) throw new Error("Sarcina nu mai există.");
+  const [selectedMember] = await db!.select({ id: members.id }).from(members).where(eq(members.slug, input.memberSlug));
+  if (!selectedMember) throw new Error("Membrul nu mai este disponibil.");
+  await db!.update(taskAssignees).set({
+    completed: input.completed,
+    completedAt: input.completed ? new Date() : null,
+    completedBy: input.completed ? member.id : null,
+  }).where(and(eq(taskAssignees.taskId, task.id), eq(taskAssignees.memberId, selectedMember.id)));
+  refresh();
+}
 export async function deleteRecord(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, type: z.enum(["task", "update"]), title }).parse(Object.fromEntries(formData));
   if (input.type === "task") {
-    const [record] = await db!.select({ createdBy: tasks.createdBy, title: tasks.title }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
+    if (member.slug !== "patrick") throw new Error("Doar Patrick poate șterge sarcini.");
+    const [record] = await db!.select({ title: tasks.title }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
     if (!record) return;
-    assertCanManage(member, record.createdBy);
     const now = new Date();
-    const [, , removedAttention] = await db!.batch([
+    const [, , , removedAttention] = await db!.batch([
       db!.update(tasks).set({ deletedAt: now, updatedBy: member.id, updatedAt: now }).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt))),
+      db!.delete(taskAssignees).where(eq(taskAssignees.taskId, input.id)),
       db!.delete(entryReactions).where(and(eq(entryReactions.brand, input.brand), eq(entryReactions.entityType, "task"), eq(entryReactions.entityId, input.id))),
       db!.delete(activity).where(and(eq(activity.brand, input.brand), eq(activity.entityType, "task"), eq(activity.entityId, input.id), eq(activity.action, "attention_requested"))).returning({ actorId: activity.actorId }),
     ] as const);
     if (removedAttention[0]) await resetTelegramDigestAfterCancellation(removedAttention[0].actorId);
-    await recordActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "deleted", summary: `a șters sarcina „${record.title}”`, title: record.title });
+    await recordActivity(member, { brand: input.brand, entityType: "task", entityId: input.id, action: "deleted", summary: `a șters sarcina „${record.title}”`, title: record.title }, { notifyTelegram: false });
   } else {
     const [record] = await db!.select({ createdBy: updates.createdBy, title: updates.title }).from(updates).where(and(eq(updates.id, input.id), eq(updates.brand, input.brand), isNull(updates.deletedAt)));
     if (!record) return;
@@ -143,7 +202,7 @@ export async function deleteRecord(formData: FormData) {
       db!.delete(activity).where(and(eq(activity.brand, input.brand), eq(activity.entityType, "update"), eq(activity.entityId, input.id), eq(activity.action, "attention_requested"))).returning({ actorId: activity.actorId }),
     ] as const);
     if (removedAttention[0]) await resetTelegramDigestAfterCancellation(removedAttention[0].actorId);
-    await recordActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "deleted", summary: `a șters propunerea „${record.title}”`, title: record.title });
+    await recordActivity(member, { brand: input.brand, entityType: "update", entityId: input.id, action: "deleted", summary: `a șters propunerea „${record.title}”`, title: record.title }, { notifyTelegram: false });
   }
   refresh();
 }
@@ -187,7 +246,7 @@ export async function deleteWorkspaceItem(formData: FormData) {
     db!.delete(activity).where(and(eq(activity.brand, input.brand), eq(activity.entityType, item.section), eq(activity.entityId, item.id), eq(activity.action, "attention_requested"))).returning({ actorId: activity.actorId }),
   ] as const);
   if (removedAttention[0]) await resetTelegramDigestAfterCancellation(removedAttention[0].actorId);
-  await recordActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters ${input.section === "information" ? "informația" : input.section === "events" ? "evenimentul" : input.section === "merch" ? "produsul merch" : item.catalogueGroup === "ideas" ? "ideea" : item.catalogueGroup === "upcoming" ? "produsul din În curând" : "produsul din Catalog activ"} „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }); refresh();
+  await recordActivity(member, { brand: input.brand, entityType: input.section, entityId: item.id, action: "deleted", summary: `a șters ${input.section === "information" ? "informația" : input.section === "events" ? "evenimentul" : input.section === "merch" ? "produsul merch" : item.catalogueGroup === "ideas" ? "ideea" : item.catalogueGroup === "upcoming" ? "produsul din În curând" : "produsul din Catalog activ"} „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }, { notifyTelegram: false }); refresh();
 }
 export async function deleteWorkspaceItemImage(formData: FormData) {
   const member = await actor();
@@ -202,7 +261,7 @@ export async function deleteWorkspaceItemImage(formData: FormData) {
   await del(image.url);
   await db!.update(workspaceItemImages).set({ deletedAt: new Date() }).where(eq(workspaceItemImages.id, image.id));
   if (item.merchImageUrl === image.url) await db!.update(workspaceItems).set({ merchImageUrl: null, merchImagePathname: null, updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
-  await recordActivity(member, { brand: input.brand, entityType: item.section as "events" | "catalogue" | "merch", entityId: item.id, action: "image_deleted", summary: `a șters o imagine din „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup });
+  await recordActivity(member, { brand: input.brand, entityType: item.section as "events" | "catalogue" | "merch", entityId: item.id, action: "image_deleted", summary: `a șters o imagine din „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup }, { notifyTelegram: false });
   refresh();
 }
 export async function deleteAttachment(formData: FormData) {
@@ -211,7 +270,7 @@ export async function deleteAttachment(formData: FormData) {
   const [attachment] = await db!.select().from(attachments).where(and(eq(attachments.id, input.id), eq(attachments.brand, input.brand), isNull(attachments.deletedAt)));
   if (!attachment) return;
   await del(attachment.url); await db!.update(attachments).set({ deletedAt: new Date() }).where(eq(attachments.id, attachment.id));
-  await recordActivity(member, { brand: input.brand, entityType: "attachment", entityId: attachment.id, action: "deleted", summary: `a șters PDF-ul „${attachment.filename}”`, title: attachment.filename }); refresh();
+  await recordActivity(member, { brand: input.brand, entityType: "attachment", entityId: attachment.id, action: "deleted", summary: `a șters PDF-ul „${attachment.filename}”`, title: attachment.filename }, { notifyTelegram: false }); refresh();
 }
 export async function createComment(formData: FormData) {
   const member = await actor();
@@ -230,7 +289,7 @@ export async function deleteComment(formData: FormData) {
   const target = await targetDetails(input);
   if (!target) return;
   await db!.update(comments).set({ deletedAt: new Date() }).where(eq(comments.id, comment.id));
-  await recordActivity(member, { brand: input.brand, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: `a șters un comentariu la „${target.title}”`, title: target.title, catalogueGroup: target.catalogueGroup });
+  await recordActivity(member, { brand: input.brand, entityType: input.entityType, entityId: input.entityId, action: "comment_deleted", summary: `a șters un comentariu la „${target.title}”`, title: target.title, catalogueGroup: target.catalogueGroup }, { notifyTelegram: false });
   refresh();
 }
 export async function toggleCommentHeart(formData: FormData) {
@@ -290,12 +349,12 @@ export async function toggleEntryAttention(formData: FormData) {
   const member = await actor();
   const input = z.object({
     brand,
-    entityType: entryReactionEntity,
+    entityType: entryEntity,
     entityId: z.coerce.number().int().positive(),
   }).parse(Object.fromEntries(formData));
   const target = await targetDetails(input);
   if (!target) throw new Error("Această înregistrare nu mai este disponibilă.");
-  if (target.createdBy !== member.id) throw new Error("Doar autorul poate solicita atenție pentru această înregistrare.");
+  if (input.entityType === "task" ? member.slug !== "patrick" : target.createdBy !== member.id) throw new Error(input.entityType === "task" ? "Doar Patrick poate solicita atenție pentru o sarcină." : "Doar autorul poate solicita atenție pentru această înregistrare.");
 
   const [existing] = await db!.select({ id: activity.id }).from(activity).where(and(
     eq(activity.brand, input.brand),
@@ -334,9 +393,14 @@ export async function activityData(filter: "all" | Brand) {
   if (!db || !session) return [];
   const selected = z.enum(["all", "kaja", "hexenwerk", "virginia"]).parse(filter);
   const base = db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id));
+  const visibility = memberSlug.safeParse(session.slug).success && session.slug === "patrick"
+    ? undefined
+    : sql`${activity.action} not in (${sql.join(privateDeletionActions.map((action) => sql`${action}`), sql`, `)})`;
   const rows = selected === "all"
-    ? await base.orderBy(desc(activity.createdAt), desc(activity.id)).limit(200)
-    : await base.where(eq(activity.brand, selected)).orderBy(desc(activity.createdAt), desc(activity.id)).limit(200);
+    ? visibility
+      ? await base.where(visibility).orderBy(desc(activity.createdAt), desc(activity.id)).limit(200)
+      : await base.orderBy(desc(activity.createdAt), desc(activity.id)).limit(200)
+    : await base.where(visibility ? and(eq(activity.brand, selected), visibility) : eq(activity.brand, selected)).orderBy(desc(activity.createdAt), desc(activity.id)).limit(200);
 
   const updateIds = rows.filter(({ event }) => event.entityType === "update").map(({ event }) => event.entityId);
   const taskIds = rows.filter(({ event }) => event.entityType === "task").map(({ event }) => event.entityId);
@@ -364,9 +428,11 @@ export async function activityData(filter: "all" | Brand) {
 export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
-  const [allUpdates, allTasks, allWorkspaceItems, allImages, allAttachments, allComments, allReactions, allEntryReactions, allAttention] = await Promise.all([
+  const [allMembers, allUpdates, allTasks, allTaskAssignees, allWorkspaceItems, allImages, allAttachments, allComments, allReactions, allEntryReactions, allAttention] = await Promise.all([
+    db.select({ id: members.id, name: members.name, slug: members.slug }).from(members).orderBy(members.id),
     db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(and(eq(updates.brand, brandName), isNull(updates.deletedAt))).orderBy(desc(updates.updatedAt)),
     db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(desc(tasks.updatedAt)),
+    db.select({ assignment: taskAssignees, memberName: members.name, memberSlug: members.slug }).from(taskAssignees).innerJoin(tasks, eq(taskAssignees.taskId, tasks.id)).innerJoin(members, eq(taskAssignees.memberId, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(taskAssignees.taskId, members.id),
     db.select({ item: workspaceItems, author: members.name, authorSlug: members.slug }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt))).orderBy(desc(workspaceItems.updatedAt)),
     db.select().from(workspaceItemImages).where(and(eq(workspaceItemImages.brand, brandName), isNull(workspaceItemImages.deletedAt))).orderBy(workspaceItemImages.itemId, workspaceItemImages.position, workspaceItemImages.createdAt),
     db.select({ attachment: attachments, author: members.name, authorSlug: members.slug }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(and(eq(attachments.brand, brandName), isNull(attachments.deletedAt))).orderBy(desc(attachments.createdAt)),
@@ -375,5 +441,5 @@ export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia"
     db.select({ reaction: entryReactions, memberName: members.name, memberSlug: members.slug }).from(entryReactions).innerJoin(members, eq(entryReactions.memberId, members.id)).where(eq(entryReactions.brand, brandName)).orderBy(entryReactions.createdAt),
     db.select({ event: activity }).from(activity).where(and(eq(activity.brand, brandName), eq(activity.action, "attention_requested"))).orderBy(activity.createdAt, activity.id),
   ]);
-  return { updates: allUpdates, tasks: allTasks, workspaceItems: allWorkspaceItems, images: allImages, attachments: allAttachments, comments: allComments, reactions: allReactions, entryReactions: allEntryReactions, attention: allAttention };
+  return { members: allMembers, updates: allUpdates, tasks: allTasks, taskAssignees: allTaskAssignees, workspaceItems: allWorkspaceItems, images: allImages, attachments: allAttachments, comments: allComments, reactions: allReactions, entryReactions: allEntryReactions, attention: allAttention };
 }
