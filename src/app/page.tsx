@@ -12,7 +12,7 @@ import { BrandFormPicker } from "./brand-picker";
 import { EntryInlineEditor } from "./entry-inline-editor";
 import { FilterLink } from "./filter-link";
 import { MerchComposer } from "./merch-composer";
-import { ModalEntryGrid } from "./merch-grid";
+import { ModalEntryCard, ModalEntryGrid } from "./merch-grid";
 import { MobileMenu } from "./mobile-menu";
 import { PdfUploader } from "./pdf-uploader";
 import { TaskComposer } from "./task-composer";
@@ -167,7 +167,7 @@ function AttentionControl({ brand, entityType, entityId, active, interactive }: 
   </form>;
 }
 
-function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, previewExtra, detailsExtra, entryReactionsEnabled = true, attentionInteractive, showAuthor = true, modal = false, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; previewExtra?: ReactNode; detailsExtra?: ReactNode; entryReactionsEnabled?: boolean; attentionInteractive?: boolean; showAuthor?: boolean; modal?: boolean; edit?: EntryEditConfig }) {
+function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, previewExtra, detailsExtra, entryReactionsEnabled = true, attentionInteractive, showAuthor = true, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; previewExtra?: ReactNode; detailsExtra?: ReactNode; entryReactionsEnabled?: boolean; attentionInteractive?: boolean; showAuthor?: boolean; edit?: EntryEditConfig }) {
   const entryId = `entry-${type}-${id}`;
   const commentType = type === "information" ? null : type;
   const own = commentType ? (comments || []).filter(({ comment }) => comment.entityType === commentType && comment.entityId === id) : [];
@@ -176,7 +176,9 @@ function EntryCard({ brand, type, id, title, body, author, authorSlug, attention
   const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group entry-preview-author">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} /><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}{previewExtra}{entryReactionsEnabled && <EntryReactionPreview reactions={ownEntryReactions} />}</>;
   const authorControls = <span className="entry-author-group">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} /><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={attentionInteractive ?? memberSlug === authorSlug} /></span>;
   const interactiveContent = <>{detailsExtra}{entryReactionsEnabled && <EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />}{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
-  return <><article className="item card entry-card-placeholder" aria-hidden="true">{compactPreview}</article><article className="item card entry-card-surface"><details id={entryId} className="entry-card"><summary>{compactPreview}</summary>{modal ? <EntryInlineEditor entryId={entryId} title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor> : <div className="entry-card-content">{detailsMedia}{body && <p>{body}</p>}{interactiveContent}</div>}</details></article></>;
+  return <ModalEntryCard entryId={entryId} label={title} preview={compactPreview}>
+    <EntryInlineEditor entryId={entryId} title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor>
+  </ModalEntryCard>;
 }
 
 function recordEditConfig({ brand, type, id, title: itemTitle, action, allowed }: { brand: Brand; type: "update" | "task"; id: number; title: string; action: (formData: FormData) => Promise<void>; allowed: boolean }): EntryEditConfig | undefined {
@@ -223,9 +225,10 @@ function WorkspaceSection({ brandFilter, section, title, displayTitle, items, im
     const manageable = canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup);
     const media = firstImage ? <div className="entry-media-preview"><img src={`/api/item-images/${firstImage.id}`} alt={`Previzualizare ${item.title}`} />{itemImages.length > 1 && <span>{itemImages.length} imagini</span>}</div> : undefined;
     const detailsMedia = galleryEnabled ? <EntryGallery brand={itemBrand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
-    return <div key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} showAuthor={section === "catalogue" && item.catalogueGroup === "ideas"} modal={modalEnabled} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></div>;
+    return <article key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} showAuthor={section === "catalogue" && item.catalogueGroup === "ideas"} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></article>;
   });
-  return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><PageHeading title={displayTitle} count={cards.length} /></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
+  const entryIds = items.map(({ item }) => `entry-${section}-${item.id}`);
+  return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><PageHeading title={displayTitle} count={cards.length} /></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid entryIds={entryIds} label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
 }
 
 function UpdatesSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
@@ -237,11 +240,11 @@ function UpdatesSection({ brandFilter, data, memberSlug }: { brandFilter: BrandF
       <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Spune ce s-a schimbat și ce urmează." />
       <button className="button">Publică propunerea</button>
     </form></Composer>
-    <ModalEntryGrid label="propunerea">{data.updates.map(({ update, author, authorSlug }) => {
+    <ModalEntryGrid entryIds={data.updates.map(({ update }) => `entry-update-${update.id}`)} label="propunerea">{data.updates.map(({ update, author, authorSlug }) => {
       const updateBrand = update.brand as Brand;
-      return <div className="card-wrap" key={update.id}>
-        <EntryCard brand={updateBrand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, updateBrand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal edit={recordEditConfig({ brand: updateBrand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
-      </div>;
+      return <article className="card-wrap" key={update.id}>
+        <EntryCard brand={updateBrand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, updateBrand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} edit={recordEditConfig({ brand: updateBrand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
+      </article>;
     })}</ModalEntryGrid>
   </section></>;
 }
@@ -309,13 +312,13 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
     <section className="panel content-section">
       <div className="panel-head"><PageHeading title={pageTitle({ view: "tasks", brand: brandFilter, tasks: taskView })} count={visibleTasks.length} /></div>
       {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={initialBrand(brandFilter)} members={data.members} /></Composer>}
-      <ModalEntryGrid label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
+      <ModalEntryGrid entryIds={visibleTasks.map(({ task }) => `entry-task-${task.id}`)} label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
         const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
         const taskBrand = task.brand as Brand;
         const taskContext = <div className="task-card-context"><TaskMemberBadges assignments={assignments} /></div>;
-        return <div className="card-wrap" key={task.id}>
-          <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} modal edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
-        </div>;
+        return <article className="card-wrap" key={task.id}>
+          <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
+        </article>;
       })}</ModalEntryGrid>
     </section>
   </>;

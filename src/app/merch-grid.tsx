@@ -1,199 +1,168 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
-import { EntryModalStateProvider, useEntryModalState } from "./entry-modal-state";
+import { createPortal } from "react-dom";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEntryModalState } from "./entry-modal-state";
 
-export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { children: ReactNode; label: string; twoColumnMobile?: boolean }) {
-  return <EntryModalStateProvider><ModalEntryGridContent label={label} twoColumnMobile={twoColumnMobile}>{children}</ModalEntryGridContent></EntryModalStateProvider>;
-}
-
-function ModalEntryGridContent({ children, label, twoColumnMobile = false }: { children: ReactNode; label: string; twoColumnMobile?: boolean }) {
-  const grid = useRef<HTMLDivElement>(null);
-  const previousBodyOverflow = useRef<string | null>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
-  const activeEntryId = useRef<string | null>(null);
-  const focusFrame = useRef<number | null>(null);
-  const { setActiveEntryId, stopEditing } = useEntryModalState();
+export function ModalEntryGrid({ children, entryIds, label, twoColumnMobile = false }: { children: ReactNode; entryIds: string[]; label: string; twoColumnMobile?: boolean }) {
+  const { activeEntryId, closeEntry, openEntry, saving } = useEntryModalState();
+  const entryIdsRef = useRef(entryIds);
+  const savingRef = useRef(saving);
+  const entrySignature = entryIds.join("|");
 
   useLayoutEffect(() => {
-    const element = grid.current;
-    if (!element) return;
+    entryIdsRef.current = entryIds;
+  }, [entryIds, entrySignature]);
 
-    const entries = () => Array.from(element.querySelectorAll<HTMLDetailsElement>(".modal-entry-grid > .card-wrap .entry-card"));
-    const entryById = (id: string) => entries().find((entry) => entry.id === id);
+  useLayoutEffect(() => {
+    savingRef.current = saving;
+  }, [saving]);
 
-    const clearModal = ({ restoreFocus = true, force = false }: { restoreFocus?: boolean; force?: boolean } = {}) => {
-      const activeEntry = activeEntryId.current ? entryById(activeEntryId.current) : undefined;
-      if (!force && activeEntry?.querySelector<HTMLElement>('[data-entry-inline-editor][data-entry-saving="true"]')) return false;
-
-      if (focusFrame.current !== null) {
-        cancelAnimationFrame(focusFrame.current);
-        focusFrame.current = null;
-      }
-
-      activeEntryId.current = null;
-      setActiveEntryId(null);
-      stopEditing();
-      element.classList.remove("entry-modal-open");
-      element.querySelectorAll<HTMLElement>(".card-wrap.entry-card-modal").forEach((card) => card.classList.remove("entry-card-modal"));
-      entries().forEach((entry) => {
-        entry.open = false;
-        entry.removeAttribute("role");
-        entry.removeAttribute("aria-modal");
-      });
-
-      if (previousBodyOverflow.current !== null) {
-        document.body.style.overflow = previousBodyOverflow.current;
-        previousBodyOverflow.current = null;
-      }
-
-      const focusTarget = previousFocus.current;
-      previousFocus.current = null;
-      if (!restoreFocus) return true;
-
-      if (focusTarget?.isConnected) {
-        focusTarget.focus({ preventScroll: true });
-        return true;
-      }
-
-      element.focus({ preventScroll: true });
-      return true;
-    };
-
-    const openModal = (entry: HTMLDetailsElement, trigger?: HTMLElement, focusClose = true) => {
-      const card = entry.closest<HTMLElement>(".card-wrap");
-      if (!card || !entry.id) return;
-
-      const isNewEntry = activeEntryId.current !== entry.id;
-      entries().forEach((other) => {
-        const otherCard = other.closest<HTMLElement>(".card-wrap");
-        if (other !== entry) {
-          other.open = false;
-          other.removeAttribute("role");
-          other.removeAttribute("aria-modal");
-          otherCard?.classList.remove("entry-card-modal");
-        }
-      });
-
-      if (isNewEntry) {
-        stopEditing();
-        previousFocus.current = trigger ?? entry.querySelector<HTMLElement>("summary") ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-      }
-
-      activeEntryId.current = entry.id;
-      setActiveEntryId(entry.id);
-      card.classList.add("entry-card-modal");
-      element.classList.add("entry-modal-open");
-      entry.setAttribute("role", "dialog");
-      entry.setAttribute("aria-modal", "true");
-
-      if (previousBodyOverflow.current === null) {
-        previousBodyOverflow.current = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-      }
-
-      // Apply the fixed modal classes before opening <details>, so the browser's
-      // first painted frame is already centered instead of expanding in the grid.
-      entry.open = true;
-
-      if (focusClose) {
-        if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
-        focusFrame.current = requestAnimationFrame(() => {
-          focusFrame.current = null;
-          card.querySelector<HTMLElement>("[data-entry-close]")?.focus();
-        });
-      }
-    };
-
-    const closeActive = () => clearModal();
-
+  useEffect(() => {
     const openFromHash = () => {
+      if (savingRef.current) return;
       const hash = window.location.hash.slice(1);
       if (!hash) {
-        if (activeEntryId.current) clearModal();
-        return false;
+        closeEntry();
+        return;
       }
 
-      let id: string;
+      let entryId: string;
       try {
-        id = decodeURIComponent(hash);
+        entryId = decodeURIComponent(hash);
       } catch {
-        if (activeEntryId.current) clearModal();
-        return false;
-      }
-
-      const target = entryById(id);
-      if (target) {
-        openModal(target, target.querySelector<HTMLElement>("summary") ?? undefined);
-        return true;
-      } else if (activeEntryId.current) {
-        clearModal();
-      }
-      return false;
-    };
-
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-
-      if (target.closest("[data-entry-close]") || target.closest(".entry-modal-backdrop")) {
-        event.preventDefault();
-        closeActive();
+        closeEntry();
         return;
       }
 
-      const summary = target.closest<HTMLElement>("summary");
-      const entry = summary?.parentElement;
-      if (!(entry instanceof HTMLDetailsElement) || !entry.classList.contains("entry-card")) return;
-
-      event.preventDefault();
-      openModal(entry, summary ?? undefined);
+      if (entryIdsRef.current.includes(entryId)) openEntry(entryId);
+      else closeEntry();
     };
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && activeEntryId.current) closeActive();
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    const closeForFilter = () => {
+      if (!savingRef.current) closeEntry();
     };
+    window.addEventListener("workspace-filter-change", closeForFilter);
+    return () => {
+      window.removeEventListener("hashchange", openFromHash);
+      window.removeEventListener("workspace-filter-change", closeForFilter);
+    };
+  }, [closeEntry, openEntry]);
 
-    const observer = new MutationObserver(() => {
-      const id = activeEntryId.current;
-      if (!id) return;
+  useEffect(() => {
+    if (!saving && activeEntryId && !entryIdsRef.current.includes(activeEntryId)) closeEntry();
+  }, [activeEntryId, closeEntry, entrySignature, saving]);
 
-      const active = entryById(id);
-      if (!active) {
-        // A successful delete removes the active entry during the RSC refresh.
-        // Clear the backdrop and scroll lock in the same rendering turn.
-        clearModal();
-        return;
-      }
+  return <div className="modal-entry-grid-shell" tabIndex={-1}><div className={`items card-grid modal-entry-grid${twoColumnMobile ? " two-column-mobile" : ""}`} aria-label={label}>{children}</div></div>;
+}
 
-      const card = active.closest<HTMLElement>(".card-wrap");
-      if (!active.open || !card?.classList.contains("entry-card-modal") || !element.classList.contains("entry-modal-open")) {
-        // Edits, comments and reactions may replace the server-rendered DOM.
-        // Reattach the modal state to the replacement without moving focus.
-        openModal(active, previousFocus.current ?? undefined, false);
-      }
+export function ModalEntryCard({ children, entryId, label, preview }: { children: ReactNode; entryId: string; label: string; preview: ReactNode }) {
+  const trigger = useRef<HTMLDivElement>(null);
+  const modal = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const { activeEntryId, closeEntry, openEntry, saving } = useEntryModalState();
+  const active = activeEntryId === entryId;
+
+  useEffect(() => setMounted(true), []);
+
+  useLayoutEffect(() => {
+    if (!active) return;
+    const previousOverflow = document.body.style.overflow;
+    const layer = modal.current?.closest(".entry-modal-layer");
+    const background = Array.from(document.body.children)
+      .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== layer)
+      .map((element) => ({
+        element,
+        inert: element.hasAttribute("inert"),
+        ariaHidden: element.getAttribute("aria-hidden"),
+      }));
+
+    document.body.style.overflow = "hidden";
+    modal.current?.querySelector<HTMLElement>("[data-entry-close]")?.focus({ preventScroll: true });
+    background.forEach(({ element }) => {
+      element.setAttribute("inert", "");
+      element.setAttribute("aria-hidden", "true");
     });
 
-    element.addEventListener("click", handleClick, true);
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("hashchange", openFromHash);
-    window.addEventListener("workspace-filter-change", closeActive);
-    observer.observe(element, { childList: true, subtree: true });
-    const openedFromHash = openFromHash();
-    if (!openedFromHash) {
-      const preHydrationEntry = entries().find((entry) => entry.open);
-      if (preHydrationEntry) openModal(preHydrationEntry, preHydrationEntry.querySelector<HTMLElement>("summary") ?? undefined);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      background.forEach(({ element, inert, ariaHidden }) => {
+        if (!element.isConnected) return;
+        if (!inert) element.removeAttribute("inert");
+        if (ariaHidden === null) element.removeAttribute("aria-hidden");
+        else element.setAttribute("aria-hidden", ariaHidden);
+      });
+      if (trigger.current?.isConnected) trigger.current.focus({ preventScroll: true });
+      else document.querySelector<HTMLElement>(".modal-entry-grid-shell")?.focus({ preventScroll: true });
+    };
+  }, [active]);
+
+  useLayoutEffect(() => {
+    if (active && saving) modal.current?.focus({ preventScroll: true });
+  }, [active, saving]);
+
+  const open = () => openEntry(entryId);
+  const close = () => {
+    if (saving) return;
+    closeEntry();
+  };
+  const handlePreviewKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    open();
+  };
+  const handleModalKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      close();
+      return;
+    }
+    if (event.key !== "Tab" || !modal.current) return;
+
+    const focusable = Array.from(modal.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => element.getClientRects().length > 0);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      modal.current.focus();
+      return;
     }
 
-    return () => {
-      observer.disconnect();
-      element.removeEventListener("click", handleClick, true);
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("hashchange", openFromHash);
-      window.removeEventListener("workspace-filter-change", closeActive);
-      clearModal({ restoreFocus: false, force: true });
-    };
-  }, [setActiveEntryId, stopEditing]);
+    const first = focusable[0];
+    const last = focusable.at(-1)!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
-  return <div ref={grid} className="modal-entry-grid-shell" tabIndex={-1}><button className="entry-modal-backdrop" type="button" aria-label={`Închide ${label}`} /><div className={`items card-grid modal-entry-grid${twoColumnMobile ? " two-column-mobile" : ""}`}>{children}</div></div>;
+  return <>
+    <div
+      id={entryId}
+      ref={trigger}
+      className="entry-card-preview"
+      role="button"
+      tabIndex={0}
+      aria-haspopup="dialog"
+      aria-expanded={active}
+      aria-label={`Deschide ${label}`}
+      onClick={open}
+      onKeyDown={handlePreviewKeyDown}
+    >
+      {preview}
+    </div>
+    {mounted && active && createPortal(
+      <div className="entry-modal-layer">
+        <button className="entry-modal-backdrop" type="button" aria-label={`Închide ${label}`} onClick={close} disabled={saving} />
+        <div ref={modal} className="entry-modal-surface" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} onKeyDown={handleModalKeyDown}>
+          {children}
+        </div>
+      </div>,
+      document.body,
+    )}
+  </>;
 }
