@@ -34,10 +34,11 @@ function rememberFilter(key: string, filter: ActivityFilter) {
   }
 }
 
-function hrefFor(event: ActivityRows[number]["event"]) {
+function hrefFor(row: ActivityRows[number]) {
+  const { event } = row;
   const brand = event.brand as Brand;
   if (event.entityType === "update") return `/?brand=${brand}&view=updates#entry-update-${event.entityId}`;
-  if (event.entityType === "task") return `/?brand=${brand}&view=tasks&tasks=all#entry-task-${event.entityId}`;
+  if (event.entityType === "task") return `/?brand=${brand}&view=tasks&tasks=${row.taskCompleted ? "history" : "all"}&taskBrand=${row.taskCompleted ? "all" : brand}#entry-task-${event.entityId}`;
   if (event.entityType === "attachment") return `/?brand=${brand}&view=uploads#attachment-${event.entityId}`;
   return `/?brand=${brand}&view=${event.entityType}${event.entityType === "catalogue" ? `&catalogue=${event.catalogueGroup || "live"}` : ""}#entry-${event.entityType}-${event.entityId}`;
 }
@@ -105,7 +106,7 @@ export function ActivityPanel({ initialRows, initialFilter, memberSlug }: { init
         const targetExists = "targetExists" in row ? Boolean(row.targetExists) : true;
         const canLink = event.action !== "deleted" && targetExists;
         const content = <>{textFor(event)} <span className="activity-brand">în {brands.find((brand) => brand.key === event.brand)?.label || event.brand.toUpperCase()}</span></>;
-        return <div className={`event${deletion ? " event-deleted" : ""}`} key={event.id}>{event.action === "attention_requested" && <span className="activity-attention" aria-hidden="true">⚠️ </span>}<b>{actor}</b> {canLink ? <a className="activity-link" href={hrefFor(event)}>{content}</a> : content}</div>;
+        return <div className={`event${deletion ? " event-deleted" : ""}`} key={event.id}>{event.action === "attention_requested" && <span className="activity-attention" aria-hidden="true">⚠️ </span>}<b>{actor}</b> {canLink ? <a className="activity-link" href={hrefFor(row)}>{content}</a> : content}</div>;
       })}
     </div>
   </aside>;

@@ -407,11 +407,12 @@ export async function activityData(filter: "all" | Brand) {
   const attachmentIds = rows.filter(({ event }) => event.entityType === "attachment").map(({ event }) => event.entityId);
   const itemIds = rows.filter(({ event }) => !["update", "task", "attachment"].includes(event.entityType)).map(({ event }) => event.entityId);
 
-  const [liveUpdates, liveTasks, liveAttachments, liveItems] = await Promise.all([
+  const [liveUpdates, liveTasks, liveAttachments, liveItems, liveTaskAssignees] = await Promise.all([
     updateIds.length ? db.select({ id: updates.id, brand: updates.brand }).from(updates).where(and(inArray(updates.id, updateIds), isNull(updates.deletedAt))) : [],
     taskIds.length ? db.select({ id: tasks.id, brand: tasks.brand }).from(tasks).where(and(inArray(tasks.id, taskIds), isNull(tasks.deletedAt))) : [],
     attachmentIds.length ? db.select({ id: attachments.id, brand: attachments.brand }).from(attachments).where(and(inArray(attachments.id, attachmentIds), isNull(attachments.deletedAt))) : [],
     itemIds.length ? db.select({ id: workspaceItems.id, brand: workspaceItems.brand, section: workspaceItems.section }).from(workspaceItems).where(and(inArray(workspaceItems.id, itemIds), isNull(workspaceItems.deletedAt))) : [],
+    taskIds.length ? db.select({ taskId: taskAssignees.taskId, completed: taskAssignees.completed }).from(taskAssignees).where(inArray(taskAssignees.taskId, taskIds)) : [],
   ]);
   const liveTargets = new Set<string>([
     ...liveUpdates.map((entry) => `${entry.brand}:update:${entry.id}`),
@@ -419,10 +420,40 @@ export async function activityData(filter: "all" | Brand) {
     ...liveAttachments.map((entry) => `${entry.brand}:attachment:${entry.id}`),
     ...liveItems.map((entry) => `${entry.brand}:${entry.section}:${entry.id}`),
   ]);
-  return rows.map((row) => ({
-    ...row,
-    targetExists: liveTargets.has(`${row.event.brand}:${row.event.entityType}:${row.event.entityId}`),
-  }));
+  return rows.map((row) => {
+    const taskAssignments = row.event.entityType === "task"
+      ? liveTaskAssignees.filter((assignment) => assignment.taskId === row.event.entityId)
+      : [];
+    const taskCompleted = taskAssignments.length > 0 && taskAssignments.every((assignment) => assignment.completed);
+    const targetExists = liveTargets.has(`${row.event.brand}:${row.event.entityType}:${row.event.entityId}`)
+      && !(row.event.entityType === "task" && taskCompleted && session.slug !== "patrick");
+    return {
+      ...row,
+      targetExists,
+      taskCompleted,
+    };
+  });
+}
+
+export async function taskWorkspaceData() {
+  if (!db) return null;
+  for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
+  const [allMembers, allTasks, allTaskAssignees, allComments, allReactions, allAttention] = await Promise.all([
+    db.select({ id: members.id, name: members.name, slug: members.slug }).from(members).orderBy(members.id),
+    db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(isNull(tasks.deletedAt)).orderBy(desc(tasks.updatedAt)),
+    db.select({ assignment: taskAssignees, memberName: members.name, memberSlug: members.slug }).from(taskAssignees).innerJoin(tasks, eq(taskAssignees.taskId, tasks.id)).innerJoin(members, eq(taskAssignees.memberId, members.id)).where(isNull(tasks.deletedAt)).orderBy(taskAssignees.taskId, members.id),
+    db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(and(eq(comments.entityType, "task"), isNull(comments.deletedAt))).orderBy(comments.createdAt),
+    db.select({ reaction: commentReactions, memberName: members.name, memberSlug: members.slug }).from(commentReactions).innerJoin(comments, eq(commentReactions.commentId, comments.id)).innerJoin(members, eq(commentReactions.memberId, members.id)).where(and(eq(comments.entityType, "task"), isNull(comments.deletedAt))).orderBy(commentReactions.createdAt),
+    db.select({ event: activity }).from(activity).where(and(eq(activity.entityType, "task"), eq(activity.action, "attention_requested"))).orderBy(activity.createdAt, activity.id),
+  ]);
+  return {
+    members: allMembers,
+    tasks: allTasks,
+    taskAssignees: allTaskAssignees,
+    comments: allComments,
+    reactions: allReactions,
+    attention: allAttention,
+  };
 }
 
 export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {

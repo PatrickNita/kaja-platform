@@ -1,9 +1,10 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { activityData, createComment, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { activityData, createComment, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { ActivityPanel } from "./activity-panel";
@@ -21,21 +22,24 @@ export const dynamic = "force-dynamic";
 const sections = [{ key: "updates", label: "Propuneri" }, { key: "tasks", label: "Sarcini" }, { key: "events", label: "Evenimente" }, { key: "catalogue", label: "Catalog" }, { key: "merch", label: "Merch" }, { key: "information", label: "Informații" }, { key: "uploads", label: "Încărcări" }] as const;
 const brands = [{ key: "kaja", label: "KAJA" }, { key: "hexenwerk", label: "HEXENWERK" }, { key: "virginia", label: "VIRGINIA" }] as const;
 const catalogueGroups = [{ key: "live", label: "Catalog activ" }, { key: "upcoming", label: "În curând" }, { key: "ideas", label: "Idei" }] as const;
-const taskViews = [{ key: "all", label: "Toate sarcinile" }, { key: "mine", label: "Sarcinile mele" }] as const;
+const taskViews = [{ key: "all", label: "Toate sarcinile" }, { key: "mine", label: "Sarcinile mele" }, { key: "history", label: "Istoric sarcini" }] as const;
+const taskBrandFilters = [{ key: "all", label: "Toate brand-urile" }, ...brands] as const;
 const activityFilters = [{ key: "all", label: "Toate" }, ...brands] as const;
 type Section = (typeof sections)[number]["key"];
 type Brand = (typeof brands)[number]["key"];
 type CatalogueGroup = (typeof catalogueGroups)[number]["key"];
 type TaskView = (typeof taskViews)[number]["key"];
+type TaskBrandFilter = (typeof taskBrandFilters)[number]["key"];
 type ActivityFilter = (typeof activityFilters)[number]["key"];
 type Data = NonNullable<Awaited<ReturnType<typeof workspaceData>>>;
+type TaskData = NonNullable<Awaited<ReturnType<typeof taskWorkspaceData>>>;
 type ActivityData = Awaited<ReturnType<typeof activityData>>;
 type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: string; authorSlug: string };
 type CommentRow = Data["comments"][number];
 type ReactionRow = Data["reactions"][number];
 type EntryReactionRow = Data["entryReactions"][number];
 type AttentionRow = Data["attention"][number];
-type TaskAssigneeRow = Data["taskAssignees"][number];
+type TaskAssigneeRow = TaskData["taskAssignees"][number];
 type CommentEntity = "update" | "task" | "events" | "catalogue" | "merch";
 type EntryEntity = CommentEntity | "information";
 type EntryReactionType = "heart" | "like" | "dislike" | "poop" | "question";
@@ -205,10 +209,10 @@ function TaskMemberBadges({ assignments, label = true }: { assignments: TaskAssi
   </div>;
 }
 
-function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, canManage }: { brand: Brand; taskId: number; assignments: TaskAssigneeRow[]; members: Data["members"]; canManage: boolean }) {
+function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, canManage }: { brand: Brand; taskId: number; assignments: TaskAssigneeRow[]; members: TaskData["members"]; canManage: boolean }) {
   if (!canManage) return <section className="task-assignee-manager"><h4>Responsabili</h4><TaskMemberBadges assignments={assignments} label={false} /></section>;
   return <section className="task-assignee-manager">
-    <div><h4>Responsabili</h4><p>Apasă starea pentru finalizare. Folosește × pentru eliminare.</p></div>
+    <h4>Responsabili</h4>
     <div className="task-assignee-list manager">{allMembers.map((member) => {
       const selected = assignments.find(({ assignment }) => assignment.memberId === member.id);
       if (!selected) return <form action={setTaskAssignee} key={member.id}>
@@ -238,18 +242,32 @@ function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, 
   </section>;
 }
 
-function TasksSection({ brand, data, memberSlug, taskView }: { brand: Brand; data: Data; memberSlug: string; taskView: TaskView }) {
-  const visibleTasks = taskView === "mine"
-    ? data.tasks.filter(({ task }) => data.taskAssignees.some(({ assignment, memberSlug: assignedSlug }) => assignment.taskId === task.id && assignedSlug === memberSlug))
-    : data.tasks;
+function TasksSection({ headerBrand, data, memberSlug, taskView, taskBrand }: { headerBrand: Brand; data: TaskData; memberSlug: string; taskView: TaskView; taskBrand: TaskBrandFilter }) {
+  const taskIsCompleted = (taskId: number) => {
+    const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === taskId);
+    return assignments.length > 0 && assignments.every(({ assignment }) => assignment.completed);
+  };
+  const visibleTasks = data.tasks.filter(({ task }) => {
+    const completed = taskIsCompleted(task.id);
+    if (taskView === "history") return completed;
+    if (completed) return false;
+    if (taskBrand !== "all" && task.brand !== taskBrand) return false;
+    return taskView !== "mine" || data.taskAssignees.some(({ assignment, memberSlug: assignedSlug }) => assignment.taskId === task.id && assignedSlug === memberSlug);
+  });
+  const taskHref = (nextView: TaskView, nextBrand: TaskBrandFilter) => `/?brand=${headerBrand}&view=tasks&tasks=${nextView}&taskBrand=${nextBrand}`;
+  const availableViews = memberSlug === "patrick" ? taskViews : taskViews.filter(({ key }) => key !== "history");
   return <>
-    <nav className="catalogue-submenu task-submenu" aria-label="Filtre sarcini">{taskViews.map((entry) => <a key={entry.key} className={entry.key === taskView ? "active" : undefined} href={`/?brand=${brand}&view=tasks&tasks=${entry.key}`}>{entry.label}</a>)}</nav>
+    {taskView !== "history" && <nav className="catalogue-submenu task-brand-filters" aria-label="Filtrează sarcinile după brand">{taskBrandFilters.map((entry) => <a key={entry.key} className={entry.key === taskBrand ? "active" : undefined} href={taskHref(taskView, entry.key)}>{entry.label}</a>)}</nav>}
+    <nav className="catalogue-submenu task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <a key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : taskBrand)}>{entry.label}</a>)}</nav>
     <section className="panel content-section">
-      {memberSlug === "patrick" && <Composer label="Adaugă sarcină"><TaskComposer brand={brand} members={data.members} /></Composer>}
+      {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={taskBrand === "all" ? undefined : taskBrand} members={data.members} /></Composer>}
       <ModalEntryGrid label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
         const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
+        const taskBrand = task.brand as Brand;
+        const brandLabel = brands.find(({ key }) => key === taskBrand)?.label ?? task.brand.toUpperCase();
+        const taskContext = <div className="task-card-context"><span className="task-brand-badge">{brandLabel}</span><TaskMemberBadges assignments={assignments} /></div>;
         return <div className="card-wrap" key={task.id}>
-          <EntryCard brand={brand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} entryReactionsEnabled={false} previewExtra={<TaskMemberBadges assignments={assignments} />} detailsExtra={<TaskAssigneeManager brand={brand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} memberSlug={memberSlug} modal edit={recordEditConfig({ brand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
+          <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<><span className="task-brand-badge modal-brand">{brandLabel}</span><TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} /></>} attentionInteractive={memberSlug === "patrick"} memberSlug={memberSlug} modal edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
         </div>;
       })}</ModalEntryGrid>
     </section>
@@ -266,18 +284,27 @@ function UploadsSection({ brand, data, memberSlug }: { brand: Brand; data: Data;
   return <section className="panel content-section"><div className="panel-head"><h2>Încărcări</h2></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader brand={brand} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment, author }) => <article id={`attachment-${attachment.id}`} key={attachment.id} className="item attachment"><div><h3 className="item-title">{attachment.filename}</h3><div className="meta"><span>Încărcat de {author}</span><span>·</span><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Descarcă PDF</a>{canManagePdfs && <form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="filename" value={attachment.filename} /><ConfirmDeleteButton itemName={attachment.filename}>Șterge</ConfirmDeleteButton></form>}</div></article>)}</div></section>;
 }
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; activity?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; taskBrand?: string; activity?: string }> }) {
   const member = await currentMember();
   if (!member) return <main className="landing"><section className="landing-card"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><p className="eyebrow">Platformă internă pentru membri</p><h1>O imagine comună asupra muncii.</h1><p>Folosește linkul personal KAJA pentru a intra în spațiul de lucru.</p>{!hasDatabase && <div className="setup">Configurarea bazei de date este în așteptare.</div>}</section></main>;
   const params = await searchParams;
   const brand: Brand = brands.some((entry) => entry.key === params.brand) ? params.brand as Brand : "kaja";
   const view: Section = sections.some((entry) => entry.key === params.view) ? params.view as Section : "tasks";
   const group: CatalogueGroup = catalogueGroups.some((entry) => entry.key === params.catalogue) ? params.catalogue as CatalogueGroup : "live";
-  const taskView: TaskView = taskViews.some((entry) => entry.key === params.tasks) ? params.tasks as TaskView : "all";
+  const requestedTaskView: TaskView = taskViews.some((entry) => entry.key === params.tasks) ? params.tasks as TaskView : "all";
+  if (view === "tasks" && requestedTaskView === "history" && member.slug !== "patrick") redirect(`/?brand=${brand}&view=tasks&tasks=all&taskBrand=all`);
+  const taskView: TaskView = requestedTaskView === "history" && member.slug !== "patrick" ? "all" : requestedTaskView;
+  const requestedTaskBrand: TaskBrandFilter = taskBrandFilters.some((entry) => entry.key === params.taskBrand) ? params.taskBrand as TaskBrandFilter : "all";
+  const taskBrand: TaskBrandFilter = requestedTaskView === "history" && member.slug !== "patrick" ? "all" : requestedTaskBrand;
   const activityFilter: ActivityFilter = activityFilters.some((entry) => entry.key === params.activity) ? params.activity as ActivityFilter : "all";
-  const [data, globalActivity] = await Promise.all([workspaceData(brand), view === "updates" ? activityData(activityFilter) : Promise.resolve([] as ActivityData)]);
+  const [data, globalTasks, globalActivity] = await Promise.all([
+    workspaceData(brand),
+    view === "tasks" ? taskWorkspaceData() : Promise.resolve(null),
+    view === "updates" ? activityData(activityFilter) : Promise.resolve([] as ActivityData),
+  ]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
+  if (view === "tasks" && !globalTasks) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection brand={brand} data={data} memberSlug={member.slug} taskView={taskView} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "tasks" ? `&tasks=${taskView}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? `&tasks=${taskView}` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} tasks={taskView} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
+  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection headerBrand={brand} data={globalTasks!} memberSlug={member.slug} taskView={taskView} taskBrand={taskBrand} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "tasks" ? `&tasks=${taskView}&taskBrand=${taskBrand}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? `&tasks=all&taskBrand=all` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} tasks={taskView} taskBrand={taskBrand} memberSlug={member.slug} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
 }
