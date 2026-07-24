@@ -3,11 +3,13 @@
 import { upload } from "@vercel/blob/client";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { BrandPicker, type Brand } from "./brand-picker";
 import { AutoResizeTextarea } from "./comment-textarea";
 
-export function MerchComposer({ brand }: { brand: "kaja" | "hexenwerk" | "virginia" }) {
+export function MerchComposer({ initialBrand }: { initialBrand?: Brand }) {
   const input = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const [brand, setBrand] = useState<Brand | "">(initialBrand ?? "");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -30,20 +32,22 @@ export function MerchComposer({ brand }: { brand: "kaja" | "hexenwerk" | "virgin
 
   async function createMerch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const selectedBrand = brand;
+    if (!selectedBrand) { setError("Alege brandul produsului Merch."); return; }
     if (!files.length) { setError("Cel puțin o imagine este obligatorie pentru fiecare produs Merch."); return; }
     setError(""); setSuccess(""); setProgress("Se creează produsul…");
     try {
       const first = files[0];
       const safeName = first.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      const firstBlob = await upload(`item-images/${brand}/new-${crypto.randomUUID()}-${safeName}`, first, {
+      const firstBlob = await upload(`item-images/${selectedBrand}/new-${crypto.randomUUID()}-${safeName}`, first, {
         access: "private",
         handleUploadUrl: "/api/item-images",
-        clientPayload: JSON.stringify({ mode: "create-merch", brand, title: title.trim(), body: body.trim() }),
+        clientPayload: JSON.stringify({ mode: "create-merch", brand: selectedBrand, title: title.trim(), body: body.trim() }),
         onUploadProgress: ({ percentage }) => setProgress(`Imaginea 1/${files.length} · ${Math.round(percentage)}%`),
       });
       let itemId: number | null = null;
       for (let attempt = 0; attempt < 6 && !itemId; attempt += 1) {
-        const response = await fetch(`/api/item-images/resolve?brand=${brand}&url=${encodeURIComponent(firstBlob.url)}`, { cache: "no-store" });
+        const response = await fetch(`/api/item-images/resolve?brand=${selectedBrand}&url=${encodeURIComponent(firstBlob.url)}`, { cache: "no-store" });
         if (response.ok) itemId = (await response.json() as { itemId: number }).itemId;
         else await new Promise((resolve) => window.setTimeout(resolve, 300 + attempt * 200));
       }
@@ -51,7 +55,7 @@ export function MerchComposer({ brand }: { brand: "kaja" | "hexenwerk" | "virgin
       for (let index = 1; index < files.length; index += 1) {
         const file = files[index];
         const nextName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-        await upload(`item-images/${brand}/${itemId}-${crypto.randomUUID()}-${nextName}`, file, { access: "private", handleUploadUrl: "/api/item-images", clientPayload: JSON.stringify({ mode: "append", brand, itemId, section: "merch" }), onUploadProgress: ({ percentage }) => setProgress(`Imaginea ${index + 1}/${files.length} · ${Math.round(percentage)}%`) });
+        await upload(`item-images/${selectedBrand}/${itemId}-${crypto.randomUUID()}-${nextName}`, file, { access: "private", handleUploadUrl: "/api/item-images", clientPayload: JSON.stringify({ mode: "append", brand: selectedBrand, itemId, section: "merch" }), onUploadProgress: ({ percentage }) => setProgress(`Imaginea ${index + 1}/${files.length} · ${Math.round(percentage)}%`) });
       }
       setTitle(""); setBody(""); setFiles([]); setPreviews([]); setSuccess("Produsul Merch a fost creat.");
       if (input.current) input.current.value = "";
@@ -59,5 +63,5 @@ export function MerchComposer({ brand }: { brand: "kaja" | "hexenwerk" | "virgin
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Încărcarea imaginilor a eșuat."); } finally { setProgress(null); }
   }
 
-  return <form className="form merch-composer" onSubmit={createMerch}><AutoResizeTextarea className="field-title" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={160} placeholder="Titlu produs merch" disabled={progress !== null} /><AutoResizeTextarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} placeholder="Descrie produsul merch." disabled={progress !== null} /><div className="image-uploader"><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseImage} required disabled={progress !== null} /><p>Obligatoriu: JPEG, PNG sau WebP · maximum 10 MB per imagine</p>{previews.length > 0 && <div className="draft-gallery">{previews.map((preview, index) => <img key={preview} src={preview} alt={`Previzualizare ${index + 1}`} />)}</div>}{progress !== null && <p>{progress}</p>}{error && <p className="upload-error">{error}</p>}{success && <p className="upload-success">{success}</p>}</div><button className="button" disabled={!files.length || progress !== null}>Creează produsul merch</button></form>;
+  return <form className="form merch-composer" onSubmit={createMerch}><BrandPicker value={brand} onChange={setBrand} disabled={progress !== null} legend="Brandul produsului" /><AutoResizeTextarea className="field-title" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={160} placeholder="Titlu produs merch" disabled={progress !== null} /><AutoResizeTextarea value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} placeholder="Descrie produsul merch." disabled={progress !== null} /><div className="image-uploader"><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseImage} required disabled={progress !== null} /><p>Obligatoriu: JPEG, PNG sau WebP · maximum 10 MB per imagine</p>{previews.length > 0 && <div className="draft-gallery">{previews.map((preview, index) => <img key={preview} src={preview} alt={`Previzualizare ${index + 1}`} />)}</div>}{progress !== null && <p>{progress}</p>}{error && <p className="upload-error">{error}</p>}{success && <p className="upload-success">{success}</p>}</div><button className="button" disabled={!brand || !files.length || progress !== null}>Creează produsul merch</button></form>;
 }

@@ -4,10 +4,10 @@ import { upload } from "@vercel/blob/client";
 import { useRouter } from "next/navigation";
 import { FormEvent, TouchEvent, useEffect, useRef, useState } from "react";
 import { createWorkspaceItem, deleteWorkspaceItemImage } from "./actions";
+import { BrandPicker, type Brand } from "./brand-picker";
 import { AutoResizeTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 
-type Brand = "kaja" | "hexenwerk" | "virginia";
 type GallerySection = "events" | "catalogue" | "merch";
 export type GalleryImage = { id: number; itemId: number; position: number };
 
@@ -33,9 +33,10 @@ async function appendImages(files: File[], brand: Brand, itemId: number, section
   }
 }
 
-export function GalleryComposer({ brand, section, catalogueGroup }: { brand: Brand; section: "events" | "catalogue"; catalogueGroup?: "live" | "upcoming" }) {
+export function GalleryComposer({ initialBrand, section, catalogueGroup }: { initialBrand?: Brand; section: "events" | "catalogue"; catalogueGroup?: "live" | "upcoming" }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  const [brand, setBrand] = useState<Brand | "">(initialBrand ?? "");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
@@ -45,12 +46,14 @@ export function GalleryComposer({ brand, section, catalogueGroup }: { brand: Bra
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
+    const selectedBrand = brand;
+    if (!selectedBrand) { setError("Alege brandul înregistrării."); return; }
     setBusy(true); setError(""); setProgress("Se creează înregistrarea…");
     try {
       const data = new FormData(form);
       const created = await createWorkspaceItem(data);
       if (!created?.id) throw new Error("Înregistrarea nu a putut fi creată.");
-      if (files.length) await appendImages(files, brand, created.id, section, setProgress);
+      if (files.length) await appendImages(files, selectedBrand, created.id, section, setProgress);
       form.reset(); setFiles([]); setProgress("");
       if (input.current) input.current.value = "";
       router.refresh();
@@ -59,7 +62,7 @@ export function GalleryComposer({ brand, section, catalogueGroup }: { brand: Bra
     } finally { setBusy(false); }
   }
 
-  return <form className="form gallery-composer" onSubmit={submit}><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} disabled={busy} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} disabled={busy} /><div className="image-uploader"><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={(event) => { const selected = validFiles(event.target.files); setFiles(selected.files); setError(selected.error); }} /><p>Opțional: JPEG, PNG sau WebP · maximum 10 MB per imagine</p>{files.length > 0 && <p>{files.length} {files.length === 1 ? "imagine selectată" : "imagini selectate"}</p>}{progress && <p>{progress}</p>}{error && <p className="upload-error">{error}</p>}</div><button className="button" disabled={busy || Boolean(error)}>Adaugă</button></form>;
+  return <form className="form gallery-composer" onSubmit={submit}>{brand && <input type="hidden" name="brand" value={brand} />}<input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<BrandPicker value={brand} onChange={setBrand} disabled={busy} legend="Brandul înregistrării" /><AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} disabled={busy} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} disabled={busy} /><div className="image-uploader"><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy} onChange={(event) => { const selected = validFiles(event.target.files); setFiles(selected.files); setError(selected.error); }} /><p>Opțional: JPEG, PNG sau WebP · maximum 10 MB per imagine</p>{files.length > 0 && <p>{files.length} {files.length === 1 ? "imagine selectată" : "imagini selectate"}</p>}{progress && <p>{progress}</p>}{error && <p className="upload-error">{error}</p>}</div><button className="button" disabled={!brand || busy || Boolean(error)}>Adaugă</button></form>;
 }
 
 export function EntryGallery({ brand, section, itemId, title, images, canManage }: { brand: Brand; section: GallerySection; itemId: number; title: string; images: GalleryImage[]; canManage: boolean }) {

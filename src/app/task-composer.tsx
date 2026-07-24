@@ -2,15 +2,10 @@
 
 import { useState } from "react";
 import { createTask } from "./actions";
+import { BrandPicker, type Brand } from "./brand-picker";
 import { AutoResizeTextarea } from "./comment-textarea";
 
-type Brand = "kaja" | "hexenwerk" | "virginia";
 type Member = { id: number; name: string; slug: string };
-const brands = [
-  { key: "kaja", label: "KAJA" },
-  { key: "hexenwerk", label: "HEXENWERK" },
-  { key: "virginia", label: "VIRGINIA" },
-] as const;
 
 export function TaskComposer({ initialBrand, members }: { initialBrand?: Brand; members: Member[] }) {
   const [brand, setBrand] = useState<Brand | "">(initialBrand ?? "");
@@ -23,15 +18,7 @@ export function TaskComposer({ initialBrand, members }: { initialBrand?: Brand; 
   return <form action={createTask} className="form task-composer">
     {brand && <input type="hidden" name="brand" value={brand} />}
     {selected.map((slug) => <input key={slug} type="hidden" name="assignees" value={slug} />)}
-    <fieldset className="task-assignee-picker task-brand-picker">
-      <legend>Brandul sarcinii</legend>
-      <div className="task-assignee-list">
-        {brands.map((entry) => <button key={entry.key} type="button" className={`task-member-chip picker${brand === entry.key ? " selected" : ""}`} aria-pressed={brand === entry.key} onClick={() => setBrand(entry.key)}>
-          <span aria-hidden="true">{brand === entry.key ? "✓" : "+"}</span>
-          {entry.label}
-        </button>)}
-      </div>
-    </fieldset>
+    <BrandPicker value={brand} onChange={setBrand} legend="Brandul sarcinii" />
     <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu sarcină" />
     <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Descrie sarcina." />
     <fieldset className="task-assignee-picker">

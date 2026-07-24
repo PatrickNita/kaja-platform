@@ -8,6 +8,7 @@ import { activityData, createComment, createUpdate, createWorkspaceItemForm, del
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { ActivityPanel } from "./activity-panel";
+import { BrandFormPicker } from "./brand-picker";
 import { EntryInlineEditor } from "./entry-inline-editor";
 import { MerchComposer } from "./merch-composer";
 import { ModalEntryGrid } from "./merch-grid";
@@ -23,13 +24,13 @@ const sections = [{ key: "updates", label: "Propuneri" }, { key: "tasks", label:
 const brands = [{ key: "kaja", label: "KAJA" }, { key: "hexenwerk", label: "HEXENWERK" }, { key: "virginia", label: "VIRGINIA" }] as const;
 const catalogueGroups = [{ key: "live", label: "Catalog activ" }, { key: "upcoming", label: "În curând" }, { key: "ideas", label: "Idei" }] as const;
 const taskViews = [{ key: "all", label: "Toate sarcinile" }, { key: "mine", label: "Sarcinile mele" }, { key: "history", label: "Istoric sarcini" }] as const;
-const taskBrandFilters = [{ key: "all", label: "Toate brand-urile" }, ...brands] as const;
+const brandFilters = [{ key: "all", label: "Toate brand-urile" }, ...brands] as const;
 const activityFilters = [{ key: "all", label: "Toate" }, ...brands] as const;
 type Section = (typeof sections)[number]["key"];
 type Brand = (typeof brands)[number]["key"];
 type CatalogueGroup = (typeof catalogueGroups)[number]["key"];
 type TaskView = (typeof taskViews)[number]["key"];
-type TaskBrandFilter = (typeof taskBrandFilters)[number]["key"];
+type BrandFilter = (typeof brandFilters)[number]["key"];
 type ActivityFilter = (typeof activityFilters)[number]["key"];
 type Data = NonNullable<Awaited<ReturnType<typeof workspaceData>>>;
 type TaskData = NonNullable<Awaited<ReturnType<typeof taskWorkspaceData>>>;
@@ -64,6 +65,21 @@ function canManage(memberSlug: string, authorSlug: string) { return memberSlug =
 function canManageWorkspace(memberSlug: string, authorSlug: string, section: string, catalogueGroup?: string | null) { return memberSlug === "patrick" || (memberSlug === authorSlug && section !== "information" && section !== "merch" && !(section === "catalogue" && catalogueGroup !== "ideas")); }
 function preview(value: string) { return value.length > 50 ? `${value.slice(0, 50).trimEnd()}…` : value; }
 function hasAttention(rows: AttentionRow[], brand: Brand, entityType: EntryEntity, entityId: number) { return rows.some(({ event }) => event.brand === brand && event.entityType === entityType && event.entityId === entityId); }
+function initialBrand(filter: BrandFilter): Brand | undefined { return filter === "all" ? undefined : filter; }
+
+function BrandBadge({ brand, modal = false }: { brand: Brand; modal?: boolean }) {
+  return <span className={`task-brand-badge${modal ? " modal-brand" : ""}`}>{brands.find(({ key }) => key === brand)?.label ?? brand.toUpperCase()}</span>;
+}
+
+function BrandFilterNav({ selected, view, catalogue, tasks, activity }: { selected: BrandFilter; view: Section; catalogue?: CatalogueGroup; tasks?: TaskView; activity?: ActivityFilter }) {
+  return <nav className="catalogue-submenu filter-nav brand-filter-nav" aria-label="Filtrează după brand">{brandFilters.map((entry) => {
+    const query = new URLSearchParams({ brand: entry.key, view });
+    if (view === "catalogue") query.set("catalogue", catalogue ?? "live");
+    if (view === "tasks") query.set("tasks", tasks ?? "all");
+    if (view === "updates" && activity) query.set("activity", activity);
+    return <a key={entry.key} className={entry.key === selected ? "active" : undefined} href={`/?${query}`}>{entry.label}</a>;
+  })}</nav>;
+}
 
 function Composer({ label, children }: { label: string; children: ReactNode }) {
   return <details className="composer-toggle"><summary>{label}</summary><div className="composer-content">{children}</div></details>;
@@ -166,37 +182,41 @@ function workspaceEditConfig({ brand, section, item, memberSlug, authorSlug }: {
   };
 }
 
-function WorkspaceSection({ brand, section, title, items, images, comments, reactions, entryReactions, attention, memberSlug, catalogueGroup, hideHeader = false }: { brand: Brand; section: "events" | "catalogue" | "merch" | "information"; title: string; items: WorkspaceItemRow[]; images: Data["images"]; comments: CommentRow[]; reactions: ReactionRow[]; entryReactions: EntryReactionRow[]; attention: AttentionRow[]; memberSlug: string; catalogueGroup?: CatalogueGroup; hideHeader?: boolean }) {
+function WorkspaceSection({ brandFilter, section, title, items, images, comments, reactions, entryReactions, attention, memberSlug, catalogueGroup, hideHeader = false, showBrandFilter = true }: { brandFilter: BrandFilter; section: "events" | "catalogue" | "merch" | "information"; title: string; items: WorkspaceItemRow[]; images: Data["images"]; comments: CommentRow[]; reactions: ReactionRow[]; entryReactions: EntryReactionRow[]; attention: AttentionRow[]; memberSlug: string; catalogueGroup?: CatalogueGroup; hideHeader?: boolean; showBrandFilter?: boolean }) {
   const label = section === "catalogue" ? "produs din catalog" : title.toLowerCase();
   const toggleLabel = section === "merch" ? "Adaugă produs merch" : section === "information" ? "Adaugă informație" : `Adaugă ${label}`;
   const canCreate = memberSlug === "patrick" || (section === "catalogue" && catalogueGroup === "ideas");
   const galleryEnabled = section === "merch" || section === "events" || (section === "catalogue" && catalogueGroup !== "ideas");
   const modalEnabled = section === "information" || section === "catalogue" || galleryEnabled;
-  const composer = section === "merch" ? <MerchComposer brand={brand} /> : galleryEnabled && (section === "events" || section === "catalogue") ? <GalleryComposer brand={brand} section={section} catalogueGroup={catalogueGroup === "ideas" ? undefined : catalogueGroup} /> : <form action={createWorkspaceItemForm} className="form"><input type="hidden" name="brand" value={brand} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
+  const composer = section === "merch" ? <MerchComposer initialBrand={initialBrand(brandFilter)} /> : galleryEnabled && (section === "events" || section === "catalogue") ? <GalleryComposer initialBrand={initialBrand(brandFilter)} section={section} catalogueGroup={catalogueGroup === "ideas" ? undefined : catalogueGroup} /> : <form action={createWorkspaceItemForm} className="form"><BrandFormPicker initialBrand={initialBrand(brandFilter)} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
   const cards = items.map(({ item, author, authorSlug }) => {
+    const itemBrand = item.brand as Brand;
     const itemImages = images.filter((image) => image.itemId === item.id);
     const firstImage = itemImages[0];
     const manageable = canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup);
     const media = firstImage ? <div className="entry-media-preview"><img src={`/api/item-images/${firstImage.id}`} alt={`Previzualizare ${item.title}`} />{itemImages.length > 1 && <span>{itemImages.length} imagini</span>}</div> : undefined;
-    const detailsMedia = galleryEnabled ? <EntryGallery brand={brand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
-    return <div key={item.id} className="card-wrap"><EntryCard brand={brand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, brand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} modal={modalEnabled} edit={workspaceEditConfig({ brand, section, item, memberSlug, authorSlug })} /></div>;
+    const detailsMedia = galleryEnabled ? <EntryGallery brand={itemBrand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
+    return <div key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} previewExtra={<BrandBadge brand={itemBrand} />} detailsExtra={<BrandBadge brand={itemBrand} modal />} modal={modalEnabled} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></div>;
   });
-  return <section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section>;
+  return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section">{!hideHeader && <div className="panel-head"><h2>{title}</h2></div>}{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
 }
 
-function UpdatesSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
-  return <section className="panel content-section">
+function UpdatesSection({ brandFilter, data, memberSlug, activityFilter }: { brandFilter: BrandFilter; data: Data; memberSlug: string; activityFilter: ActivityFilter }) {
+  return <><BrandFilterNav selected={brandFilter} view="updates" activity={activityFilter} /><section className="panel content-section">
     <div className="panel-head"><h2>Propuneri</h2></div>
     <Composer label="Adaugă propuneri"><form action={createUpdate} className="form">
-      <input type="hidden" name="brand" value={brand} />
+      <BrandFormPicker initialBrand={initialBrand(brandFilter)} />
       <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu actualizare" />
       <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Spune ce s-a schimbat și ce urmează." />
       <button className="button">Publică propunerea</button>
     </form></Composer>
-    <ModalEntryGrid label="propunerea">{data.updates.map(({ update, author, authorSlug }) => <div className="card-wrap" key={update.id}>
-      <EntryCard brand={brand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, brand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} modal edit={recordEditConfig({ brand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
-    </div>)}</ModalEntryGrid>
-  </section>;
+    <ModalEntryGrid label="propunerea">{data.updates.map(({ update, author, authorSlug }) => {
+      const updateBrand = update.brand as Brand;
+      return <div className="card-wrap" key={update.id}>
+        <EntryCard brand={updateBrand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, updateBrand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} previewExtra={<BrandBadge brand={updateBrand} />} detailsExtra={<BrandBadge brand={updateBrand} modal />} modal edit={recordEditConfig({ brand: updateBrand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
+      </div>;
+    })}</ModalEntryGrid>
+  </section></>;
 }
 
 function TaskMemberBadges({ assignments, label = true }: { assignments: TaskAssigneeRow[]; label?: boolean }) {
@@ -242,7 +262,7 @@ function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, 
   </section>;
 }
 
-function TasksSection({ headerBrand, data, memberSlug, taskView, taskBrand }: { headerBrand: Brand; data: TaskData; memberSlug: string; taskView: TaskView; taskBrand: TaskBrandFilter }) {
+function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskData; memberSlug: string; taskView: TaskView; brandFilter: BrandFilter }) {
   const taskIsCompleted = (taskId: number) => {
     const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === taskId);
     return assignments.length > 0 && assignments.every(({ assignment }) => assignment.completed);
@@ -251,60 +271,62 @@ function TasksSection({ headerBrand, data, memberSlug, taskView, taskBrand }: { 
     const completed = taskIsCompleted(task.id);
     if (taskView === "history") return completed;
     if (completed) return false;
-    if (taskBrand !== "all" && task.brand !== taskBrand) return false;
+    if (brandFilter !== "all" && task.brand !== brandFilter) return false;
     return taskView !== "mine" || data.taskAssignees.some(({ assignment, memberSlug: assignedSlug }) => assignment.taskId === task.id && assignedSlug === memberSlug);
   });
-  const taskHref = (nextView: TaskView, nextBrand: TaskBrandFilter) => `/?brand=${headerBrand}&view=tasks&tasks=${nextView}&taskBrand=${nextBrand}`;
+  const taskHref = (nextView: TaskView, nextBrand: BrandFilter) => `/?brand=${nextBrand}&view=tasks&tasks=${nextView}`;
   const availableViews = memberSlug === "patrick" ? taskViews : taskViews.filter(({ key }) => key !== "history");
   return <>
-    {taskView !== "history" && <nav className="catalogue-submenu task-brand-filters" aria-label="Filtrează sarcinile după brand">{taskBrandFilters.map((entry) => <a key={entry.key} className={entry.key === taskBrand ? "active" : undefined} href={taskHref(taskView, entry.key)}>{entry.label}</a>)}</nav>}
-    <nav className="catalogue-submenu task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <a key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : taskBrand)}>{entry.label}</a>)}</nav>
+    {taskView !== "history" && <BrandFilterNav selected={brandFilter} view="tasks" tasks={taskView} />}
+    <nav className="catalogue-submenu filter-nav task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <a key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : brandFilter)}>{entry.label}</a>)}</nav>
     <section className="panel content-section">
-      {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={taskBrand === "all" ? undefined : taskBrand} members={data.members} /></Composer>}
+      {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={initialBrand(brandFilter)} members={data.members} /></Composer>}
       <ModalEntryGrid label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
         const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
         const taskBrand = task.brand as Brand;
-        const brandLabel = brands.find(({ key }) => key === taskBrand)?.label ?? task.brand.toUpperCase();
-        const taskContext = <div className="task-card-context"><span className="task-brand-badge">{brandLabel}</span><TaskMemberBadges assignments={assignments} /></div>;
+        const taskContext = <div className="task-card-context"><BrandBadge brand={taskBrand} /><TaskMemberBadges assignments={assignments} /></div>;
         return <div className="card-wrap" key={task.id}>
-          <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<><span className="task-brand-badge modal-brand">{brandLabel}</span><TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} /></>} attentionInteractive={memberSlug === "patrick"} memberSlug={memberSlug} modal edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
+          <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<><BrandBadge brand={taskBrand} modal /><TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} /></>} attentionInteractive={memberSlug === "patrick"} memberSlug={memberSlug} modal edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
         </div>;
       })}</ModalEntryGrid>
     </section>
   </>;
 }
 
-function CatalogueSection({ brand, data, memberSlug, group }: { brand: Brand; data: Data; memberSlug: string; group: CatalogueGroup }) {
+function CatalogueSection({ brandFilter, data, memberSlug, group }: { brandFilter: BrandFilter; data: Data; memberSlug: string; group: CatalogueGroup }) {
   const active = catalogueGroups.find((entry) => entry.key === group)!;
-  return <><nav className="catalogue-submenu" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <a key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brand}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</a>)}</nav><WorkspaceSection brand={brand} section="catalogue" title={active.label} catalogueGroup={group} hideHeader items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={memberSlug} /></>;
+  return <><BrandFilterNav selected={brandFilter} view="catalogue" catalogue={group} /><nav className="catalogue-submenu filter-nav" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <a key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brandFilter}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</a>)}</nav><WorkspaceSection brandFilter={brandFilter} section="catalogue" title={active.label} catalogueGroup={group} hideHeader showBrandFilter={false} items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={memberSlug} /></>;
 }
 
-function UploadsSection({ brand, data, memberSlug }: { brand: Brand; data: Data; memberSlug: string }) {
+function UploadsSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
   const canManagePdfs = memberSlug === "patrick";
-  return <section className="panel content-section"><div className="panel-head"><h2>Încărcări</h2></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader brand={brand} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment, author }) => <article id={`attachment-${attachment.id}`} key={attachment.id} className="item attachment"><div><h3 className="item-title">{attachment.filename}</h3><div className="meta"><span>Încărcat de {author}</span><span>·</span><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Descarcă PDF</a>{canManagePdfs && <form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="brand" value={brand} /><input type="hidden" name="filename" value={attachment.filename} /><ConfirmDeleteButton itemName={attachment.filename}>Șterge</ConfirmDeleteButton></form>}</div></article>)}</div></section>;
+  return <><BrandFilterNav selected={brandFilter} view="uploads" /><section className="panel content-section"><div className="panel-head"><h2>Încărcări</h2></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader initialBrand={initialBrand(brandFilter)} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment, author }) => {
+    const attachmentBrand = attachment.brand as Brand;
+    return <article id={`attachment-${attachment.id}`} key={attachment.id} className="item attachment"><div><div className="entry-card-head"><h3 className="item-title">{attachment.filename}</h3><BrandBadge brand={attachmentBrand} /></div><div className="meta"><span>Încărcat de {author}</span><span>·</span><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Descarcă PDF</a>{canManagePdfs && <form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="brand" value={attachmentBrand} /><input type="hidden" name="filename" value={attachment.filename} /><ConfirmDeleteButton itemName={attachment.filename}>Șterge</ConfirmDeleteButton></form>}</div></article>;
+  })}</div></section></>;
 }
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; taskBrand?: string; activity?: string }> }) {
   const member = await currentMember();
   if (!member) return <main className="landing"><section className="landing-card"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><p className="eyebrow">Platformă internă pentru membri</p><h1>O imagine comună asupra muncii.</h1><p>Folosește linkul personal KAJA pentru a intra în spațiul de lucru.</p>{!hasDatabase && <div className="setup">Configurarea bazei de date este în așteptare.</div>}</section></main>;
   const params = await searchParams;
-  const brand: Brand = brands.some((entry) => entry.key === params.brand) ? params.brand as Brand : "kaja";
   const view: Section = sections.some((entry) => entry.key === params.view) ? params.view as Section : "tasks";
+  const selectedBrand: BrandFilter = brandFilters.some((entry) => entry.key === params.brand) ? params.brand as BrandFilter : "all";
+  const legacyTaskBrand: BrandFilter | null = brandFilters.some((entry) => entry.key === params.taskBrand) ? params.taskBrand as BrandFilter : null;
+  const brandFilter: BrandFilter = view === "tasks" && legacyTaskBrand ? legacyTaskBrand : selectedBrand;
   const group: CatalogueGroup = catalogueGroups.some((entry) => entry.key === params.catalogue) ? params.catalogue as CatalogueGroup : "live";
   const requestedTaskView: TaskView = taskViews.some((entry) => entry.key === params.tasks) ? params.tasks as TaskView : "all";
-  if (view === "tasks" && requestedTaskView === "history" && member.slug !== "patrick") redirect(`/?brand=${brand}&view=tasks&tasks=all&taskBrand=all`);
+  if (view === "tasks" && requestedTaskView === "history" && member.slug !== "patrick") redirect("/?brand=all&view=tasks&tasks=all");
   const taskView: TaskView = requestedTaskView === "history" && member.slug !== "patrick" ? "all" : requestedTaskView;
-  const requestedTaskBrand: TaskBrandFilter = taskBrandFilters.some((entry) => entry.key === params.taskBrand) ? params.taskBrand as TaskBrandFilter : "all";
-  const taskBrand: TaskBrandFilter = requestedTaskView === "history" && member.slug !== "patrick" ? "all" : requestedTaskBrand;
   const activityFilter: ActivityFilter = activityFilters.some((entry) => entry.key === params.activity) ? params.activity as ActivityFilter : "all";
   const [data, globalTasks, globalActivity] = await Promise.all([
-    workspaceData(brand),
+    workspaceData(brandFilter),
     view === "tasks" ? taskWorkspaceData() : Promise.resolve(null),
     view === "updates" ? activityData(activityFilter) : Promise.resolve([] as ActivityData),
   ]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   if (view === "tasks" && !globalTasks) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <><UpdatesSection brand={brand} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection headerBrand={brand} data={globalTasks!} memberSlug={member.slug} taskView={taskView} taskBrand={taskBrand} /> : view === "catalogue" ? <CatalogueSection brand={brand} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brand={brand} data={data} memberSlug={member.slug} /> : <WorkspaceSection brand={brand} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brand}&view=updates&activity=${activityFilter}`} aria-label={`Deschide Propuneri pentru ${brands.find((entry) => entry.key === brand)!.label}`}><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="brand-switcher" aria-label="Spații de brand">{brands.map((entry) => <a key={entry.key} href={`/?brand=${entry.key}&view=${view}${view === "catalogue" ? `&catalogue=${group}` : ""}${view === "tasks" ? `&tasks=${taskView}&taskBrand=${taskBrand}` : ""}${view === "updates" ? `&activity=${activityFilter}` : ""}`} className={brand === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brand}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? `&tasks=all&taskBrand=all` : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brand} view={view} catalogue={group} tasks={taskView} taskBrand={taskBrand} memberSlug={member.slug} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
+  const content = view === "updates" ? <><UpdatesSection brandFilter={brandFilter} data={data} memberSlug={member.slug} activityFilter={activityFilter} /><ActivityPanel initialRows={globalActivity} initialFilter={activityFilter} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=all&view=updates&activity=${activityFilter}`} aria-label="Deschide Propuneri pentru toate brandurile"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=all&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? "&tasks=all" : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} activity={view === "updates" ? activityFilter : undefined} /><div className="workspace-content">{content}</div></main></>;
 }

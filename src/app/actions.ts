@@ -456,21 +456,48 @@ export async function taskWorkspaceData() {
   };
 }
 
-export async function workspaceData(brandName: "kaja" | "hexenwerk" | "virginia") {
+export async function workspaceData(brandName: "all" | "kaja" | "hexenwerk" | "virginia") {
   if (!db) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
+  const updateVisibility = brandName === "all"
+    ? isNull(updates.deletedAt)
+    : and(eq(updates.brand, brandName), isNull(updates.deletedAt));
+  const taskVisibility = brandName === "all"
+    ? isNull(tasks.deletedAt)
+    : and(eq(tasks.brand, brandName), isNull(tasks.deletedAt));
+  const itemVisibility = brandName === "all"
+    ? isNull(workspaceItems.deletedAt)
+    : and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt));
+  const imageVisibility = brandName === "all"
+    ? isNull(workspaceItemImages.deletedAt)
+    : and(eq(workspaceItemImages.brand, brandName), isNull(workspaceItemImages.deletedAt));
+  const attachmentVisibility = brandName === "all"
+    ? isNull(attachments.deletedAt)
+    : and(eq(attachments.brand, brandName), isNull(attachments.deletedAt));
+  const commentVisibility = brandName === "all"
+    ? isNull(comments.deletedAt)
+    : and(eq(comments.brand, brandName), isNull(comments.deletedAt));
+  const commentReactionVisibility = brandName === "all"
+    ? sql`true`
+    : eq(commentReactions.brand, brandName);
+  const entryReactionVisibility = brandName === "all"
+    ? sql`true`
+    : eq(entryReactions.brand, brandName);
+  const attentionVisibility = brandName === "all"
+    ? eq(activity.action, "attention_requested")
+    : and(eq(activity.brand, brandName), eq(activity.action, "attention_requested"));
   const [allMembers, allUpdates, allTasks, allTaskAssignees, allWorkspaceItems, allImages, allAttachments, allComments, allReactions, allEntryReactions, allAttention] = await Promise.all([
     db.select({ id: members.id, name: members.name, slug: members.slug }).from(members).orderBy(members.id),
-    db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(and(eq(updates.brand, brandName), isNull(updates.deletedAt))).orderBy(desc(updates.updatedAt)),
-    db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(desc(tasks.updatedAt)),
-    db.select({ assignment: taskAssignees, memberName: members.name, memberSlug: members.slug }).from(taskAssignees).innerJoin(tasks, eq(taskAssignees.taskId, tasks.id)).innerJoin(members, eq(taskAssignees.memberId, members.id)).where(and(eq(tasks.brand, brandName), isNull(tasks.deletedAt))).orderBy(taskAssignees.taskId, members.id),
-    db.select({ item: workspaceItems, author: members.name, authorSlug: members.slug }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(and(eq(workspaceItems.brand, brandName), isNull(workspaceItems.deletedAt))).orderBy(desc(workspaceItems.updatedAt)),
-    db.select().from(workspaceItemImages).where(and(eq(workspaceItemImages.brand, brandName), isNull(workspaceItemImages.deletedAt))).orderBy(workspaceItemImages.itemId, workspaceItemImages.position, workspaceItemImages.createdAt),
-    db.select({ attachment: attachments, author: members.name, authorSlug: members.slug }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(and(eq(attachments.brand, brandName), isNull(attachments.deletedAt))).orderBy(desc(attachments.createdAt)),
-    db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(and(eq(comments.brand, brandName), isNull(comments.deletedAt))).orderBy(comments.createdAt),
-    db.select({ reaction: commentReactions, memberName: members.name, memberSlug: members.slug }).from(commentReactions).innerJoin(members, eq(commentReactions.memberId, members.id)).where(eq(commentReactions.brand, brandName)).orderBy(commentReactions.createdAt),
-    db.select({ reaction: entryReactions, memberName: members.name, memberSlug: members.slug }).from(entryReactions).innerJoin(members, eq(entryReactions.memberId, members.id)).where(eq(entryReactions.brand, brandName)).orderBy(entryReactions.createdAt),
-    db.select({ event: activity }).from(activity).where(and(eq(activity.brand, brandName), eq(activity.action, "attention_requested"))).orderBy(activity.createdAt, activity.id),
+    db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(updateVisibility).orderBy(desc(updates.updatedAt)),
+    db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(taskVisibility).orderBy(desc(tasks.updatedAt)),
+    db.select({ assignment: taskAssignees, memberName: members.name, memberSlug: members.slug }).from(taskAssignees).innerJoin(tasks, eq(taskAssignees.taskId, tasks.id)).innerJoin(members, eq(taskAssignees.memberId, members.id)).where(taskVisibility).orderBy(taskAssignees.taskId, members.id),
+    db.select({ item: workspaceItems, author: members.name, authorSlug: members.slug }).from(workspaceItems).innerJoin(members, eq(workspaceItems.createdBy, members.id)).where(itemVisibility).orderBy(desc(workspaceItems.updatedAt)),
+    db.select().from(workspaceItemImages).where(imageVisibility).orderBy(workspaceItemImages.itemId, workspaceItemImages.position, workspaceItemImages.createdAt),
+    db.select({ attachment: attachments, author: members.name, authorSlug: members.slug }).from(attachments).innerJoin(members, eq(attachments.uploadedBy, members.id)).where(attachmentVisibility).orderBy(desc(attachments.createdAt)),
+    db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(commentVisibility).orderBy(comments.createdAt),
+    db.select({ reaction: commentReactions, memberName: members.name, memberSlug: members.slug }).from(commentReactions).innerJoin(members, eq(commentReactions.memberId, members.id)).where(commentReactionVisibility).orderBy(commentReactions.createdAt),
+    db.select({ reaction: entryReactions, memberName: members.name, memberSlug: members.slug }).from(entryReactions).innerJoin(members, eq(entryReactions.memberId, members.id)).where(entryReactionVisibility).orderBy(entryReactions.createdAt),
+    db.select({ event: activity }).from(activity).where(attentionVisibility).orderBy(activity.createdAt, activity.id),
   ]);
   return { members: allMembers, updates: allUpdates, tasks: allTasks, taskAssignees: allTaskAssignees, workspaceItems: allWorkspaceItems, images: allImages, attachments: allAttachments, comments: allComments, reactions: allReactions, entryReactions: allEntryReactions, attention: allAttention };
 }
