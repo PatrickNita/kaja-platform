@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { AutoResizeTextarea } from "./comment-textarea";
+import { useEntryModalState } from "./entry-modal-state";
 
 type HiddenField = {
   name: string;
@@ -31,51 +32,23 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
   const root = useRef<HTMLDivElement>(null);
   const generatedId = useId().replaceAll(":", "");
   const formId = `entry-edit-${generatedId}`;
-  const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const announceEditing = (nextEditing: boolean) => {
-    window.dispatchEvent(new CustomEvent("entry-edit-state-change", {
-      detail: { entryId, editing: nextEditing },
-    }));
-  };
+  const { activeEntryId, draft, beginEditing, updateDraft, stopEditing } = useEntryModalState();
+  const editing = draft?.entryId === entryId;
 
   const cancel = () => {
     if (pending) return;
-    announceEditing(false);
-    setEditing(false);
+    stopEditing();
     setError(null);
   };
 
-  useLayoutEffect(() => {
-    const element = root.current;
-    if (!element) return;
-
-    const handleModalClose = () => {
-      setEditing(false);
+  useEffect(() => {
+    if (activeEntryId !== entryId || !editing) {
       setPending(false);
       setError(null);
-    };
-    const handleEditingResume = () => {
-      setEditing(true);
-      setError(null);
-    };
-    const handleEditingStop = () => {
-      setEditing(false);
-      setPending(false);
-      setError(null);
-    };
-
-    element.addEventListener("entry-modal-close", handleModalClose);
-    element.addEventListener("entry-edit-resume", handleEditingResume);
-    element.addEventListener("entry-edit-stop", handleEditingStop);
-    return () => {
-      element.removeEventListener("entry-modal-close", handleModalClose);
-      element.removeEventListener("entry-edit-resume", handleEditingResume);
-      element.removeEventListener("entry-edit-stop", handleEditingStop);
-    };
-  }, []);
+    }
+  }, [activeEntryId, editing, entryId]);
 
   useLayoutEffect(() => {
     if (!editing) return;
@@ -88,8 +61,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
     setError(null);
     try {
       await editAction(formData);
-      announceEditing(false);
-      setEditing(false);
+      stopEditing();
     } catch (saveError) {
       setError(errorMessage(saveError));
     } finally {
@@ -100,7 +72,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
   return <div ref={root} className={`entry-inline-editor${editing ? " is-editing" : ""}`} data-entry-inline-editor data-entry-saving={pending ? "true" : undefined}>
     <div className="entry-modal-header">
       <div className="entry-modal-title-group">
-        {editing ? <AutoResizeTextarea form={formId} className="field-title entry-inline-title" name="title" defaultValue={title} required maxLength={160} aria-label="Titlu" /> : <h3 className="item-title">{title}</h3>}
+        {editing ? <AutoResizeTextarea form={formId} className="field-title entry-inline-title" name="title" value={draft.title} onChange={(event) => updateDraft("title", event.currentTarget.value)} required maxLength={160} aria-label="Titlu" /> : <h3 className="item-title">{title}</h3>}
         {authorControls}
       </div>
       <button type="button" className="entry-modal-close" data-entry-close aria-label={closeLabel} disabled={pending}>×</button>
@@ -108,7 +80,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
 
     <div className="entry-card-content">
       {detailsMedia}
-      {editing ? <AutoResizeTextarea form={formId} className="entry-inline-body" name="body" defaultValue={body ?? ""} required maxLength={4000} aria-label="Descriere" /> : body ? <p>{body}</p> : null}
+      {editing ? <AutoResizeTextarea form={formId} className="entry-inline-body" name="body" value={draft.body} onChange={(event) => updateDraft("body", event.currentTarget.value)} required maxLength={4000} aria-label="Descriere" /> : body ? <p>{body}</p> : null}
       {children}
 
       {editAction && <>
@@ -121,7 +93,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
             <button className="button" type="submit" form={formId} disabled={pending}>{pending ? "Se salvează…" : "Salvează modificările"}</button>
             <button className="button ghost" type="button" onClick={cancel} disabled={pending}>Anulează</button>
           </> : <>
-            <button className="button ghost" type="button" onClick={() => { setError(null); announceEditing(true); setEditing(true); }}>Modifică</button>
+            <button className="button ghost" type="button" onClick={() => { setError(null); beginEditing(entryId, title, body ?? ""); }}>Modifică</button>
             {deleteControl}
           </>}
         </div>
