@@ -5,5 +5,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const { slug, token } = await params;
   if (!validLink(slug, token)) return new NextResponse("This member link is invalid or has expired.", { status: 404 });
   await setMemberSession(slug as "patrick" | "ionut" | "igor" | "andrei");
-  return NextResponse.redirect(new URL("/", _.url));
+  return NextResponse.redirect(new URL("/?brand=kaja&view=updates", _.url));
 }
