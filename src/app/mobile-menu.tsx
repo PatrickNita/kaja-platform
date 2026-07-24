@@ -3,14 +3,12 @@
 import { useEffect, useState } from "react";
 
 type Section = "updates" | "tasks" | "events" | "catalogue" | "merch" | "information" | "uploads";
-type Brand = "kaja" | "hexenwerk" | "virginia";
-type ActivityFilter = "all" | Brand;
 type CatalogueGroup = "live" | "upcoming" | "ideas";
 type TaskView = "all" | "mine" | "history";
 
 const sectionLabels = { updates: "Propuneri", events: "Evenimente", merch: "Merch", information: "Informații", uploads: "Încărcări" } as const;
 
-export function MobileMenu({ view, catalogue, tasks, memberSlug, activity }: { view: Section; catalogue: CatalogueGroup; tasks: TaskView; memberSlug: string; activity?: ActivityFilter }) {
+export function MobileMenu({ view, catalogue, tasks, memberSlug }: { view: Section; catalogue: CatalogueGroup; tasks: TaskView; memberSlug: string }) {
   const [open, setOpen] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(view === "catalogue");
   const [tasksOpen, setTasksOpen] = useState(view === "tasks");
@@ -38,7 +36,7 @@ export function MobileMenu({ view, catalogue, tasks, memberSlug, activity }: { v
   const link = (nextView: Section, options: { catalogue?: CatalogueGroup; tasks?: TaskView } = {}) => {
     const group = options.catalogue ?? catalogue;
     const taskView = options.tasks ?? tasks;
-    return `/?brand=all&view=${nextView}${nextView === "catalogue" ? `&catalogue=${group}` : ""}${nextView === "tasks" ? `&tasks=${taskView}` : ""}${nextView === "updates" && activity ? `&activity=${activity}` : ""}`;
+    return `/?brand=all&view=${nextView}${nextView === "catalogue" ? `&catalogue=${group}` : ""}${nextView === "tasks" ? `&tasks=${taskView}` : ""}`;
   };
 
   return <div className="mobile-menu">
