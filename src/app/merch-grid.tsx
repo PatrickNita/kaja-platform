@@ -173,6 +173,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
     element.addEventListener("click", handleClick, true);
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("hashchange", openFromHash);
+    window.addEventListener("workspace-filter-change", closeActive);
     observer.observe(element, { childList: true, subtree: true });
     const openedFromHash = openFromHash();
     if (!openedFromHash) {
@@ -185,6 +186,7 @@ export function ModalEntryGrid({ children, label, twoColumnMobile = false }: { c
       element.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("hashchange", openFromHash);
+      window.removeEventListener("workspace-filter-change", closeActive);
       clearModal({ restoreFocus: false, force: true });
     };
   }, []);

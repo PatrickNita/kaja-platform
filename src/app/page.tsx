@@ -10,6 +10,7 @@ import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { ActivityPanel } from "./activity-panel";
 import { BrandFormPicker } from "./brand-picker";
 import { EntryInlineEditor } from "./entry-inline-editor";
+import { FilterLink } from "./filter-link";
 import { MerchComposer } from "./merch-composer";
 import { ModalEntryGrid } from "./merch-grid";
 import { MobileMenu } from "./mobile-menu";
@@ -89,12 +90,16 @@ function BrandBadge({ brand, modal = false }: { brand: Brand; modal?: boolean })
   return <span className={`task-brand-badge${modal ? " modal-brand" : ""}`}>{brands.find(({ key }) => key === brand)?.label ?? brand.toUpperCase()}</span>;
 }
 
+function InlineBrand({ brand }: { brand: Brand }) {
+  return <><span className="entry-author-divider" aria-hidden="true">|</span><span className="entry-brand-inline">{selectedBrandLabel(brand)}</span></>;
+}
+
 function BrandFilterNav({ selected, view, catalogue, tasks }: { selected: BrandFilter; view: Section; catalogue?: CatalogueGroup; tasks?: TaskView }) {
   return <nav className="catalogue-submenu filter-nav brand-filter-nav" aria-label="Filtrează după brand">{brandFilters.map((entry) => {
     const query = new URLSearchParams({ brand: entry.key, view });
     if (view === "catalogue") query.set("catalogue", catalogue ?? "live");
     if (view === "tasks") query.set("tasks", tasks ?? "all");
-    return <a key={entry.key} className={entry.key === selected ? "active" : undefined} href={`/?${query}`}>{entry.label}</a>;
+    return <FilterLink key={entry.key} className={entry.key === selected ? "active" : undefined} href={`/?${query}`}>{entry.label}</FilterLink>;
   })}</nav>;
 }
 
@@ -163,7 +168,7 @@ function EntryCard({ brand, type, id, title, body, author, authorSlug, attention
   const own = commentType ? (comments || []).filter(({ comment }) => comment.entityType === commentType && comment.entityId === id) : [];
   const ownEntryReactions = entryReactionsEnabled ? entryReactions.filter(({ reaction }) => reaction.entityType === type && reaction.entityId === id) : [];
   const last = own.at(-1);
-  const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}{previewExtra}{entryReactionsEnabled && <EntryReactionPreview reactions={ownEntryReactions} />}</>;
+  const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group entry-preview-author"><span className="entry-author">{author}</span><InlineBrand brand={brand} /><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}{previewExtra}{entryReactionsEnabled && <EntryReactionPreview reactions={ownEntryReactions} />}</>;
   const authorControls = <span className="entry-author-group"><span className="entry-author">{author}</span><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={attentionInteractive ?? memberSlug === authorSlug} /></span>;
   const interactiveContent = <>{detailsExtra}{entryReactionsEnabled && <EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />}{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
   return <><article className="item card entry-card-placeholder" aria-hidden="true">{compactPreview}</article><article className="item card entry-card-surface"><details id={`entry-${type}-${id}`} className="entry-card"><summary>{compactPreview}</summary>{modal ? <EntryInlineEditor title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor> : <div className="entry-card-content">{detailsMedia}{body && <p>{body}</p>}{interactiveContent}</div>}</details></article></>;
@@ -213,7 +218,7 @@ function WorkspaceSection({ brandFilter, section, title, displayTitle, items, im
     const manageable = canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup);
     const media = firstImage ? <div className="entry-media-preview"><img src={`/api/item-images/${firstImage.id}`} alt={`Previzualizare ${item.title}`} />{itemImages.length > 1 && <span>{itemImages.length} imagini</span>}</div> : undefined;
     const detailsMedia = galleryEnabled ? <EntryGallery brand={itemBrand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
-    return <div key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} previewExtra={<BrandBadge brand={itemBrand} />} detailsExtra={<BrandBadge brand={itemBrand} modal />} modal={modalEnabled} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></div>;
+    return <div key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} detailsExtra={<BrandBadge brand={itemBrand} modal />} modal={modalEnabled} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></div>;
   });
   return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><h2>{displayTitle}</h2></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
 }
@@ -230,7 +235,7 @@ function UpdatesSection({ brandFilter, data, memberSlug }: { brandFilter: BrandF
     <ModalEntryGrid label="propunerea">{data.updates.map(({ update, author, authorSlug }) => {
       const updateBrand = update.brand as Brand;
       return <div className="card-wrap" key={update.id}>
-        <EntryCard brand={updateBrand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, updateBrand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} previewExtra={<BrandBadge brand={updateBrand} />} detailsExtra={<BrandBadge brand={updateBrand} modal />} modal edit={recordEditConfig({ brand: updateBrand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
+        <EntryCard brand={updateBrand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, updateBrand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} detailsExtra={<BrandBadge brand={updateBrand} modal />} modal edit={recordEditConfig({ brand: updateBrand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
       </div>;
     })}</ModalEntryGrid>
   </section></>;
@@ -295,14 +300,14 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
   const availableViews = memberSlug === "patrick" ? taskViews : taskViews.filter(({ key }) => key !== "history");
   return <>
     {taskView !== "history" && <BrandFilterNav selected={brandFilter} view="tasks" tasks={taskView} />}
-    <nav className="catalogue-submenu filter-nav task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <a key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : brandFilter)}>{entry.label}</a>)}</nav>
+    <nav className="catalogue-submenu filter-nav task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <FilterLink key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : brandFilter)}>{entry.label}</FilterLink>)}</nav>
     <section className="panel content-section">
       <div className="panel-head"><h2>{pageTitle({ view: "tasks", brand: brandFilter, tasks: taskView })}</h2></div>
       {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={initialBrand(brandFilter)} members={data.members} /></Composer>}
       <ModalEntryGrid label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
         const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
         const taskBrand = task.brand as Brand;
-        const taskContext = <div className="task-card-context"><BrandBadge brand={taskBrand} /><TaskMemberBadges assignments={assignments} /></div>;
+        const taskContext = <div className="task-card-context"><TaskMemberBadges assignments={assignments} /></div>;
         return <div className="card-wrap" key={task.id}>
           <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<><BrandBadge brand={taskBrand} modal /><TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} /></>} attentionInteractive={memberSlug === "patrick"} memberSlug={memberSlug} modal edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
         </div>;
@@ -313,7 +318,7 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
 
 function CatalogueSection({ brandFilter, data, memberSlug, group }: { brandFilter: BrandFilter; data: Data; memberSlug: string; group: CatalogueGroup }) {
   const active = catalogueGroups.find((entry) => entry.key === group)!;
-  return <><BrandFilterNav selected={brandFilter} view="catalogue" catalogue={group} /><nav className="catalogue-submenu filter-nav" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <a key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brandFilter}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</a>)}</nav><WorkspaceSection brandFilter={brandFilter} section="catalogue" title={active.label} displayTitle={pageTitle({ view: "catalogue", brand: brandFilter, catalogue: group })} catalogueGroup={group} showBrandFilter={false} items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={memberSlug} /></>;
+  return <><BrandFilterNav selected={brandFilter} view="catalogue" catalogue={group} /><nav className="catalogue-submenu filter-nav" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <FilterLink key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brandFilter}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</FilterLink>)}</nav><WorkspaceSection brandFilter={brandFilter} section="catalogue" title={active.label} displayTitle={pageTitle({ view: "catalogue", brand: brandFilter, catalogue: group })} catalogueGroup={group} showBrandFilter={false} items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={memberSlug} /></>;
 }
 
 function UploadsSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
