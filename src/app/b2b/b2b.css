@@ -667,5 +667,24 @@
   scrollbar-color: var(--line-strong) transparent;
 }
 
-.b2b-row-actions > .button { min-width:0; width:100%; white-space:normal; }
-.b2b-location-balance { min-width:0; overflow-wrap:anywhere; }
+.b2b-row-actions > .button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+.b2b-location-balance {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.b2b-location-modal::backdrop {
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+}
+.b2b-location-modal .b2b-form {
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}

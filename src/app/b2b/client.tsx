@@ -129,7 +129,9 @@ function LocationDetails({ location }: { location: Location }) {
 function LocationForm({
   location,
   onDone,
+  modal = false,
 }: {
+  modal?: boolean;
   location?: Location;
   onDone: () => void;
 }) {
@@ -158,15 +160,18 @@ function LocationForm({
       setBusy(false);
     }
   }
-  return (
+  const form = (
     <form className="form card-wrap b2b-form" onSubmit={save}>
-      <h3 className="item-title">
-        {location ? "Editează localul" : "Adaugă local"}
-      </h3>
+      {!modal && (
+        <h3 className="item-title">
+          {location ? "Editează localul" : "Adaugă local"}
+        </h3>
+      )}
       <label>
         Denumirea locației
         <input
           name="name"
+          autoFocus={modal}
           required
           maxLength={160}
           defaultValue={location?.name}
@@ -216,6 +221,18 @@ function LocationForm({
         </button>
       </div>
     </form>
+  );
+  return modal ? (
+    <ConfirmDialog
+      title="Adaugă local"
+      className="b2b-location-modal"
+      busy={busy}
+      onClose={onDone}
+    >
+      {form}
+    </ConfirmDialog>
+  ) : (
+    form
   );
 }
 
@@ -1088,6 +1105,7 @@ export function B2BAdmin({
       {view === "locations" && locationForm && (
         <LocationForm
           key={locationForm === "new" ? "new" : locationForm.id}
+          modal={locationForm === "new"}
           location={locationForm === "new" ? undefined : locationForm}
           onDone={() => setLocationForm(null)}
         />
