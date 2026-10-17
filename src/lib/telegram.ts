@@ -175,7 +175,7 @@ export function formatTelegramDigest(events: DigestEvent[]) {
     let headerAdded = false;
 
     for (const group of groups) {
-      const header = headerAdded ? "" : `${output ? "\n\n" : ""}${brand.toUpperCase()}\n`;
+      const header = headerAdded ? "" : `${output ? "\n\n" : ""}${brand === "virginia" ? "LUMEN" : brand.toUpperCase()}\n`;
       const line = formatGroupLine(group);
       const separator = headerAdded ? "\n" : "";
       const nextIncluded = includedEvents + group.eventCount;

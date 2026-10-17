@@ -3,7 +3,7 @@ import { activityData } from "./actions";
 const brands = [
   { key: "kaja", label: "KAJA" },
   { key: "hexenwerk", label: "HEXENWERK" },
-  { key: "virginia", label: "VIRGINIA" },
+  { key: "virginia", label: "LUMEN" },
 ] as const;
 type Brand = (typeof brands)[number]["key"];
 type ActivityRows = Awaited<ReturnType<typeof activityData>>;

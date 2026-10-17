@@ -7,7 +7,7 @@ export type Brand = "kaja" | "hexenwerk" | "virginia";
 export const brandOptions = [
   { key: "kaja", label: "KAJA" },
   { key: "hexenwerk", label: "HEXENWERK" },
-  { key: "virginia", label: "VIRGINIA" },
+  { key: "virginia", label: "LUMEN" },
 ] as const satisfies ReadonlyArray<{ key: Brand; label: string }>;
 
 export function BrandPicker({
