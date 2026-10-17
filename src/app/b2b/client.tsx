@@ -64,7 +64,7 @@ function ConfirmDialog({
   }, []);
   return (
     <dialog
-      className="b2b-dialog"
+      className="entry-modal-surface b2b-dialog"
       ref={ref}
       onCancel={(event) => {
         event.preventDefault();
@@ -72,7 +72,7 @@ function ConfirmDialog({
       }}
     >
       <div className="b2b-dialog-head">
-        <h3>Confirmă comanda</h3>
+        <h3 className="item-title">Confirmă comanda</h3>
         <button
           type="button"
           aria-label="Închide confirmarea"
@@ -88,8 +88,8 @@ function ConfirmDialog({
 }
 function LocationDetails({ location }: { location: Location }) {
   return (
-    <section className="panel b2b-location-details">
-      <h2>{location.name}</h2>
+    <section className="card-wrap b2b-location-details">
+      <h2 className="item-title">{location.name}</h2>
       <p>{location.address}</p>
       <p>
         {location.contact} ·{" "}
@@ -138,7 +138,9 @@ function LocationForm({
   }
   return (
     <form className="form card-wrap b2b-form" onSubmit={save}>
-      <h3>{location ? "Editează localul" : "Adaugă local"}</h3>
+      <h3 className="item-title">
+        {location ? "Editează localul" : "Adaugă local"}
+      </h3>
       <label>
         Denumirea locației
         <input
@@ -317,9 +319,9 @@ export function OrderEditor({
       <h2>{order ? `Modifică comanda #${order.id}` : "Comandă nouă"}</h2>
       <div className="b2b-products">
         {products.map((product) => (
-          <article className="b2b-product" key={product.id}>
+          <article className="card-wrap b2b-product" key={product.id}>
             <div>
-              <h3>{product.name}</h3>
+              <h3 className="item-title">{product.name}</h3>
               <p>{product.flavor}</p>
               <span>
                 {product.grams} g · {money(product.price)}
@@ -455,7 +457,7 @@ function History({
       <h2>Istoricul comenzilor</h2>
       <Feedback error={error} />
       {orders.length === 0 && (
-        <p className="b2b-muted">Nu există comenzi încă.</p>
+        <p className="meta b2b-muted">Nu există comenzi încă.</p>
       )}
       {orders.map((order) => (
         <article
@@ -467,7 +469,7 @@ function History({
             <h3>
               Comanda #{order.id} · {order.location_name}
             </h3>
-            <span className={`b2b-status ${order.status}`}>
+            <span className={`status b2b-status ${order.status}`}>
               {statusLabel[order.status]}
             </span>
           </div>

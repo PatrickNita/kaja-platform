@@ -11,11 +11,7 @@
 .b2b-admin > .b2b-history {
   margin-top: 0;
 }
-.b2b-admin h3,
-.b2b-portal h3 {
-  margin: 0 0 7px;
-  font-size: 17px;
-}
+
 .b2b-portal {
   max-width: 1000px;
   margin: auto;
@@ -34,17 +30,16 @@
   font-size: 28px;
   letter-spacing: 0.08em;
 }
-.b2b-portal-header span,
-.b2b-muted {
+.b2b-portal-header span {
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 11px;
 }
 .b2b-location-details {
   box-shadow: none;
 }
 .b2b-location-details p {
-  margin: 10px 0;
+  margin: 12px 0 0;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 .b2b-locations {
@@ -63,15 +58,10 @@
   margin-top: 12px;
   justify-content: flex-start;
 }
-.b2b-actions .button,
-.b2b-cart-bar .button,
-.b2b-dialog .button {
-  min-height: 44px;
-  white-space: normal;
-}
+
 .b2b-cashback {
-  color: #9de1ba;
-  font-size: 16px;
+  color: var(--muted);
+  font-size: 13px;
 }
 .b2b-form {
   width: 100%;
@@ -89,11 +79,9 @@
   width: 100%;
   max-width: 420px;
 }
-.b2b-form input,
 .b2b-location-select select,
 .b2b-link-label input {
-  font-size: 16px;
-  min-height: 44px;
+  font-size: 12px;
 }
 .b2b-link-label {
   margin-top: 14px;
@@ -111,10 +99,6 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
-  background: var(--surface);
 }
 .b2b-product > div:first-child {
   min-width: 0;
@@ -124,7 +108,7 @@
 }
 .b2b-product p {
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: 13px;
   color: var(--ink);
 }
 .b2b-product span {
@@ -140,9 +124,9 @@
 .b2b-quantity button {
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--line-strong);
-  background: var(--surface-soft);
+  background: transparent;
   color: var(--ink);
   font-size: 24px;
 }
@@ -201,20 +185,7 @@
   flex-wrap: wrap;
   gap: 12px;
 }
-.b2b-status {
-  padding: 7px 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: 20px;
-  font-size: 12px;
-}
-.b2b-status.confirmed {
-  border-color: #b3953e;
-  color: #e9d48f;
-}
-.b2b-status.paid {
-  border-color: #347252;
-  color: #9de1ba;
-}
+
 .b2b-order details {
   margin-top: 14px;
 }
@@ -238,7 +209,7 @@
   gap: 14px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 .b2b-review li span {
@@ -265,11 +236,7 @@
   width: min(94vw, 580px);
   max-height: 85dvh;
   overflow-y: auto;
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
-  background: #171717;
   color: var(--ink);
-  padding: 22px;
   margin: auto;
 }
 .b2b-dialog::backdrop {
@@ -291,12 +258,11 @@
   font-size: 24px;
 }
 .b2b-total {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
 }
 .b2b-admin .b2b-editor {
-  max-width: 960px;
-  margin: auto;
+  min-width: 0;
   width: 100%;
 }
 #formular-comanda,
@@ -338,21 +304,15 @@
   .b2b-portal-header span {
     font-size: 12px;
   }
-  .b2b-admin .b2b-form {
-    padding: 16px;
-  }
 }
 @media (max-width: 420px) {
   .b2b-portal {
     padding: 14px 12px 150px;
   }
   .b2b-product {
-    padding: 12px;
     gap: 8px;
   }
-  .b2b-product h3 {
-    font-size: 14px;
-  }
+
   .b2b-product p {
     font-size: 13px;
   }
@@ -372,27 +332,13 @@
   .b2b-cart-bar strong {
     font-size: 14px;
   }
-  .b2b-cart-bar .button {
-    font-size: 12px;
-  }
+
   .b2b-review li {
     flex-wrap: wrap;
     gap: 5px;
   }
-  .b2b-order-heading h3 {
-    font-size: 16px;
-  }
+
   .b2b-dialog {
     padding: 16px;
   }
-}
-
-.b2b-admin .b2b-location-details h2 {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-.b2b-admin .b2b-location-details p {
-  font-size: 13px;
-  line-height: 1.5;
 }
