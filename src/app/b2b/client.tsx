@@ -602,7 +602,6 @@ export function B2BPortal({ data }: { data: B2BData }) {
     <main className="b2b-portal">
       <header className="b2b-portal-header">
         <strong>KAJA</strong>
-        <span>Comenzi pentru localuri</span>
       </header>
       <LocationDetails location={location} />
       <Feedback success={success} />
