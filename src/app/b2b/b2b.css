@@ -3,8 +3,27 @@
   min-width: 0;
   padding-bottom: 120px;
 }
-.b2b-admin h1 {
-  font-size: 32px;
+.workspace-content.b2b-admin {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  gap: 16px;
+}
+.b2b-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.b2b-toolbar .button {
+  min-height: 44px;
+  padding-inline: 18px;
+  font-size: 13px;
+}
+.b2b-admin > .b2b-history {
+  margin-top: 4px;
+}
+.b2b-admin > .b2b-history > h2 {
+  font-size: 22px;
 }
 .b2b-admin h3,
 .b2b-portal h3 {
@@ -44,8 +63,8 @@
 }
 .b2b-locations {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: 16px;
 }
 .b2b-locations > .panel {
   min-width: 0;
@@ -59,8 +78,22 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-start;
+}
+.b2b-location-actions {
+  max-width: 560px;
+}
+.b2b-location-actions .b2b-order-action {
+  flex-basis: 100%;
+}
+.b2b-location-actions .button {
+  padding-inline: 12px;
+  flex-grow: 1;
+}
+.b2b-location-actions .b2b-order-action {
+  width: 100%;
 }
 .b2b-actions .button,
 .b2b-cart-bar .button,
@@ -74,6 +107,7 @@
   font-size: 16px;
 }
 .b2b-form {
+  width: 100%;
   max-width: 650px;
   padding: 22px;
   border: 1px solid var(--line-strong);
@@ -88,7 +122,8 @@
   min-width: 0;
 }
 .b2b-location-select {
-  max-width: 650px;
+  width: 100%;
+  max-width: 420px;
 }
 .b2b-form input,
 .b2b-location-select select,
@@ -197,7 +232,7 @@
 }
 .b2b-order-heading {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
@@ -303,6 +338,45 @@
 #formular-comanda,
 #istoric-comenzi {
   scroll-margin-top: 24px;
+}
+@media (max-width: 800px) {
+  .b2b-portal {
+    gap: 14px;
+    padding-top: 12px;
+  }
+  .b2b-portal .b2b-location-details {
+    padding: 12px;
+    border-radius: 12px;
+  }
+  .b2b-portal .b2b-location-details h2 {
+    font-size: 16px;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+  .b2b-portal .b2b-location-details p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .b2b-portal .b2b-location-details .b2b-cashback {
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  .b2b-portal > .b2b-actions {
+    margin-top: 0;
+  }
+  .b2b-portal-header {
+    padding: 4px 0;
+  }
+  .b2b-portal-header strong {
+    font-size: 23px;
+  }
+  .b2b-portal-header span {
+    font-size: 12px;
+  }
+  .b2b-admin .b2b-form {
+    padding: 16px;
+  }
 }
 @media (max-width: 420px) {
   .b2b-portal {

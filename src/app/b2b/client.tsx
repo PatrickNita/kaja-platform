@@ -315,7 +315,6 @@ export function OrderEditor({
       aria-label={order ? "Modifică comanda" : "Comandă nouă"}
     >
       <h2>{order ? `Modifică comanda #${order.id}` : "Comandă nouă"}</h2>
-      <p className="b2b-muted">KAJA · 200 g / buc. · 400 MDL / buc.</p>
       <div className="b2b-products">
         {products.map((product) => (
           <article className="b2b-product" key={product.id}>
@@ -453,12 +452,7 @@ function History({
   }
   return (
     <section className="b2b-history">
-      <div className="b2b-order-heading">
-        <h2>Istoricul comenzilor</h2>
-        <button className="button ghost" onClick={() => router.refresh()}>
-          Actualizează
-        </button>
-      </div>
+      <h2>Istoricul comenzilor</h2>
       <Feedback error={error} />
       {orders.length === 0 && (
         <p className="b2b-muted">Nu există comenzi încă.</p>
@@ -709,8 +703,7 @@ export function B2BAdmin({
   }
   return (
     <div className="workspace-content b2b-admin">
-      <div className="b2b-order-heading">
-        <h1>B2B</h1>
+      <div className="b2b-toolbar">
         <button className="button" onClick={() => setLocationForm("new")}>
           Adaugă local
         </button>
@@ -739,42 +732,26 @@ export function B2BAdmin({
           ))}
         </select>
       </label>
-      <section className="b2b-locations">
-        {data.locations
-          .filter((l) => !selected || l.id === selected)
-          .map((local) => (
-            <article className="panel" key={local.id}>
-              <LocationDetails location={local} />
-              <label className="b2b-link-label">
-                Link secret
-                <input
-                  readOnly
-                  aria-label={`Link secret ${local.name}`}
-                  value={origin + (local.link ?? "")}
-                  onFocus={(e) => e.currentTarget.select()}
-                />
-              </label>
-              <div className="b2b-actions">
-                <button className="button ghost" onClick={() => copy(local)}>
-                  Copiază linkul
-                </button>
-                <button
-                  className="button ghost"
-                  onClick={() => setLocationForm(local)}
-                >
-                  Editează localul
-                </button>
-                {manager && (
-                  <>
+      {data.locations.length > 0 && (
+        <section className="b2b-locations">
+          {data.locations
+            .filter((l) => !selected || l.id === selected)
+            .map((local) => (
+              <article className="panel" key={local.id}>
+                <LocationDetails location={local} />
+                <label className="b2b-link-label">
+                  Link secret
+                  <input
+                    readOnly
+                    aria-label={`Link secret ${local.name}`}
+                    value={origin + (local.link ?? "")}
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                </label>
+                <div className="b2b-actions b2b-location-actions">
+                  {manager && (
                     <button
-                      className="button ghost"
-                      disabled={busy}
-                      onClick={() => rotate(local)}
-                    >
-                      Generează link nou
-                    </button>
-                    <button
-                      className="button"
+                      className="button b2b-order-action"
                       onClick={() => {
                         if (selected !== local.id && !changeLocation(local.id))
                           return;
@@ -785,38 +762,49 @@ export function B2BAdmin({
                     >
                       Comandă pentru acest local
                     </button>
-                  </>
-                )}
-              </div>
-            </article>
-          ))}
-      </section>
+                  )}
+                  <button className="button ghost" onClick={() => copy(local)}>
+                    Copiază linkul
+                  </button>
+                  <button
+                    className="button ghost"
+                    onClick={() => setLocationForm(local)}
+                  >
+                    Editează localul
+                  </button>
+                  {manager && (
+                    <>
+                      <button
+                        className="button ghost"
+                        disabled={busy}
+                        onClick={() => rotate(local)}
+                      >
+                        Generează link nou
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
+        </section>
+      )}
       {manager && location && (
         <>
-          <div className="b2b-actions">
-            {!showOrder && (
-              <button
-                className="button"
-                onClick={() => {
-                  setEditing(null);
-                  setShowOrder(true);
-                }}
-              >
-                Comandă nouă pentru {location.name}
-              </button>
-            )}
-            {showOrder && (
-              <button
-                className="button ghost"
-                onClick={() => {
-                  setShowOrder(false);
-                  setEditing(null);
-                }}
-              >
-                Închide formularul
-              </button>
-            )}
-          </div>
+          {showOrder && (
+            <div className="b2b-actions">
+              {showOrder && (
+                <button
+                  className="button ghost"
+                  onClick={() => {
+                    setShowOrder(false);
+                    setEditing(null);
+                  }}
+                >
+                  Închide formularul
+                </button>
+              )}
+            </div>
+          )}
           {showOrder &&
             (editOrder?.status === "paid" ? (
               <p>Comanda este achitată și nu mai poate fi modificată.</p>
