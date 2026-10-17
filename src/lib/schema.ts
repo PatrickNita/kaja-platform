@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, primaryKey, pgTable, serial, text, timestamp, uuid, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
@@ -170,3 +170,32 @@ export const telegramDebounce = pgTable("telegram_debounce", {
   processingAt: timestamp("processing_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+
+// B2B is isolated from the internal workspace catalogue and member sessions.
+export const b2bLocations = pgTable('b2b_locations', {
+ id: serial('id').primaryKey(), name: varchar('name',{length:160}).notNull(), address: varchar('address',{length:500}).notNull(),
+ contact: varchar('contact',{length:160}).notNull(), phone: varchar('phone',{length:40}).notNull(),
+ tokenHash: varchar('token_hash',{length:64}).notNull().unique(), tokenCipher: text('token_cipher').notNull(),
+ version: integer('version').notNull().default(1), detailsVersion: integer('details_version').notNull().default(1),
+ createdBy: integer('created_by').notNull().references(()=>members.id), updatedBy: integer('updated_by').notNull().references(()=>members.id),
+ createdAt: timestamp('created_at',{withTimezone:true}).notNull().defaultNow(), updatedAt: timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export const b2bProducts = pgTable('b2b_products', {
+ id: integer('id').primaryKey(),name: varchar('name',{length:160}).notNull(),flavor:varchar('flavor',{length:160}).notNull(),
+ grams:integer('grams').notNull().default(200),price:integer('price').notNull().default(40000),position:integer('position').notNull(),
+});
+export const b2bOrders = pgTable('b2b_orders', {
+ id:serial('id').primaryKey(),locationId:integer('location_id').notNull().references(()=>b2bLocations.id),
+ locationSnapshot:jsonb('location_snapshot').notNull(),author:varchar('author',{length:160}).notNull(),authorMemberId:integer('author_member_id').references(()=>members.id),
+ requestKey:uuid('request_key').notNull().unique(),status:varchar('status',{length:20}).notNull().default('placed'),version:integer('version').notNull().default(1),total:integer('total').notNull(),
+ confirmedBy:integer('confirmed_by').references(()=>members.id),paidBy:integer('paid_by').references(()=>members.id),
+ createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),confirmedAt:timestamp('confirmed_at',{withTimezone:true}),paidAt:timestamp('paid_at',{withTimezone:true}),
+},table=>[index('b2b_orders_location_created').on(table.locationId,table.createdAt.desc(),table.id.desc())]);
+export const b2bOrderItems = pgTable('b2b_order_items', {
+ orderId:integer('order_id').notNull().references(()=>b2bOrders.id),productId:integer('product_id').notNull().references(()=>b2bProducts.id),
+ name:varchar('name',{length:160}).notNull(),flavor:varchar('flavor',{length:160}).notNull(),grams:integer('grams').notNull(),price:integer('price').notNull(),quantity:integer('quantity').notNull(),
+},table=>[primaryKey({columns:[table.orderId,table.productId]})]);
+export const b2bCashback = pgTable('b2b_cashback', {
+ orderId:integer('order_id').primaryKey().references(()=>b2bOrders.id),locationId:integer('location_id').notNull().references(()=>b2bLocations.id),amount:integer('amount').notNull(),creditedBy:integer('credited_by').notNull().references(()=>members.id),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},table=>[index('b2b_cashback_location').on(table.locationId)]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Section = "activity" | "tasks" | "events" | "catalogue" | "merch" | "information" | "uploads";
+type Section = "b2b" | "activity" | "tasks" | "events" | "catalogue" | "merch" | "information" | "uploads";
 type CatalogueGroup = "live" | "upcoming" | "ideas";
 type TaskView = "all" | "mine" | "history";
 
@@ -68,6 +68,7 @@ export function MobileMenu({ view, catalogue, tasks, memberSlug, brand }: { bran
           <a href={link("merch")} className={view === "merch" ? "active" : undefined}>{sectionLabels.merch}</a>
           <a href={link("information")} className={view === "information" ? "active" : undefined}>{sectionLabels.information}</a>
           <a href={link("uploads")} className={view === "uploads" ? "active" : undefined}>{sectionLabels.uploads}</a>
+          <a href="/b2b" className={view === "b2b" ? "active" : undefined}>B2B</a>
         </nav>
       </aside>
     </>}

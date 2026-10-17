@@ -1,0 +1,22 @@
+import type { Metadata } from "next";
+import { currentLocation, loadData, SUPPORT } from "../../lib/b2b/server";
+import { B2BPortal } from "../b2b/client";
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "KAJA — Comenzi",
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
+};
+export default async function OrdersPage() {
+  const location = await currentLocation();
+  if (!location)
+    return (
+      <main className="landing">
+        <section className="landing-card">
+          <h2>Link invalid sau expirat</h2>
+          <p>{SUPPORT}</p>
+        </section>
+      </main>
+    );
+  return <B2BPortal data={await loadData(location)} />;
+}

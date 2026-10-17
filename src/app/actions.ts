@@ -458,7 +458,7 @@ export async function activityData(filter: "all" | Brand) {
 }
 
 export async function taskWorkspaceData() {
-  if (!db) return null;
+  if (!db || !await currentMember()) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
   const [allMembers, allTasks, allTaskAssignees, allComments, allReactions, allAttention] = await Promise.all([
     db.select({ id: members.id, name: members.name, slug: members.slug }).from(members).orderBy(members.id),
@@ -479,7 +479,7 @@ export async function taskWorkspaceData() {
 }
 
 export async function workspaceData(brandName: "all" | "kaja" | "hexenwerk" | "virginia") {
-  if (!db) return null;
+  if (!db || !await currentMember()) return null;
   for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
   const updateVisibility = brandName === "all"
     ? isNull(updates.deletedAt)
