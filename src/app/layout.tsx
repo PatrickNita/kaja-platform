@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: "KAJA — Platformă internă", descr
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const member = await currentMember();
-  return <html lang="en"><body><EntryModalStateProvider memberSlug={member?.slug ?? "guest"}>{children}</EntryModalStateProvider></body></html>;
+  return <html lang="ro"><body><EntryModalStateProvider memberSlug={member?.slug ?? "guest"}>{children}</EntryModalStateProvider></body></html>;
 }

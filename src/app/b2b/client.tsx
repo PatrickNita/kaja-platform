@@ -8,6 +8,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   canEditOrder,
@@ -21,15 +22,27 @@ import {
   type Product,
 } from "../../lib/b2b/model";
 
+function searchKey(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
 async function request(body: Record<string, unknown>) {
   const response = await fetch("/api/b2b", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  }).catch(() => {
+    throw new Error(
+      "Conexiunea a eșuat. Verifică internetul și încearcă din nou.",
+    );
   });
-  const result = await response.json();
-  if (!response.ok)
-    throw new Error(result.error ?? "Operația nu a reușit. Încearcă din nou.");
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result)
+    throw new Error(result?.error ?? "Operația nu a reușit. Încearcă din nou.");
   return result;
 }
 function Feedback({ error, success }: { error?: string; success?: string }) {
@@ -52,7 +65,9 @@ function ConfirmDialog({
   children,
   onClose,
   busy,
+  title = "Confirmă comanda",
 }: {
+  title?: string;
   children: ReactNode;
   onClose: () => void;
   busy: boolean;
@@ -72,10 +87,10 @@ function ConfirmDialog({
       }}
     >
       <div className="b2b-dialog-head">
-        <h3 className="item-title">Confirmă comanda</h3>
+        <h3 className="item-title">{title}</h3>
         <button
           type="button"
-          aria-label="Închide confirmarea"
+          aria-label="Închide dialogul"
           disabled={busy}
           onClick={onClose}
         >
@@ -617,6 +632,144 @@ export function B2BPortal({ data }: { data: B2BData }) {
   );
 }
 
+function LocationActions({
+  name,
+  actions,
+}: {
+  name: string;
+  actions: { label: string; run: () => void; disabled?: boolean }[];
+}) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  function close() {
+    setPosition(null);
+    trigger.current?.focus();
+  }
+  useEffect(() => {
+    if (!position) return;
+    menu.current
+      ?.querySelector<HTMLButtonElement>("button:not(:disabled)")
+      ?.focus();
+    const outside = (e: PointerEvent) => {
+      if (
+        !menu.current?.contains(e.target as Node) &&
+        !trigger.current?.contains(e.target as Node)
+      )
+        setPosition(null);
+    };
+    const dismiss = () => setPosition(null);
+    document.addEventListener("pointerdown", outside);
+    const scroll = (event: Event) => {
+      if (
+        !(event.target instanceof Node) ||
+        !menu.current?.contains(event.target)
+      )
+        dismiss();
+    };
+    window.addEventListener("scroll", scroll, true);
+    window.addEventListener("resize", dismiss);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      window.removeEventListener("resize", dismiss);
+      window.removeEventListener("scroll", scroll, true);
+    };
+  }, [position]);
+  return (
+    <>
+      <button
+        ref={trigger}
+        className="button ghost b2b-more"
+        aria-label={"Acțiuni pentru " + name}
+        aria-haspopup="menu"
+        aria-expanded={Boolean(position)}
+        onClick={() => {
+          if (position) {
+            close();
+            return;
+          }
+          const rect = trigger.current!.getBoundingClientRect();
+          const height = actions.length * 44 + 18;
+          setPosition({
+            left: Math.max(
+              8,
+              Math.min(rect.right - 240, window.innerWidth - 248),
+            ),
+            top: Math.max(
+              8,
+              rect.bottom + height + 8 <= window.innerHeight
+                ? rect.bottom + 6
+                : rect.top - height - 6,
+            ),
+          });
+        }}
+      >
+        ⋯
+      </button>
+      {position &&
+        createPortal(
+          <div
+            ref={menu}
+            className="b2b-action-menu"
+            role="menu"
+            aria-label={"Acțiuni pentru " + name}
+            style={{ top: position.top, left: position.left }}
+            onKeyDown={(e) => {
+              const buttons = [
+                ...menu.current!.querySelectorAll<HTMLButtonElement>(
+                  "button:not(:disabled)",
+                ),
+              ];
+              const index = buttons.indexOf(
+                document.activeElement as HTMLButtonElement,
+              );
+              if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+              }
+              if (e.key === "Tab") {
+                e.preventDefault();
+                close();
+              }
+              if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+                e.preventDefault();
+                const next =
+                  e.key === "Home"
+                    ? 0
+                    : e.key === "End"
+                      ? buttons.length - 1
+                      : (index +
+                          (e.key === "ArrowDown" ? 1 : -1) +
+                          buttons.length) %
+                        buttons.length;
+                buttons[next]?.focus();
+              }
+            }}
+          >
+            {actions.map((action) => (
+              <button
+                role="menuitem"
+                key={action.label}
+                disabled={action.disabled}
+                onClick={() => {
+                  close();
+                  action.run();
+                }}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
 function LocationFilter({
   locations,
   value,
@@ -757,6 +910,8 @@ export function B2BAdmin({
   const router = useRouter();
   const manager = canManageOrders(memberSlug);
   const [view, setView] = useState(initialView);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [linkLocation, setLinkLocation] = useState<number | null>(null);
   const [historyLocation, setHistoryLocation] = useState<number | null>(null);
   useEffect(() => {
     const sync = () =>
@@ -788,6 +943,10 @@ export function B2BAdmin({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const location = data.locations.find((l) => l.id === selected);
+  const matchingLocations = data.locations.filter((local) =>
+    searchKey(local.name).includes(searchKey(locationSearch)),
+  );
+  const visibleLink = data.locations.find((l) => l.id === linkLocation);
   const editOrder = editing
     ? data.orders.find((o) => o.id === editing.id)
     : undefined;
@@ -880,6 +1039,12 @@ export function B2BAdmin({
       </nav>
       {view === "locations" && (
         <div className="b2b-toolbar">
+          <input
+            aria-label="Caută localuri"
+            placeholder="Caută local…"
+            value={locationSearch}
+            onChange={(e) => setLocationSearch(e.target.value)}
+          />
           <button className="button" onClick={() => setLocationForm("new")}>
             Adaugă local
           </button>
@@ -894,107 +1059,116 @@ export function B2BAdmin({
         />
       )}
       {view === "locations" && (
-        <div
-          className="b2b-table-scroll"
-          role="region"
-          aria-label="Lista localurilor"
-          tabIndex={0}
-        >
-          {data.locations.length ? (
-            <table className="b2b-location-table">
-              <thead>
-                <tr>
-                  {[
-                    "Denumire",
-                    "Adresă",
-                    "Persoană de contact",
-                    "Telefon",
-                    "Cashback",
-                    "Link",
-                    "Copiere",
-                  ].map((label) => (
-                    <th scope="col" key={label}>
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              {data.locations.map((local) => {
-                const fullLink = origin + (local.link ?? "");
-                const parts = fullLink.split("/");
-                const token = parts.pop() ?? "";
-                const preview =
-                  parts.join("/") + "/" + token.slice(0, 12) + "…";
-                return (
-                  <tbody key={local.id}>
-                    <tr>
-                      <th scope="row" className="item-title">
-                        {local.name}
-                      </th>
-                      <td>{local.address}</td>
-                      <td>{local.contact}</td>
-                      <td>
-                        <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
-                          {local.phone}
-                        </a>
-                      </td>
-                      <td>{money(local.cashback)}</td>
-                      <td>
-                        <span className="b2b-link-preview">{preview}</span>
-                      </td>
-                      <td>
-                        <button
-                          className="button ghost"
-                          onClick={() => copy(local)}
-                        >
-                          Copiază linkul
-                        </button>
-                      </td>
-                    </tr>
-                    {manager && (
-                      <tr>
-                        <td colSpan={7}>
-                          <div className="b2b-actions b2b-location-actions">
-                            <button
-                              className="button"
-                              onClick={() => {
-                                if (
-                                  selected !== local.id &&
-                                  !changeLocation(local.id)
-                                )
-                                  return;
-                                setSelected(local.id);
-                                setEditing(null);
-                                setShowOrder(true);
-                              }}
-                            >
-                              Comandă pentru acest local
-                            </button>
-                            <button
-                              className="button ghost"
-                              onClick={() => setLocationForm(local)}
-                            >
-                              Editează
-                            </button>
-                            <button
-                              className="button ghost"
-                              disabled={busy}
-                              onClick={() => rotate(local)}
-                            >
-                              Generează link nou
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                );
-              })}
-            </table>
+        <section className="b2b-location-list" aria-label="Lista localurilor">
+          <div className="b2b-list-head" aria-hidden="true">
+            <span>Local</span>
+            <span>Contact</span>
+            <span>Cashback</span>
+            <span>Acțiuni</span>
+          </div>
+          {matchingLocations.map((local) => (
+            <article
+              key={local.id}
+              className="b2b-location-row"
+              aria-label={local.name}
+            >
+              <div className="b2b-location-cell">
+                <h3 className="item-title">{local.name}</h3>
+                <p>{local.address}</p>
+              </div>
+              <div className="b2b-location-cell">
+                <strong>{local.contact}</strong>
+                <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
+                  {local.phone}
+                </a>
+              </div>
+              <div className="b2b-location-balance">
+                <span className="b2b-mobile-label">Cashback</span>
+                <strong>{money(local.cashback)}</strong>
+              </div>
+              <div className="b2b-row-actions">
+                <button className="button ghost" onClick={() => copy(local)}>
+                  Copiază linkul
+                </button>
+                <LocationActions
+                  name={local.name}
+                  actions={[
+                    ...(manager
+                      ? [
+                          {
+                            label: "Comandă pentru acest local",
+                            run: () => {
+                              if (
+                                selected !== local.id &&
+                                !changeLocation(local.id)
+                              )
+                                return;
+                              setSelected(local.id);
+                              setEditing(null);
+                              setShowOrder(true);
+                            },
+                          },
+                        ]
+                      : []),
+                    {
+                      label: "Vezi linkul",
+                      run: () => {
+                        setError("");
+                        setSuccess("");
+                        setLinkLocation(local.id);
+                      },
+                    },
+                    ...(manager
+                      ? [
+                          {
+                            label: "Editează",
+                            run: () => setLocationForm(local),
+                          },
+                          {
+                            label: "Generează link nou",
+                            run: () => {
+                              void rotate(local);
+                            },
+                            disabled: busy,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              </div>
+            </article>
+          ))}
+          {!data.locations.length ? (
+            <p className="b2b-empty">Nu există localuri încă.</p>
           ) : (
-            <p className="meta">Nu există localuri încă.</p>
+            !matchingLocations.length && (
+              <p className="b2b-empty">Nu există localuri potrivite.</p>
+            )
           )}
-        </div>
+        </section>
+      )}
+      {visibleLink && (
+        <ConfirmDialog
+          title={"Link de acces · " + visibleLink.name}
+          busy={false}
+          onClose={() => setLinkLocation(null)}
+        >
+          <label className="b2b-link-label">
+            Link secret
+            <input
+              aria-label="Link secret complet"
+              readOnly
+              value={origin + visibleLink.link}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          </label>
+          <div className="b2b-actions">
+            <button className="button" onClick={() => copy(visibleLink)}>
+              Copiază linkul
+            </button>
+          </div>
+          <Feedback error={error} success={success} />
+        </ConfirmDialog>
       )}
       {view === "history" && (
         <LocationFilter

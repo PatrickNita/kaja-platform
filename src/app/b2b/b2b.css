@@ -343,64 +343,6 @@
   }
 }
 
-.b2b-table-scroll {
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-}
-.b2b-table-scroll > .meta {
-  padding: 17px;
-}
-.b2b-location-table {
-  width: 100%;
-  min-width: 1080px;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 13px;
-}
-.b2b-location-table th,
-.b2b-location-table td {
-  padding: 12px 14px;
-  vertical-align: middle;
-}
-.b2b-location-table thead th {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  border-bottom: 1px solid var(--line);
-}
-.b2b-location-table tbody + tbody {
-  border-top: 1px solid var(--line);
-}
-.b2b-location-table th.item-title {
-  font-size: 16px;
-  min-width: 150px;
-}
-.b2b-location-table td:nth-child(2) {
-  min-width: 170px;
-  max-width: 260px;
-  overflow-wrap: anywhere;
-}
-.b2b-location-table td:nth-child(3) {
-  min-width: 140px;
-}
-.b2b-location-table .b2b-location-actions {
-  margin: 0;
-  flex-wrap: nowrap;
-  gap: 8px;
-}
-.b2b-location-table .button {
-  flex-shrink: 0;
-}
-.b2b-link-preview {
-  display: block;
-  white-space: nowrap;
-  font-size: 11px;
-  color: var(--muted);
-}
 .b2b-location-select {
   position: relative;
 }
@@ -448,8 +390,152 @@
 .b2b-filter-popup [aria-selected="true"] {
   font-weight: 800;
 }
+
+.b2b-toolbar {
+  align-items: center;
+  justify-content: space-between;
+}
+.b2b-toolbar input {
+  max-width: 420px;
+  min-width: 0;
+  font-size: 12px;
+}
+.b2b-toolbar > .button {
+  flex-shrink: 0;
+}
+.b2b-location-list {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  min-width: 0;
+}
+.b2b-list-head,
+.b2b-location-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(
+      90px,
+      0.6fr
+    ) 160px;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+}
+.b2b-list-head {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  border-bottom: 1px solid var(--line);
+  padding-block: 12px;
+}
+.b2b-location-row + .b2b-location-row {
+  border-top: 1px solid var(--line);
+}
+.b2b-location-cell {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.b2b-location-cell p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.b2b-location-cell a {
+  color: var(--muted);
+  width: fit-content;
+}
+.b2b-location-cell strong {
+  overflow-wrap: anywhere;
+}
+.b2b-location-balance {
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+.b2b-mobile-label {
+  display: none;
+  color: var(--muted);
+  font-size: 11px;
+}
+.b2b-row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.b2b-more {
+  min-width: 36px;
+  font-size: 18px;
+  line-height: 1;
+}
+.b2b-action-menu {
+  position: fixed;
+  z-index: 80;
+  width: 240px;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px #0008;
+}
+.b2b-action-menu button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+}
+.b2b-action-menu button:hover,
+.b2b-action-menu button:focus-visible {
+  background: var(--surface-soft);
+}
+.b2b-action-menu button:disabled {
+  opacity: 0.5;
+}
+.b2b-empty {
+  margin: 0;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
 @media (max-width: 800px) {
-  .b2b-location-table th.item-title {
-    font-size: 15px;
+  .b2b-list-head {
+    display: none;
   }
+  .b2b-location-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px 12px;
+    padding: 14px;
+  }
+  .b2b-location-cell {
+    grid-column: 1 / -1;
+  }
+  .b2b-location-balance {
+    grid-column: 1;
+  }
+  .b2b-mobile-label {
+    display: block;
+  }
+  .b2b-row-actions {
+    grid-column: 2;
+  }
+  .b2b-toolbar input {
+    width: 100%;
+  }
+}
+
+.b2b-error,
+.b2b-success {
+  font-size: 13px;
+  margin: 0;
 }

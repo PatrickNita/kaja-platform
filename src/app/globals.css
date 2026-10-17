@@ -366,3 +366,26 @@ button.task-member-chip:hover { border-color:#85857f; color:#fff; }
   .attachment-actions { flex-wrap:wrap; }
   .comment-form { gap:var(--entry-gap); margin:0; }
 }
+
+/* Shared readability and keyboard interaction across workspace sections. */
+button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+.workspace-content > *, .panel-head > *, .attachment > *, .comment-form > * { min-width:0; }
+.entry-preview, .item p, .comment-line > p, .attachment .item-title { overflow-wrap:anywhere; }
+.entry-modal-title-group .item-title { overflow-wrap:anywhere; }
+input:disabled, textarea:disabled, select:disabled, button:disabled { cursor:not-allowed; }
+@media(max-width:800px) {
+ .button, .workspace-filter-nav a, .workspace-filter-nav button, .filter-nav a, .filter-nav button, .catalogue-submenu a, .composer-toggle summary, .text-button { min-height:44px; }
+ .button { white-space:normal; text-align:center; }
+ .entry-modal-surface .entry-modal-close, .gallery-arrow, .mobile-close { width:44px; height:44px; flex-shrink:0; }
+ .mobile-menu-button, .mobile-submenu-list a { min-height:44px; }
+ .mobile-drawer { height:100dvh; padding-bottom:calc(32px + env(safe-area-inset-bottom)); }
+ input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select { min-height:44px; }
+ .panel-head { flex-wrap:wrap; gap:10px; }
+ .attachment-actions, .entry-edit-actions { gap:8px; }
+}
+
+@media(max-width:800px) { .task-member-chip.picker, .brand-picker button, .task-member-control button { min-height:44px; } }
+
+.entry-inline-editor, .entry-card-content > *, .entry-gallery, .gallery-management > *, .gallery-upload-form > * { min-width:0; max-width:100%; }
+.entry-card-content > p { overflow-wrap:anywhere; line-height:1.55; }
+input[type=file] { max-width:100%; }
