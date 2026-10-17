@@ -15,11 +15,11 @@ new Function("exports", "require", compile("../src/lib/b2b/model.ts"))(
   model,
   require,
 );
-assert.equal(model.stockStatus("BRAIN FREEZE"), "limited");
-assert.equal(model.stockStatus("STWY"), "unavailable");
+assert.equal(model.stockStatus("BRAIN FREEZE"), "available");
+assert.equal(model.stockStatus("STWY"), "available");
 assert.equal(
   model.products.filter(([n]) => model.stockStatus(n) === "available").length,
-  23,
+  25,
 );
 let mode = "portal",
   catalog = [],
@@ -91,6 +91,9 @@ async function check({
   if (status === 400)
     assert.equal(calls, old === null ? 1 : 2, "Rejected stock must not mutate");
 }
+await check({ status: 200 });
+await check({ admin:true, status:200 });
+model.stockOverrides.STWY = "unavailable";
 await check({});
 await check({ admin: true });
 await check({ name: "BRAIN FREEZE", quantity: 2, status: 200 });
@@ -99,5 +102,5 @@ await check({ old: 2, quantity: 1, status: 200 });
 await check({ old: 2, quantity: 3 });
 await check({ old: 0, quantity: 1 });
 console.log(
-  "PASS: stock states, new-order rejection, existing-order preservation/reduction, increase rejection.",
+  "PASS: all 25 products available; unavailable-stock safeguards verified with test overrides.",
 );

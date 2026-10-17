@@ -80,12 +80,8 @@ export type B2BData = {
 };
 
 export type StockStatus = "available" | "limited" | "unavailable";
-export const stockStatus = (name: string): StockStatus =>
-  name === "STWY"
-    ? "unavailable"
-    : name === "BRAIN FREEZE"
-      ? "limited"
-      : "available";
+export const stockOverrides: Partial<Record<string, StockStatus>> = {};
+export const stockStatus = (name: string): StockStatus => stockOverrides[name] ?? "available";
 export const stockLabel: Record<StockStatus, string> = {
   available: "În stoc",
   limited: "Stoc limitat",
