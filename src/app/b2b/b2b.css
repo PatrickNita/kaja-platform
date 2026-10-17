@@ -413,10 +413,9 @@
 .b2b-list-head,
 .b2b-location-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(
-      0,
-      1fr
-    ) 110px 80px 108px 36px;
+  grid-template-columns:
+    minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1fr)
+    110px 80px 108px 36px;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
@@ -511,25 +510,51 @@
     display: none;
   }
   .b2b-location-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px 12px;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.1fr) minmax(0, 0.85fr);
+    gap: 6px 8px;
     padding: 14px;
+    align-items: start;
   }
   .b2b-location-cell {
-    grid-column: 1 / -1;
+    overflow-wrap: anywhere;
+  }
+  .b2b-location-cell:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .b2b-location-cell:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .b2b-location-cell:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+    font-weight: 700;
+  }
+  .b2b-location-cell:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
   }
   .b2b-location-balance {
-    grid-column: 1;
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .b2b-mobile-label {
     display: block;
   }
   .b2b-row-actions {
-    grid-column: 2;
-    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
-    align-items: center;
-    justify-content: flex-end;
+  }
+  .b2b-row-actions > .button {
+    width: 100%;
+    min-width: 0;
   }
   .b2b-toolbar input {
     width: 100%;
