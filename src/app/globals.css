@@ -299,6 +299,7 @@ button.task-member-chip:hover { border-color:#85857f; color:#fff; }
   .composer-toggle { width:100%; }
   .card-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .workspace-shell { padding-inline:24px; }
+  .workspace-header { margin-inline:-24px; }
   .modal-entry-grid .card-wrap { flex-basis:calc((100% - 16px) / 2); }
   .entry-modal-layer { padding:12px; }
   .entry-modal-surface { max-height:calc(100dvh - 24px); }
