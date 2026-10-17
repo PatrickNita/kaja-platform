@@ -78,3 +78,18 @@ export type B2BData = {
   products: Product[];
   orders: Order[];
 };
+
+export type StockStatus = "available" | "limited" | "unavailable";
+export const stockStatus = (name: string): StockStatus =>
+  name === "STWY"
+    ? "unavailable"
+    : name === "BRAIN FREEZE"
+      ? "limited"
+      : "available";
+export const stockLabel: Record<StockStatus, string> = {
+  available: "În stoc",
+  limited: "Stoc limitat",
+  unavailable: "Stoc epuizat",
+};
+export const stockLimit = (name: string, existingQuantity = 0) =>
+  stockStatus(name) === "unavailable" ? existingQuantity : 10000;

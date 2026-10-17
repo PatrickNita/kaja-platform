@@ -11,6 +11,9 @@ import {
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
+  stockStatus,
+  stockLabel,
+  stockLimit,
   canEditOrder,
   canManageOrders,
   money,
@@ -281,7 +284,13 @@ export function OrderEditor({
               Number.isInteger(stored.counts[p.id]) &&
               stored.counts[p.id] >= 0 &&
               stored.counts[p.id] <= 10000
-                ? stored.counts[p.id]
+                ? Math.min(
+                    stored.counts[p.id],
+                    stockLimit(
+                      p.name,
+                      order?.items.find((i) => i.id === p.id)?.quantity ?? 0,
+                    ),
+                  )
                 : 0,
             ]),
           ),
@@ -366,39 +375,53 @@ export function OrderEditor({
                 <span>{money(product.price)}</span>
               </p>
             </div>
-            <div className="b2b-quantity">
-              <button
-                type="button"
-                aria-label={`Scade ${product.name}`}
-                disabled={!ready || busy || !(counts[product.id] > 0)}
-                onClick={() =>
-                  setCounts((c) => ({
-                    ...c,
-                    [product.id]: Math.max(0, (c[product.id] ?? 0) - 1),
-                  }))
-                }
-              >
-                −
-              </button>
-              <output
-                aria-label={`Cantitate ${product.name}`}
-                aria-live="polite"
-              >
-                {counts[product.id] ?? 0}
-              </output>
-              <button
-                type="button"
-                aria-label={`Adaugă ${product.name}`}
-                disabled={!ready || busy || (counts[product.id] ?? 0) >= 10000}
-                onClick={() =>
-                  setCounts((c) => ({
-                    ...c,
-                    [product.id]: (c[product.id] ?? 0) + 1,
-                  }))
-                }
-              >
-                +
-              </button>
+            <div className="b2b-product-controls">
+              <span className={`b2b-stock ${stockStatus(product.name)}`}>
+                {stockLabel[stockStatus(product.name)]}
+              </span>
+              <div className="b2b-quantity">
+                <button
+                  type="button"
+                  aria-label={`Scade ${product.name}`}
+                  disabled={!ready || busy || !(counts[product.id] > 0)}
+                  onClick={() =>
+                    setCounts((c) => ({
+                      ...c,
+                      [product.id]: Math.max(0, (c[product.id] ?? 0) - 1),
+                    }))
+                  }
+                >
+                  −
+                </button>
+                <output
+                  aria-label={`Cantitate ${product.name}`}
+                  aria-live="polite"
+                >
+                  {counts[product.id] ?? 0}
+                </output>
+                <button
+                  type="button"
+                  aria-label={`Adaugă ${product.name}`}
+                  disabled={
+                    !ready ||
+                    busy ||
+                    (counts[product.id] ?? 0) >=
+                      stockLimit(
+                        product.name,
+                        order?.items.find((i) => i.id === product.id)
+                          ?.quantity ?? 0,
+                      )
+                  }
+                  onClick={() =>
+                    setCounts((c) => ({
+                      ...c,
+                      [product.id]: (c[product.id] ?? 0) + 1,
+                    }))
+                  }
+                >
+                  +
+                </button>
+              </div>
             </div>
           </article>
         ))}

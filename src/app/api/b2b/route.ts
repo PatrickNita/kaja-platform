@@ -9,7 +9,12 @@ import {
   SUPPORT,
 } from "../../../lib/b2b/server";
 import { encryptToken, newToken, tokenHash } from "../../../lib/b2b/crypto";
-import { canManageOrders, type Product } from "../../../lib/b2b/model";
+import {
+  stockStatus,
+  stockLimit,
+  canManageOrders,
+  type Product,
+} from "../../../lib/b2b/model";
 
 const id = z.number().int().positive();
 const locationFields = z.object({
@@ -120,6 +125,33 @@ export async function POST(request: Request) {
         if (!product) throw new Error("Produs indisponibil.");
         return { ...product, quantity: item.quantity };
       });
+      const unavailable = lines.filter(
+        (line) => stockStatus(line.name) === "unavailable",
+      );
+      if (unavailable.length) {
+        const existing = body.orderId
+          ? await query<{ id: number; quantity: number }>(
+              sql`select i.product_id as id,i.quantity from b2b_order_items i join b2b_orders o on o.id=i.order_id where o.id=${id.parse(body.orderId)} and o.location_id=${locationId}`,
+            )
+          : [];
+        if (
+          unavailable.some(
+            (line) =>
+              line.quantity >
+              stockLimit(
+                line.name,
+                existing.find((i) => i.id === line.id)?.quantity ?? 0,
+              ),
+          )
+        )
+          return NextResponse.json(
+            {
+              error:
+                "STWY are stoc epuizat. Nu poate fi adăugat sau mărit în comandă.",
+            },
+            { status: 400 },
+          );
+      }
       const total = lines.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0,
