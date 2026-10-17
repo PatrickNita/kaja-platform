@@ -413,12 +413,13 @@
 .b2b-list-head,
 .b2b-location-row {
   display: grid;
-  grid-template-columns:
-    minmax(0, 2fr) minmax(0, 1.4fr) minmax(90px, 0.6fr)
-    160px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(
+      0,
+      1fr
+    ) 110px 80px 108px 36px;
   align-items: center;
-  gap: 20px;
-  padding: 16px;
+  gap: 12px;
+  padding: 10px 14px;
 }
 .b2b-list-head {
   color: var(--muted);
@@ -461,10 +462,7 @@
   font-size: 11px;
 }
 .b2b-row-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
+  display: contents;
 }
 .b2b-more {
   min-width: 36px;
@@ -514,7 +512,7 @@
   }
   .b2b-location-row {
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 14px 12px;
+    gap: 6px 12px;
     padding: 14px;
   }
   .b2b-location-cell {
@@ -528,6 +526,10 @@
   }
   .b2b-row-actions {
     grid-column: 2;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
   }
   .b2b-toolbar input {
     width: 100%;
@@ -634,5 +636,10 @@
   }
 }
 
-.b2b-dialog { max-width:calc(100% - 24px); }
-.b2b-checkout-list { scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; }
+.b2b-dialog {
+  max-width: calc(100% - 24px);
+}
+.b2b-checkout-list {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}

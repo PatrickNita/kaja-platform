@@ -849,7 +849,6 @@ function LocationFilter({
   }
   return (
     <div className="b2b-location-select" ref={root}>
-      <span>Local</span>
       <button
         className="button ghost b2b-filter-trigger"
         aria-expanded={open}
@@ -1097,9 +1096,12 @@ export function B2BAdmin({
         <section className="b2b-location-list" aria-label="Lista localurilor">
           <div className="b2b-list-head" aria-hidden="true">
             <span>Local</span>
-            <span>Contact</span>
+            <span>Adresă</span>
+            <span>Persoană contact</span>
+            <span>Nr. telefon</span>
             <span>Cashback</span>
             <span>Acțiuni</span>
+            <span />
           </div>
           {matchingLocations.map((local) => (
             <article
@@ -1109,10 +1111,12 @@ export function B2BAdmin({
             >
               <div className="b2b-location-cell">
                 <h3 className="item-title">{local.name}</h3>
-                <p>{local.address}</p>
               </div>
               <div className="b2b-location-cell">
-                <strong>{local.contact}</strong>
+                <p>{local.address}</p>
+              </div>
+              <div className="b2b-location-cell">{local.contact}</div>
+              <div className="b2b-location-cell">
                 <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
                   {local.phone}
                 </a>
