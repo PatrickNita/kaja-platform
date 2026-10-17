@@ -617,7 +617,7 @@
 }
 .b2b-checkout-list li {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding: 10px 0;
   font-size: 12px;
@@ -626,7 +626,11 @@
   border-bottom: 0;
 }
 .b2b-checkout-list strong {
-  white-space: nowrap;
+  min-width: 0;
+  text-align: right;
+  align-self: center;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-variant-numeric: tabular-nums;
 }
 .b2b-checkout-footer {
@@ -636,15 +640,18 @@
   border-top: 1px solid var(--line);
 }
 .b2b-checkout-total {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: baseline;
-  justify-content: space-between;
   gap: 12px;
   margin: 0;
   font-size: 13px;
 }
 .b2b-checkout-total strong {
-  white-space: nowrap;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  white-space: normal;
   font-variant-numeric: tabular-nums;
 }
 .b2b-checkout-footer > .button {
@@ -687,4 +694,12 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.b2b-checkout-product small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
 }

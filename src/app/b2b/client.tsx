@@ -439,7 +439,10 @@ export function OrderEditor({
           >
             {selected.map((p) => (
               <li key={p.id}>
-                <span>{p.name}</span>
+                <span className="b2b-checkout-product">
+                  {p.name}
+                  <small>{p.flavor}</small>
+                </span>
                 <strong>
                   {counts[p.id]} buc. · {money(p.price * counts[p.id])}
                 </strong>
