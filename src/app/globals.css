@@ -3,7 +3,7 @@
 :root { --bg:#090909; --surface:#111111; --surface-raised:#171717; --surface-soft:#1d1d1d; --ink:#f6f6f3; --muted:#999994; --line:#2b2b2a; --line-strong:#464643; --accent:#fff; --danger:#ff8d84; --entry-gap:12px; }
 * { box-sizing:border-box; }
 html { background:var(--bg); }
-body { margin:0; min-width:320px; background:radial-gradient(circle at 60% -20%, #242424 0, var(--bg) 38rem); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
+body { margin:0; min-width:0; background:radial-gradient(circle at 60% -20%, #242424 0, var(--bg) 38rem); color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
 button, input, textarea, select { font:inherit; }
 button { cursor:pointer; }
 a { color:inherit; }

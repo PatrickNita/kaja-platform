@@ -66,7 +66,9 @@ function ConfirmDialog({
   onClose,
   busy,
   title = "Confirmă comanda",
+  className = "",
 }: {
+  className?: string;
   title?: string;
   children: ReactNode;
   onClose: () => void;
@@ -74,12 +76,17 @@ function ConfirmDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     ref.current?.showModal();
-    return () => ref.current?.close();
+    return () => {
+      ref.current?.close();
+      document.body.style.overflow = previousOverflow;
+    };
   }, []);
   return (
     <dialog
-      className="entry-modal-surface b2b-dialog"
+      className={`entry-modal-surface b2b-dialog ${className}`}
       ref={ref}
       onCancel={(event) => {
         event.preventDefault();
@@ -337,10 +344,10 @@ export function OrderEditor({
           <article className="card-wrap b2b-product" key={product.id}>
             <div>
               <h3 className="item-title">{product.name}</h3>
-              <p>{product.flavor}</p>
-              <span>
-                {product.grams} g · {money(product.price)}
-              </span>
+              <p className="b2b-product-meta">
+                {product.flavor} · <span>{product.grams} g</span> ·{" "}
+                <span>{money(product.price)}</span>
+              </p>
             </div>
             <div className="b2b-quantity">
               <button
@@ -399,29 +406,45 @@ export function OrderEditor({
       </div>
       <Feedback error={!review ? error : ""} />
       {review && (
-        <ConfirmDialog busy={busy} onClose={() => setReview(false)}>
-          <h4>{location.name}</h4>
-          <p>{order ? order.location_snapshot.address : location.address}</p>
-          <ul className="b2b-review">
+        <ConfirmDialog
+          className="b2b-checkout"
+          busy={busy}
+          onClose={() => setReview(false)}
+        >
+          <p className="b2b-checkout-location">
+            <strong>{location.name}</strong>
+            <span aria-hidden="true"> · </span>
+            {order ? order.location_snapshot.address : location.address}
+          </p>
+          <ul
+            className="b2b-review b2b-checkout-list"
+            aria-label="Produsele comenzii"
+          >
             {selected.map((p) => (
               <li key={p.id}>
-                <span>
-                  {p.name} · {counts[p.id]} buc.
-                </span>
-                <strong>{money(p.price * counts[p.id])}</strong>
+                <span>{p.name}</span>
+                <strong>
+                  {counts[p.id]} buc. · {money(p.price * counts[p.id])}
+                </strong>
               </li>
             ))}
           </ul>
-          <p className="b2b-total">Total: {money(total)}</p>
-          <p>Plata se face în afara platformei.</p>
-          <Feedback error={error} />
-          <button className="button" disabled={busy} onClick={submit}>
-            {busy
-              ? "Se trimite…"
-              : order
-                ? "Salvează modificările"
-                : "Plasează comanda"}
-          </button>
+          <div className="b2b-checkout-footer">
+            <p className="b2b-checkout-total">
+              <span>Total</span>
+              <strong>
+                {units} buc. · {money(total)}
+              </strong>
+            </p>
+            <Feedback error={error} />
+            <button className="button" disabled={busy} onClick={submit}>
+              {busy
+                ? "Se trimite…"
+                : order
+                  ? "Salvează modificările"
+                  : "Plasează comanda"}
+            </button>
+          </div>
         </ConfirmDialog>
       )}
     </section>
