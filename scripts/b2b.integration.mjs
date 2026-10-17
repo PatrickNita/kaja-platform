@@ -90,7 +90,7 @@ checks++;
 const [initial] = await db.query("select * from b2b_locations where id=$1", [
   a,
 ]);
-await api(andrei, {
+await api(admin, {
   mode: "admin",
   operation: "editLocation",
   locationId: a,
@@ -105,7 +105,7 @@ assert.equal(afterEdit.token_cipher, initial.token_cipher);
 assert.equal(afterEdit.version, initial.version);
 checks++;
 await api(
-  andrei,
+  admin,
   {
     mode: "admin",
     operation: "editLocation",

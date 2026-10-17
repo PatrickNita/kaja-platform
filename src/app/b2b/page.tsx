@@ -11,7 +11,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
-export default async function B2BPage() {
+export default async function B2BPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const member = await currentMember();
   if (!member)
     return (
@@ -57,7 +62,11 @@ export default async function B2BPage() {
         tasks="all"
         memberSlug={member.slug}
       />
-      <B2BAdmin data={await loadData()} memberSlug={member.slug} />
+      <B2BAdmin
+        data={await loadData()}
+        memberSlug={member.slug}
+        initialView={tab === "history" ? "history" : "locations"}
+      />
     </main>
   );
 }

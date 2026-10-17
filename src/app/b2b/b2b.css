@@ -342,3 +342,114 @@
     padding: 16px;
   }
 }
+
+.b2b-table-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.b2b-table-scroll > .meta {
+  padding: 17px;
+}
+.b2b-location-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+.b2b-location-table th,
+.b2b-location-table td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+.b2b-location-table thead th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  border-bottom: 1px solid var(--line);
+}
+.b2b-location-table tbody + tbody {
+  border-top: 1px solid var(--line);
+}
+.b2b-location-table th.item-title {
+  font-size: 16px;
+  min-width: 150px;
+}
+.b2b-location-table td:nth-child(2) {
+  min-width: 170px;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+.b2b-location-table td:nth-child(3) {
+  min-width: 140px;
+}
+.b2b-location-table .b2b-location-actions {
+  margin: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.b2b-location-table .button {
+  flex-shrink: 0;
+}
+.b2b-link-preview {
+  display: block;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+.b2b-location-select {
+  position: relative;
+}
+.b2b-filter-trigger {
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+}
+.b2b-filter-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  margin-top: 6px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  box-shadow: 0 12px 30px #0008;
+}
+.b2b-filter-popup input {
+  font-size: 12px;
+}
+.b2b-filter-popup [role="listbox"] {
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 8px;
+}
+.b2b-filter-popup [role="option"] {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+}
+.b2b-filter-popup [role="option"].active,
+.b2b-filter-popup [role="option"]:hover {
+  background: var(--surface-soft);
+}
+.b2b-filter-popup [aria-selected="true"] {
+  font-weight: 800;
+}
+@media (max-width: 800px) {
+  .b2b-location-table th.item-title {
+    font-size: 15px;
+  }
+}

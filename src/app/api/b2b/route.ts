@@ -63,6 +63,11 @@ export async function POST(request: Request) {
           { error: "Acces neautorizat." },
           { status: 403 },
         );
+      if (operation === "editLocation" && !manager)
+        return NextResponse.json(
+          { error: "Doar Patrick și Ionut pot edita localuri." },
+          { status: 403 },
+        );
       const fields = locationFields.parse(body);
       if (operation === "createLocation") {
         const token = newToken();

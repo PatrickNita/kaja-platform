@@ -617,15 +617,164 @@ export function B2BPortal({ data }: { data: B2BData }) {
   );
 }
 
+function LocationFilter({
+  locations,
+  value,
+  onChange,
+}: {
+  locations: Location[];
+  value: number | null;
+  onChange: (id: number | null) => void;
+}) {
+  const root = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [active, setActive] = useState(0);
+  const normalize = (text: string) =>
+    text
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  const options = [{ id: null, name: "Toate localurile" }, ...locations].filter(
+    (l) => normalize(l.name).includes(normalize(search.trim())),
+  );
+  useEffect(() => {
+    if (!open) return;
+    input.current?.focus();
+    const close = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [open]);
+  useEffect(() => {
+    if (open)
+      root.current
+        ?.querySelector(`#b2b-option-${active}`)
+        ?.scrollIntoView({ block: "nearest" });
+  }, [active, open]);
+  function choose(id: number | null) {
+    onChange(id);
+    setOpen(false);
+    root.current?.querySelector<HTMLButtonElement>("button")?.focus();
+  }
+  return (
+    <div className="b2b-location-select" ref={root}>
+      <span>Local</span>
+      <button
+        className="button ghost b2b-filter-trigger"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => {
+          setOpen(!open);
+          setSearch("");
+          setActive(0);
+        }}
+      >
+        {locations.find((l) => l.id === value)?.name ?? "Toate localurile"}
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open && (
+        <div className="b2b-filter-popup">
+          <input
+            ref={input}
+            role="combobox"
+            aria-label="Caută local"
+            aria-autocomplete="list"
+            aria-expanded={true}
+            aria-controls="b2b-location-options"
+            aria-activedescendant={
+              options[active] ? "b2b-option-" + active : undefined
+            }
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault();
+                setActive((i) =>
+                  options.length
+                    ? (i + (e.key === "ArrowDown" ? 1 : -1) + options.length) %
+                      options.length
+                    : 0,
+                );
+              }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (options[active]) choose(options[active].id);
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setOpen(false);
+                root.current
+                  ?.querySelector<HTMLButtonElement>("button")
+                  ?.focus();
+              }
+              if (e.key === "Tab") setOpen(false);
+            }}
+            placeholder="Caută local…"
+          />
+          <div role="listbox" id="b2b-location-options" aria-label="Localuri">
+            {options.map((l, i) => (
+              <button
+                type="button"
+                role="option"
+                tabIndex={-1}
+                id={"b2b-option-" + i}
+                aria-selected={l.id === value}
+                className={i === active ? "active" : ""}
+                key={l.id ?? "all"}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => choose(l.id)}
+              >
+                {l.name}
+              </button>
+            ))}
+          </div>
+          {!options.length && (
+            <p className="meta" role="status">
+              Nu există localuri potrivite.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function B2BAdmin({
   data,
   memberSlug,
+  initialView = "locations",
 }: {
   data: B2BData;
   memberSlug: string;
+  initialView?: "locations" | "history";
 }) {
   const router = useRouter();
   const manager = canManageOrders(memberSlug);
+  const [view, setView] = useState(initialView);
+  const [historyLocation, setHistoryLocation] = useState<number | null>(null);
+  useEffect(() => {
+    const sync = () =>
+      setView(
+        new URLSearchParams(window.location.search).get("tab") === "history"
+          ? "history"
+          : "locations",
+      );
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+  function switchView(next: "locations" | "history") {
+    setView(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", next);
+    window.history.pushState(null, "", url);
+  }
+
   const [origin, setOrigin] = useState("");
   useEffect(() => setOrigin(window.location.origin), []);
   const [locationForm, setLocationForm] = useState<Location | "new" | null>(
@@ -678,7 +827,9 @@ export function B2BAdmin({
       );
       setSuccess(`Linkul pentru ${local.name} a fost copiat.`);
     } catch {
-      setError("Copierea nu a reușit. Selectează manual linkul afișat.");
+      setError(
+        "Copierea nu a reușit. Verifică permisiunile clipboardului și încearcă din nou.",
+      );
     }
   }
   function changeLocation(value: number | null) {
@@ -705,90 +856,152 @@ export function B2BAdmin({
   }
   return (
     <div className="workspace-content b2b-admin">
-      <div className="b2b-toolbar">
-        <button className="button" onClick={() => setLocationForm("new")}>
-          Adaugă local
-        </button>
-      </div>
+      <nav className="catalogue-submenu filter-nav" aria-label="B2B">
+        <a
+          href="/b2b?tab=locations"
+          className={view === "locations" ? "active" : undefined}
+          onClick={(e) => {
+            e.preventDefault();
+            switchView("locations");
+          }}
+        >
+          Localuri
+        </a>
+        <a
+          href="/b2b?tab=history"
+          className={view === "history" ? "active" : undefined}
+          onClick={(e) => {
+            e.preventDefault();
+            switchView("history");
+          }}
+        >
+          Istoric Comenzi
+        </a>
+      </nav>
+      {view === "locations" && (
+        <div className="b2b-toolbar">
+          <button className="button" onClick={() => setLocationForm("new")}>
+            Adaugă local
+          </button>
+        </div>
+      )}
       <Feedback error={error} success={success} />
-      {locationForm && (
+      {view === "locations" && locationForm && (
         <LocationForm
           key={locationForm === "new" ? "new" : locationForm.id}
           location={locationForm === "new" ? undefined : locationForm}
           onDone={() => setLocationForm(null)}
         />
       )}
-      <label className="b2b-location-select">
-        Local
-        <select
-          value={selected ?? ""}
-          onChange={(e) =>
-            changeLocation(e.target.value ? Number(e.target.value) : null)
-          }
+      {view === "locations" && (
+        <div
+          className="b2b-table-scroll"
+          role="region"
+          aria-label="Lista localurilor"
+          tabIndex={0}
         >
-          <option value="">Toate localurile</option>
-          {data.locations.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {data.locations.length > 0 && (
-        <section className="items card-grid b2b-locations">
-          {data.locations
-            .filter((l) => !selected || l.id === selected)
-            .map((local) => (
-              <article className="card-wrap" key={local.id}>
-                <LocationDetails location={local} />
-                <label className="b2b-link-label">
-                  Link secret
-                  <input
-                    readOnly
-                    aria-label={`Link secret ${local.name}`}
-                    value={origin + (local.link ?? "")}
-                    onFocus={(e) => e.currentTarget.select()}
-                  />
-                </label>
-                <div className="b2b-actions b2b-location-actions">
-                  {manager && (
-                    <button
-                      className="button b2b-order-action"
-                      onClick={() => {
-                        if (selected !== local.id && !changeLocation(local.id))
-                          return;
-                        setSelected(local.id);
-                        setEditing(null);
-                        setShowOrder(true);
-                      }}
-                    >
-                      Comandă pentru acest local
-                    </button>
-                  )}
-                  <button className="button ghost" onClick={() => copy(local)}>
-                    Copiază linkul
-                  </button>
-                  <button
-                    className="button ghost"
-                    onClick={() => setLocationForm(local)}
-                  >
-                    Editează localul
-                  </button>
-                  {manager && (
-                    <>
-                      <button
-                        className="button ghost"
-                        disabled={busy}
-                        onClick={() => rotate(local)}
-                      >
-                        Generează link nou
-                      </button>
-                    </>
-                  )}
-                </div>
-              </article>
-            ))}
-        </section>
+          {data.locations.length ? (
+            <table className="b2b-location-table">
+              <thead>
+                <tr>
+                  {[
+                    "Denumire",
+                    "Adresă",
+                    "Persoană de contact",
+                    "Telefon",
+                    "Cashback",
+                    "Link",
+                    "Copiere",
+                  ].map((label) => (
+                    <th scope="col" key={label}>
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              {data.locations.map((local) => {
+                const fullLink = origin + (local.link ?? "");
+                const parts = fullLink.split("/");
+                const token = parts.pop() ?? "";
+                const preview =
+                  parts.join("/") + "/" + token.slice(0, 12) + "…";
+                return (
+                  <tbody key={local.id}>
+                    <tr>
+                      <th scope="row" className="item-title">
+                        {local.name}
+                      </th>
+                      <td>{local.address}</td>
+                      <td>{local.contact}</td>
+                      <td>
+                        <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
+                          {local.phone}
+                        </a>
+                      </td>
+                      <td>{money(local.cashback)}</td>
+                      <td>
+                        <span className="b2b-link-preview">{preview}</span>
+                      </td>
+                      <td>
+                        <button
+                          className="button ghost"
+                          onClick={() => copy(local)}
+                        >
+                          Copiază linkul
+                        </button>
+                      </td>
+                    </tr>
+                    {manager && (
+                      <tr>
+                        <td colSpan={7}>
+                          <div className="b2b-actions b2b-location-actions">
+                            <button
+                              className="button"
+                              onClick={() => {
+                                if (
+                                  selected !== local.id &&
+                                  !changeLocation(local.id)
+                                )
+                                  return;
+                                setSelected(local.id);
+                                setEditing(null);
+                                setShowOrder(true);
+                              }}
+                            >
+                              Comandă pentru acest local
+                            </button>
+                            <button
+                              className="button ghost"
+                              onClick={() => setLocationForm(local)}
+                            >
+                              Editează
+                            </button>
+                            <button
+                              className="button ghost"
+                              disabled={busy}
+                              onClick={() => rotate(local)}
+                            >
+                              Generează link nou
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                );
+              })}
+            </table>
+          ) : (
+            <p className="meta">Nu există localuri încă.</p>
+          )}
+        </div>
+      )}
+      {view === "history" && (
+        <LocationFilter
+          locations={data.locations}
+          value={historyLocation}
+          onChange={setHistoryLocation}
+        />
       )}
       {manager && location && (
         <>
@@ -830,27 +1043,29 @@ export function B2BAdmin({
             ))}
         </>
       )}
-      <History
-        orders={data.orders.filter(
-          (o) => !selected || o.location_id === selected,
-        )}
-        manager={manager}
-        allowEdit={manager}
-        onEdit={(order) => {
-          if (
-            dirty &&
-            !window.confirm(
-              "Deschizi altă comandă? Selecția curentă rămâne salvată în această sesiune.",
+      {view === "history" && (
+        <History
+          orders={data.orders.filter(
+            (o) => !historyLocation || o.location_id === historyLocation,
+          )}
+          manager={manager}
+          allowEdit={manager}
+          onEdit={(order) => {
+            if (
+              dirty &&
+              !window.confirm(
+                "Deschizi altă comandă? Selecția curentă rămâne salvată în această sesiune.",
+              )
             )
-          )
-            return;
-          setSelected(order.location_id);
-          setEditing(order);
-          setShowOrder(true);
-          setDirty(false);
-          setSuccess("");
-        }}
-      />
+              return;
+            setSelected(order.location_id);
+            setEditing(order);
+            setShowOrder(true);
+            setDirty(false);
+            setSuccess("");
+          }}
+        />
+      )}
     </div>
   );
 }
