@@ -137,7 +137,7 @@ function LocationForm({
     }
   }
   return (
-    <form className="form b2b-form" onSubmit={save}>
+    <form className="form card-wrap b2b-form" onSubmit={save}>
       <h3>{location ? "Editează localul" : "Adaugă local"}</h3>
       <label>
         Denumirea locației
@@ -459,7 +459,7 @@ function History({
       )}
       {orders.map((order) => (
         <article
-          className="panel b2b-order"
+          className="card-wrap b2b-order"
           id={`comanda-${order.id}`}
           key={order.id}
         >
@@ -733,11 +733,11 @@ export function B2BAdmin({
         </select>
       </label>
       {data.locations.length > 0 && (
-        <section className="b2b-locations">
+        <section className="items card-grid b2b-locations">
           {data.locations
             .filter((l) => !selected || l.id === selected)
             .map((local) => (
-              <article className="panel" key={local.id}>
+              <article className="card-wrap" key={local.id}>
                 <LocationDetails location={local} />
                 <label className="b2b-link-label">
                   Link secret

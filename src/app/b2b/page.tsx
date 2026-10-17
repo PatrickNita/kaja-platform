@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { currentMember } from "../../lib/auth";
 import { loadData } from "../../lib/b2b/server";
 import { B2BAdmin } from "./client";
@@ -23,9 +24,18 @@ export default async function B2BPage() {
       <header className="workspace-header">
         <div className="workspace-brand">
           <Link href="/" className="workspace-logo-link">
-            KAJA
+            <Image
+              className="logo"
+              src="/kaja-logo.png"
+              alt="KAJA"
+              width={1024}
+              height={240}
+              priority
+            />
           </Link>
-          <div className="identity">{member.name}</div>
+          <div className="identity">
+            <span className="dot" /> {member.name}
+          </div>
         </div>
         <nav className="workspace-nav" aria-label="Secțiuni de lucru">
           <Link href="/?view=activity">ACTIVITATE</Link>
