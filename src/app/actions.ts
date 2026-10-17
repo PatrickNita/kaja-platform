@@ -395,7 +395,29 @@ export async function activityData(filter: "all" | Brand) {
   const base = db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id));
   const visibility = memberSlug.safeParse(session.slug).success && session.slug === "patrick"
     ? undefined
-    : sql`${activity.action} not in (${sql.join(privateDeletionActions.map((action) => sql`${action}`), sql`, `)})`;
+    : and(
+      sql`${activity.action} not in (${sql.join(privateDeletionActions.map((action) => sql`${action}`), sql`, `)})`,
+      // Filter before LIMIT so deleted entries do not crowd out visible activity.
+      // Patrick keeps the complete history, including deleted targets.
+      sql`(
+        (${activity.entityType} = 'update' and exists (
+          select 1 from ${updates} where ${updates.id} = ${activity.entityId}
+          and ${updates.brand} = ${activity.brand} and ${updates.deletedAt} is null
+        )) or
+        (${activity.entityType} = 'task' and exists (
+          select 1 from ${tasks} where ${tasks.id} = ${activity.entityId}
+          and ${tasks.brand} = ${activity.brand} and ${tasks.deletedAt} is null
+        )) or
+        (${activity.entityType} = 'attachment' and exists (
+          select 1 from ${attachments} where ${attachments.id} = ${activity.entityId}
+          and ${attachments.brand} = ${activity.brand} and ${attachments.deletedAt} is null
+        )) or exists (
+          select 1 from ${workspaceItems} where ${workspaceItems.id} = ${activity.entityId}
+          and ${workspaceItems.brand} = ${activity.brand}
+          and ${workspaceItems.section} = ${activity.entityType} and ${workspaceItems.deletedAt} is null
+        )
+      )`,
+    );
   const rows = selected === "all"
     ? visibility
       ? await base.where(visibility).orderBy(desc(activity.createdAt), desc(activity.id)).limit(200)
