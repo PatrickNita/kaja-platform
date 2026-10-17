@@ -571,6 +571,7 @@ function History({
 }
 
 export function B2BPortal({ data }: { data: B2BData }) {
+  const [view, setView] = useState<"order" | "history">("order");
   const [editing, setEditing] = useState<Order | null>(null);
   const [success, setSuccess] = useState("");
   const location = data.locations[0];
@@ -587,22 +588,28 @@ export function B2BPortal({ data }: { data: B2BData }) {
       <Feedback success={success} />
       <nav className="b2b-actions" aria-label="Navigare comenzi">
         <button
-          className="button ghost"
+          className={view === "order" ? "button" : "button ghost"}
+          aria-pressed={view === "order"}
           onClick={() => {
+            setView("order");
             setEditing(null);
             setSuccess("");
-            document
-              .getElementById("formular-comanda")
-              ?.scrollIntoView({ behavior: "smooth" });
           }}
         >
           Comandă nouă
         </button>
-        <a className="button ghost" href="#istoric-comenzi">
+        <button
+          className={view === "history" ? "button" : "button ghost"}
+          aria-pressed={view === "history"}
+          onClick={() => {
+            setView("history");
+            setSuccess("");
+          }}
+        >
           Istoric comenzi
-        </a>
+        </button>
       </nav>
-      {editing && (
+      {view === "order" && editing && (
         <button
           className="button ghost"
           onClick={() => {
@@ -613,44 +620,49 @@ export function B2BPortal({ data }: { data: B2BData }) {
           Înapoi la comandă nouă
         </button>
       )}
-      <div id="formular-comanda">
-        {currentEdit && !canEditOrder(currentEdit.status, false) ? (
-          <p role="status">
-            Comanda a fost confirmată și nu mai poate fi modificată.{" "}
-            <button className="button ghost" onClick={() => setEditing(null)}>
-              Comandă nouă
-            </button>
-          </p>
-        ) : (
-          <OrderEditor
-            key={`${location.id}:${editing?.id ?? "new"}:${currentEdit?.version ?? 0}`}
-            mode="portal"
-            location={location}
-            products={data.products}
-            order={currentEdit ?? undefined}
-            onDone={(id) => {
-              setEditing(null);
-              setSuccess(
-                `Comanda #${id} a fost ${editing ? "actualizată" : "plasată"}.`,
-              );
+      {view === "order" && (
+        <div id="formular-comanda">
+          {currentEdit && !canEditOrder(currentEdit.status, false) ? (
+            <p role="status">
+              Comanda a fost confirmată și nu mai poate fi modificată.{" "}
+              <button className="button ghost" onClick={() => setEditing(null)}>
+                Comandă nouă
+              </button>
+            </p>
+          ) : (
+            <OrderEditor
+              key={`${location.id}:${editing?.id ?? "new"}:${currentEdit?.version ?? 0}`}
+              mode="portal"
+              location={location}
+              products={data.products}
+              order={currentEdit ?? undefined}
+              onDone={(id) => {
+                setEditing(null);
+                setSuccess(
+                  `Comanda #${id} a fost ${editing ? "actualizată" : "plasată"}.`,
+                );
+              }}
+            />
+          )}
+        </div>
+      )}
+      {view === "history" && (
+        <div id="istoric-comenzi">
+          <History
+            orders={data.orders}
+            manager={false}
+            allowEdit={true}
+            onEdit={(order) => {
+              setView("order");
+              setEditing(order);
+              setSuccess("");
+              document
+                .getElementById("formular-comanda")
+                ?.scrollIntoView({ behavior: "smooth" });
             }}
           />
-        )}
-      </div>
-      <div id="istoric-comenzi">
-        <History
-          orders={data.orders}
-          manager={false}
-          allowEdit={true}
-          onEdit={(order) => {
-            setEditing(order);
-            setSuccess("");
-            document
-              .getElementById("formular-comanda")
-              ?.scrollIntoView({ behavior: "smooth" });
-          }}
-        />
-      </div>
+        </div>
+      )}
     </main>
   );
 }
