@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 
 type EntryDraft = {
   entryId: string;
@@ -21,6 +21,7 @@ type EntryModalState = {
   beginEditing: (entryId: string, title: string, body: string) => void;
   updateDraft: (field: DraftField, value: string) => void;
   stopEditing: () => void;
+  cancelEditing: () => void;
   setSaving: (saving: boolean) => void;
 };
 
@@ -78,31 +79,110 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function EntryModalStateProvider({ children }: { children: ReactNode }) {
+export function EntryModalStateProvider({ children, memberSlug }: { children: ReactNode; memberSlug: string }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const stateRef = useRef(state);
+  const editingLocation = useRef<{ url: string; historyState: unknown } | null>(null);
+  stateRef.current = state;
+  const storageKey = useCallback((entryId: string) => `kaja-draft:${memberSlug}:${entryId}`, [memberSlug]);
+  const clearDraft = useCallback(() => {
+    const draft = stateRef.current.draft;
+    if (draft) {
+      try { sessionStorage.removeItem(storageKey(draft.entryId)); } catch { /* Storage can be disabled. */ }
+    }
+    stateRef.current = { ...stateRef.current, draft: null };
+  }, [storageKey]);
+  const confirmDiscard = useCallback(() => {
+    const { draft, saving } = stateRef.current;
+    if (saving) return false;
+    if (draft && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody)
+      && !window.confirm("Ai modificări nesalvate. Renunți la ele?")) return false;
+    clearDraft();
+    return true;
+  }, [clearDraft]);
 
-  const openEntry = useCallback((entryId: string) => {
-    dispatch({ type: "open", entryId });
+  useEffect(() => {
+    if (!state.draft) return;
+    try { sessionStorage.setItem(storageKey(state.draft.entryId), JSON.stringify(state.draft)); } catch { /* Keep editing without storage. */ }
+  }, [state.draft, storageKey]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("view") === "updates") {
+      url.searchParams.set("view", "activity");
+      window.history.replaceState(window.history.state, "", url);
+    }
   }, []);
 
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const { draft, saving } = stateRef.current;
+      if (saving || (draft && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody))) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    const navigate = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!anchor || anchor.hasAttribute("download") || (anchor.target && anchor.target !== "_self")) return;
+      if (!confirmDiscard()) { event.preventDefault(); event.stopPropagation(); }
+      else dispatch({ type: "stop-editing" });
+    };
+    const historyNavigation = (event: PopStateEvent) => {
+      if (!stateRef.current.draft && !stateRef.current.saving) return;
+      if (!confirmDiscard()) {
+        event.stopImmediatePropagation();
+        const previous = editingLocation.current;
+        if (previous) window.history.pushState(previous.historyState, "", previous.url);
+      } else dispatch({ type: "stop-editing" });
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener("popstate", historyNavigation, true);
+    document.addEventListener("click", navigate, true);
+    return () => {
+      window.removeEventListener("beforeunload", beforeUnload);
+      window.removeEventListener("popstate", historyNavigation, true);
+      document.removeEventListener("click", navigate, true);
+    };
+  }, [confirmDiscard]);
+
+  const openEntry = useCallback((entryId: string) => {
+    if (stateRef.current.activeEntryId !== entryId && !confirmDiscard()) return;
+    dispatch({ type: "open", entryId });
+  }, [confirmDiscard]);
+
   const closeEntry = useCallback(() => {
+    if (!confirmDiscard()) return;
     if (typeof window !== "undefined" && window.location.hash) {
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}`);
     }
     dispatch({ type: "close" });
-  }, []);
+  }, [confirmDiscard]);
 
   const beginEditing = useCallback((entryId: string, title: string, body: string) => {
+    editingLocation.current = { url: window.location.href, historyState: window.history.state };
     dispatch({ type: "begin-editing", entryId, title, body });
-  }, []);
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(storageKey(entryId)) || "null") as EntryDraft | null;
+      if (saved?.entryId === entryId && typeof saved.title === "string" && typeof saved.body === "string") {
+        dispatch({ type: "update-draft", field: "title", value: saved.title });
+        dispatch({ type: "update-draft", field: "body", value: saved.body });
+      }
+    } catch { /* Ignore unavailable or invalid stored drafts. */ }
+  }, [storageKey]);
 
   const updateDraft = useCallback((field: DraftField, value: string) => {
     dispatch({ type: "update-draft", field, value });
   }, []);
 
   const stopEditing = useCallback(() => {
+    clearDraft();
     dispatch({ type: "stop-editing" });
-  }, []);
+  }, [clearDraft]);
+  const cancelEditing = useCallback(() => {
+    if (confirmDiscard()) dispatch({ type: "stop-editing" });
+  }, [confirmDiscard]);
 
   const setSaving = useCallback((saving: boolean) => {
     dispatch({ type: "set-saving", saving });
@@ -117,8 +197,9 @@ export function EntryModalStateProvider({ children }: { children: ReactNode }) {
     beginEditing,
     updateDraft,
     stopEditing,
+    cancelEditing,
     setSaving,
-  }), [beginEditing, closeEntry, openEntry, setSaving, state.activeEntryId, state.draft, state.saving, stopEditing, updateDraft]);
+  }), [beginEditing, cancelEditing, closeEntry, openEntry, setSaving, state.activeEntryId, state.draft, state.saving, stopEditing, updateDraft]);
 
   return <EntryModalStateContext.Provider value={value}>{children}</EntryModalStateContext.Provider>;
 }

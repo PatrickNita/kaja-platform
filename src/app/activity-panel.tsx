@@ -11,7 +11,7 @@ type ActivityRows = Awaited<ReturnType<typeof activityData>>;
 function hrefFor(row: ActivityRows[number]) {
   const { event } = row;
   const brand = event.brand as Brand;
-  if (event.entityType === "update") return `/?brand=${brand}&view=updates#entry-update-${event.entityId}`;
+  if (event.entityType === "update") return `/?brand=${brand}&view=activity#entry-update-${event.entityId}`;
   if (event.entityType === "task") return `/?brand=${row.taskCompleted ? "all" : brand}&view=tasks&tasks=${row.taskCompleted ? "history" : "all"}#entry-task-${event.entityId}`;
   if (event.entityType === "attachment") return `/?brand=${brand}&view=uploads#attachment-${event.entityId}`;
   return `/?brand=${brand}&view=${event.entityType}${event.entityType === "catalogue" ? `&catalogue=${event.catalogueGroup || "live"}` : ""}#entry-${event.entityType}-${event.entityId}`;
@@ -24,7 +24,7 @@ function textFor(event: ActivityRows[number]["event"]) {
 export function ActivityPanel({ initialRows }: { initialRows: ActivityRows }) {
   return <aside className="panel activity-panel">
     <div className="activity-header">
-      <h2>Activitate</h2>
+      <h2>ACTIVITATE</h2>
     </div>
     <div id="activity-list" className="activity">
       {initialRows.map((row) => {

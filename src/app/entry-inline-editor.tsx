@@ -33,14 +33,14 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
   const generatedId = useId().replaceAll(":", "");
   const formId = `entry-edit-${generatedId}`;
   const [error, setError] = useState<string | null>(null);
-  const { activeEntryId, draft, saving, beginEditing, closeEntry, setSaving, updateDraft, stopEditing } = useEntryModalState();
+  const { activeEntryId, draft, saving, beginEditing, closeEntry, setSaving, updateDraft, stopEditing, cancelEditing } = useEntryModalState();
   const editing = draft?.entryId === entryId;
   const dirty = editing && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody);
   const valid = editing && draft.title.trim().length > 0 && draft.body.trim().length > 0;
 
   const cancel = () => {
     if (saving) return;
-    stopEditing();
+    cancelEditing();
     setError(null);
   };
 
@@ -92,7 +92,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
             <button className="button" type="submit" form={formId} disabled={saving || !dirty || !valid}>{saving ? "Se salvează…" : "Salvează modificările"}</button>
             <button className="button ghost" type="button" onClick={cancel} disabled={saving}>Anulează</button>
           </> : <>
-            <button className="button ghost" type="button" onClick={() => { setError(null); beginEditing(entryId, title, body ?? ""); }}>Modifică</button>
+            <button className="button ghost" type="button" onClick={(event) => { event.preventDefault(); setError(null); beginEditing(entryId, title, body ?? ""); }}>Modifică</button>
             {deleteControl}
           </>}
         </div>

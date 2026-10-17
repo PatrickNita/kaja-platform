@@ -69,6 +69,7 @@ export function ModalEntryCard({ children, entryId, label, preview }: { children
 
   useLayoutEffect(() => {
     if (!active) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     const layer = modal.current?.closest(".entry-modal-layer");
     const background = Array.from(document.body.children)
@@ -94,8 +95,9 @@ export function ModalEntryCard({ children, entryId, label, preview }: { children
         if (ariaHidden === null) element.removeAttribute("aria-hidden");
         else element.setAttribute("aria-hidden", ariaHidden);
       });
-      if (trigger.current?.isConnected) trigger.current.focus({ preventScroll: true });
-      else document.querySelector<HTMLElement>(".modal-entry-grid-shell")?.focus({ preventScroll: true });
+      if (trigger.current?.isConnected && trigger.current.getClientRects().length > 0) trigger.current.focus({ preventScroll: true });
+      else if (previousFocus?.isConnected && previousFocus.getClientRects().length > 0) previousFocus.focus({ preventScroll: true });
+      else document.querySelector<HTMLElement>(".workspace-logo-link, .modal-entry-grid-shell:not([hidden])")?.focus({ preventScroll: true });
     };
   }, [active]);
 

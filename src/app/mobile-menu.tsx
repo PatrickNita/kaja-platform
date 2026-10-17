@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-type Section = "updates" | "tasks" | "events" | "catalogue" | "merch" | "information" | "uploads";
+type Section = "activity" | "tasks" | "events" | "catalogue" | "merch" | "information" | "uploads";
 type CatalogueGroup = "live" | "upcoming" | "ideas";
 type TaskView = "all" | "mine" | "history";
 
-const sectionLabels = { updates: "Propuneri", events: "Evenimente", merch: "Merch", information: "Informații", uploads: "Încărcări" } as const;
+const sectionLabels = { activity: "ACTIVITATE", events: "Evenimente", merch: "Merch", information: "Informații", uploads: "Încărcări" } as const;
 
-export function MobileMenu({ view, catalogue, tasks, memberSlug }: { view: Section; catalogue: CatalogueGroup; tasks: TaskView; memberSlug: string }) {
+export function MobileMenu({ view, catalogue, tasks, memberSlug, brand }: { brand: string; view: Section; catalogue: CatalogueGroup; tasks: TaskView; memberSlug: string }) {
   const [open, setOpen] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(view === "catalogue");
   const [tasksOpen, setTasksOpen] = useState(view === "tasks");
@@ -36,7 +36,7 @@ export function MobileMenu({ view, catalogue, tasks, memberSlug }: { view: Secti
   const link = (nextView: Section, options: { catalogue?: CatalogueGroup; tasks?: TaskView } = {}) => {
     const group = options.catalogue ?? catalogue;
     const taskView = options.tasks ?? tasks;
-    return `/?brand=all&view=${nextView}${nextView === "catalogue" ? `&catalogue=${group}` : ""}${nextView === "tasks" ? `&tasks=${taskView}` : ""}`;
+    return `/?brand=${brand}&view=${nextView}${nextView === "catalogue" ? `&catalogue=${group}` : ""}${nextView === "tasks" ? `&tasks=${taskView}` : ""}`;
   };
 
   return <div className="mobile-menu">
@@ -47,7 +47,7 @@ export function MobileMenu({ view, catalogue, tasks, memberSlug }: { view: Secti
         <div className="mobile-drawer-head"><b>Meniu</b><button className="mobile-close" aria-label="Închide meniul" onClick={() => setOpen(false)}>×</button></div>
         <div className="mobile-member-identity"><span className="dot" /> {memberName}</div>
         <nav className="mobile-section-list">
-          <a href={link("updates")} className={view === "updates" ? "active" : undefined}>{sectionLabels.updates}</a>
+          <a href={link("activity")} className={view === "activity" ? "active" : undefined}>{sectionLabels.activity}</a>
           <div>
             <button className={view === "tasks" ? "active" : undefined} onClick={() => setTasksOpen(!tasksOpen)}>Sarcini <span>{tasksOpen ? "−" : "+"}</span></button>
             {tasksOpen && <div className="mobile-submenu-list">
@@ -62,7 +62,7 @@ export function MobileMenu({ view, catalogue, tasks, memberSlug }: { view: Secti
             {catalogueOpen && <div className="mobile-submenu-list">
               <a href={link("catalogue", { catalogue: "live" })} className={view === "catalogue" && catalogue === "live" ? "active" : undefined}>Catalog activ</a>
               <a href={link("catalogue", { catalogue: "upcoming" })} className={view === "catalogue" && catalogue === "upcoming" ? "active" : undefined}>În curând</a>
-              <a href={link("catalogue", { catalogue: "ideas" })} className={view === "catalogue" && catalogue === "ideas" ? "active" : undefined}>Idei</a>
+              <a href={link("catalogue", { catalogue: "ideas" })} className={view === "catalogue" && catalogue === "ideas" ? "active" : undefined}>Idei de gusturi</a>
             </div>}
           </div>
           <a href={link("merch")} className={view === "merch" ? "active" : undefined}>{sectionLabels.merch}</a>

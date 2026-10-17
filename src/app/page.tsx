@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { activityData, createComment, createUpdate, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { activityData, createComment, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { ActivityPanel } from "./activity-panel";
@@ -21,9 +21,9 @@ import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
 export const dynamic = "force-dynamic";
 
-const sections = [{ key: "updates", label: "Propuneri" }, { key: "tasks", label: "Sarcini" }, { key: "events", label: "Evenimente" }, { key: "catalogue", label: "Catalog" }, { key: "merch", label: "Merch" }, { key: "information", label: "Informații" }, { key: "uploads", label: "Încărcări" }] as const;
+const sections = [{ key: "activity", label: "ACTIVITATE" }, { key: "tasks", label: "Sarcini" }, { key: "events", label: "Evenimente" }, { key: "catalogue", label: "Catalog" }, { key: "merch", label: "Merch" }, { key: "information", label: "Informații" }, { key: "uploads", label: "Încărcări" }] as const;
 const brands = [{ key: "kaja", label: "KAJA" }, { key: "hexenwerk", label: "HEXENWERK" }, { key: "virginia", label: "VIRGINIA" }] as const;
-const catalogueGroups = [{ key: "live", label: "Catalog activ" }, { key: "upcoming", label: "În curând" }, { key: "ideas", label: "Idei" }] as const;
+const catalogueGroups = [{ key: "live", label: "Catalog activ" }, { key: "upcoming", label: "În curând" }, { key: "ideas", label: "Idei de gusturi" }] as const;
 const taskViews = [{ key: "all", label: "Toate sarcinile" }, { key: "mine", label: "Sarcinile mele" }, { key: "history", label: "Istoric sarcini" }] as const;
 const brandFilters = [{ key: "all", label: "Toate brand-urile" }, ...brands] as const;
 type Section = (typeof sections)[number]["key"];
@@ -69,7 +69,7 @@ function selectedBrandLabel(filter: BrandFilter) { return brands.find(({ key }) 
 
 function pageTitle({ view, brand, tasks = "all", catalogue = "live" }: { view: Section; brand: BrandFilter; tasks?: TaskView; catalogue?: CatalogueGroup }) {
   const brandLabel = selectedBrandLabel(brand);
-  if (view === "updates") return brand === "all" ? "Toate propunerile" : `Propuneri ${brandLabel}`;
+  if (view === "activity") return "ACTIVITATE";
   if (view === "tasks") {
     if (tasks === "history") return "Istoric sarcini";
     if (tasks === "mine") return brand === "all" ? "Toate sarcinile mele" : `Sarcinile mele în ${brandLabel}`;
@@ -231,22 +231,15 @@ function WorkspaceSection({ brandFilter, section, title, displayTitle, items, im
   return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><PageHeading title={displayTitle} count={cards.length} /></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid entryIds={entryIds} label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
 }
 
-function UpdatesSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
-  return <><BrandFilterNav selected={brandFilter} view="updates" /><section className="panel content-section">
-    <div className="panel-head"><PageHeading title={pageTitle({ view: "updates", brand: brandFilter })} count={data.updates.length} /></div>
-    <Composer label="Adaugă propuneri"><form action={createUpdate} className="form">
-      <BrandFormPicker initialBrand={initialBrand(brandFilter)} />
-      <AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder="Titlu actualizare" />
-      <AutoResizeTextarea name="body" required maxLength={4000} placeholder="Spune ce s-a schimbat și ce urmează." />
-      <button className="button">Publică propunerea</button>
-    </form></Composer>
-    <ModalEntryGrid entryIds={data.updates.map(({ update }) => `entry-update-${update.id}`)} label="propunerea">{data.updates.map(({ update, author, authorSlug }) => {
+function LegacyProposalDetails({ data, memberSlug }: { data: Data; memberSlug: string }) {
+  return <>
+    <div hidden><ModalEntryGrid entryIds={data.updates.map(({ update }) => `entry-update-${update.id}`)} label="propunerea">{data.updates.map(({ update, author, authorSlug }) => {
       const updateBrand = update.brand as Brand;
       return <article className="card-wrap" key={update.id}>
         <EntryCard brand={updateBrand} type="update" id={update.id} title={update.title} body={update.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, updateBrand, "update", update.id)} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} memberSlug={memberSlug} edit={recordEditConfig({ brand: updateBrand, type: "update", id: update.id, title: update.title, action: editUpdate, allowed: canManage(memberSlug, authorSlug) })} />
       </article>;
-    })}</ModalEntryGrid>
-  </section></>;
+    })}</ModalEntryGrid></div>
+  </>;
 }
 
 function TaskMemberBadges({ assignments, label = true }: { assignments: TaskAssigneeRow[]; label?: boolean }) {
@@ -341,7 +334,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const member = await currentMember();
   if (!member) return <main className="landing"><section className="landing-card"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><p className="eyebrow">Platformă internă pentru membri</p><h1>O imagine comună asupra muncii.</h1><p>Folosește linkul personal KAJA pentru a intra în spațiul de lucru.</p>{!hasDatabase && <div className="setup">Configurarea bazei de date este în așteptare.</div>}</section></main>;
   const params = await searchParams;
-  const view: Section = sections.some((entry) => entry.key === params.view) ? params.view as Section : "tasks";
+  const requestedView = params.view === "updates" ? "activity" : params.view;
+  const view: Section = sections.some((entry) => entry.key === requestedView) ? requestedView as Section : "tasks";
   const selectedBrand: BrandFilter = brandFilters.some((entry) => entry.key === params.brand) ? params.brand as BrandFilter : "all";
   const legacyTaskBrand: BrandFilter | null = brandFilters.some((entry) => entry.key === params.taskBrand) ? params.taskBrand as BrandFilter : null;
   const brandFilter: BrandFilter = view === "tasks" && legacyTaskBrand ? legacyTaskBrand : selectedBrand;
@@ -352,11 +346,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const [data, globalTasks, globalActivity] = await Promise.all([
     workspaceData(brandFilter),
     view === "tasks" ? taskWorkspaceData() : Promise.resolve(null),
-    view === "updates" ? activityData(brandFilter) : Promise.resolve([] as ActivityData),
+    view === "activity" ? activityData(brandFilter) : Promise.resolve([] as ActivityData),
   ]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   if (view === "tasks" && !globalTasks) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const content = view === "updates" ? <><UpdatesSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /><ActivityPanel initialRows={globalActivity} /></> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href="/?brand=all&view=updates" aria-label="Deschide Propuneri pentru toate brandurile"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=all&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? "&tasks=all" : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
+  const content = view === "activity" ? <><BrandFilterNav selected={brandFilter} view="activity" /><ActivityPanel initialRows={globalActivity} /><LegacyProposalDetails data={data} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brandFilter}&view=activity`} aria-label="Deschide Activitate"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brandFilter}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? "&tasks=all" : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}</nav></header><MobileMenu brand={brandFilter} view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
 }

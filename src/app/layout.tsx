@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { EntryModalStateProvider } from "./entry-modal-state";
+import { currentMember } from "../lib/auth";
 
 export const metadata: Metadata = { title: "KAJA — Platformă internă", description: "Spațiu de lucru pentru membri" };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><EntryModalStateProvider>{children}</EntryModalStateProvider></body></html>;
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const member = await currentMember();
+  return <html lang="en"><body><EntryModalStateProvider memberSlug={member?.slug ?? "guest"}>{children}</EntryModalStateProvider></body></html>;
 }
