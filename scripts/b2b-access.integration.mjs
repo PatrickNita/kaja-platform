@@ -186,9 +186,12 @@ try {
   await entry(1, sharedToken);
   for (const ua of ["TelegramBot (like TwitterBot)", "WhatsApp/2.0"]) {
     const response = await accessRoute.GET(
-      new Request(base + "/comenzi/acces/1/" + sharedToken, {
-        headers: { "user-agent": ua },
-      }),
+      new Request(
+        base + "/comenzi/acces/1/" + sharedToken + "?preview=2-test",
+        {
+          headers: { "user-agent": ua },
+        },
+      ),
       { params: Promise.resolve({ id: "1", token: sharedToken }) },
     );
     assert.equal(response.status, 200);
@@ -375,6 +378,9 @@ try {
   );
   assert.equal(fifth.access_group_id, 1);
   const adminData = await server.loadData();
+  assert(
+    adminData.locations.every((l) => /\?preview=2-[a-f0-9]{12}$/.test(l.link)),
+  );
   assert.equal(
     new Set(
       adminData.locations

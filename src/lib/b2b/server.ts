@@ -52,8 +52,10 @@ export async function loadData(location?: Location): Promise<B2BData> {
   const scope = access
     ? sql`where g.id=${access.id} and g.version=${access.version}`
     : sql``;
-  const locations = await query<Location & { token_cipher?: string }>(
-    sql`select l.id,l.name,l.address,l.contact,l.phone,g.version,l.details_version,l.access_group_id,(select max(o.created_at) from b2b_orders o where o.location_id=l.id) as last_order_at ${internalFields ? sql`,l.company_name,l.idno` : sql``},(select count(*)::integer from b2b_locations peer where peer.access_group_id=g.id) as group_size,coalesce((select sum(amount)::integer from b2b_cashback where location_id=l.id),0) as cashback ${access ? sql`` : sql`,g.token_cipher`} from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id ${scope} order by lower(l.name),l.id`,
+  const locations = await query<
+    Location & { token_cipher?: string; preview_revision?: string }
+  >(
+    sql`select l.id,l.name,l.address,l.contact,l.phone,g.version,l.details_version,l.access_group_id,(select max(o.created_at) from b2b_orders o where o.location_id=l.id) as last_order_at ${internalFields ? sql`,l.company_name,l.idno` : sql``},(select count(*)::integer from b2b_locations peer where peer.access_group_id=g.id) as group_size,coalesce((select sum(amount)::integer from b2b_cashback where location_id=l.id),0) as cashback ${access ? sql`` : sql`,g.token_cipher,(select md5(jsonb_agg(peer.name order by lower(peer.name),peer.id)::text) from b2b_locations peer where peer.access_group_id=g.id) as preview_revision`} from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id ${scope} order by lower(l.name),l.id`,
   );
   const [products, orders] = await Promise.all([
     query<Product>(
@@ -67,7 +69,7 @@ export async function loadData(location?: Location): Promise<B2BData> {
     products,
     orders,
     locations: locations.map((l) => {
-      const { token_cipher, ...safe } = l;
+      const { token_cipher, preview_revision, ...safe } = l;
       return token_cipher
         ? {
             ...safe,
@@ -75,7 +77,9 @@ export async function loadData(location?: Location): Promise<B2BData> {
               "/comenzi/acces/" +
               l.access_group_id +
               "/" +
-              decryptToken(token_cipher),
+              decryptToken(token_cipher) +
+              "?preview=2-" +
+              (preview_revision?.slice(0, 12) ?? "current"),
           }
         : safe;
     }),
