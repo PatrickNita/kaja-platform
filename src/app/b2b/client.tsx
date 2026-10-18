@@ -113,18 +113,23 @@ function ConfirmDialog({
 }
 function LocationDetails({ location }: { location: Location }) {
   return (
-    <section className="card-wrap b2b-location-details">
-      <h2 className="item-title">{location.name}</h2>
-      <p>{location.address}</p>
-      <p>
-        {location.contact} ·{" "}
-        <a href={`tel:${location.phone.replace(/[^+\d]/g, "")}`}>
+    <section
+      className="card-wrap b2b-location-details"
+      aria-label="Datele localului"
+    >
+      <div className="b2b-location-identity">
+        <h2 className="item-title">{location.name}</h2>
+        <p className="b2b-cashback">
+          CASHBACK: <strong>{money(location.cashback)}</strong>
+        </p>
+      </div>
+      <p className="b2b-location-address">{location.address}</p>
+      <div className="b2b-location-contact">
+        <p>{location.contact}</p>
+        <a href={"tel:" + location.phone.replace(/[^+\d]/g, "")}>
           {location.phone}
         </a>
-      </p>
-      <p className="b2b-cashback">
-        CASHBACK: <strong>{money(location.cashback)}</strong>
-      </p>
+      </div>
     </section>
   );
 }
@@ -246,7 +251,9 @@ export function OrderEditor({
   order,
   onDone,
   onCartChange,
+  hideHeading = false,
 }: {
+  hideHeading?: boolean;
   location: Location;
   products: Product[];
   mode: "admin" | "portal";
@@ -364,7 +371,9 @@ export function OrderEditor({
       className="b2b-editor"
       aria-label={order ? "Modifică comanda" : "Comandă nouă"}
     >
-      <h2>{order ? `Modifică comanda #${order.id}` : "Comandă nouă"}</h2>
+      {!hideHeading && (
+        <h2>{order ? `Modifică comanda #${order.id}` : "Comandă nouă"}</h2>
+      )}
       <div className="b2b-products">
         {products.map((product) => (
           <article className="card-wrap b2b-product" key={product.id}>
@@ -463,8 +472,7 @@ export function OrderEditor({
             {selected.map((p) => (
               <li key={p.id}>
                 <span className="b2b-checkout-product">
-                  {p.name}
-                  <small>{p.flavor}</small>
+                  {p.name} · {p.flavor}
                 </span>
                 <strong>
                   {counts[p.id]} buc. · {money(p.price * counts[p.id])}
@@ -499,7 +507,9 @@ function History({
   manager,
   allowEdit,
   onEdit,
+  hideHeading = false,
 }: {
+  hideHeading?: boolean;
   orders: Order[];
   manager: boolean;
   allowEdit: boolean;
@@ -534,8 +544,8 @@ function History({
     }
   }
   return (
-    <section className="b2b-history">
-      <h2>Istoricul comenzilor</h2>
+    <section className="b2b-history" aria-label="Istoricul comenzilor">
+      {!hideHeading && <h2>Istoricul comenzilor</h2>}
       <Feedback error={error} />
       {orders.length === 0 && (
         <p className="meta b2b-muted">Nu există comenzi încă.</p>
@@ -625,32 +635,41 @@ export function B2BPortal({ data }: { data: B2BData }) {
     <main className="b2b-portal">
       <header className="b2b-portal-header">
         <strong>KAJA</strong>
+        <h1 className="b2b-portal-title">
+          {view === "history"
+            ? "Istoric comenzi"
+            : editing
+              ? `Modifică comanda #${editing.id}`
+              : "Comandă nouă"}
+        </h1>
       </header>
-      <LocationDetails location={location} />
+      <div className="b2b-portal-overview">
+        <LocationDetails location={location} />
+        <nav className="b2b-portal-navigation" aria-label="Navigare comenzi">
+          <button
+            className={view === "order" ? "button" : "button ghost"}
+            aria-pressed={view === "order"}
+            onClick={() => {
+              setView("order");
+              setEditing(null);
+              setSuccess("");
+            }}
+          >
+            Comandă nouă
+          </button>
+          <button
+            className={view === "history" ? "button" : "button ghost"}
+            aria-pressed={view === "history"}
+            onClick={() => {
+              setView("history");
+              setSuccess("");
+            }}
+          >
+            Istoric comenzi
+          </button>
+        </nav>
+      </div>
       <Feedback success={success} />
-      <nav className="b2b-actions" aria-label="Navigare comenzi">
-        <button
-          className={view === "order" ? "button" : "button ghost"}
-          aria-pressed={view === "order"}
-          onClick={() => {
-            setView("order");
-            setEditing(null);
-            setSuccess("");
-          }}
-        >
-          Comandă nouă
-        </button>
-        <button
-          className={view === "history" ? "button" : "button ghost"}
-          aria-pressed={view === "history"}
-          onClick={() => {
-            setView("history");
-            setSuccess("");
-          }}
-        >
-          Istoric comenzi
-        </button>
-      </nav>
       {view === "order" && editing && (
         <button
           className="button ghost"
@@ -674,6 +693,7 @@ export function B2BPortal({ data }: { data: B2BData }) {
           ) : (
             <OrderEditor
               key={`${location.id}:${editing?.id ?? "new"}:${currentEdit?.version ?? 0}`}
+              hideHeading
               mode="portal"
               location={location}
               products={data.products}
@@ -691,6 +711,7 @@ export function B2BPortal({ data }: { data: B2BData }) {
       {view === "history" && (
         <div id="istoric-comenzi">
           <History
+            hideHeading
             orders={data.orders}
             manager={false}
             allowEdit={true}

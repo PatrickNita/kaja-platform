@@ -696,14 +696,6 @@
   box-shadow: none;
 }
 
-.b2b-checkout-product small {
-  display: block;
-  margin-top: 3px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
 .b2b-product-controls {
   display: flex;
   align-items: center;
@@ -748,5 +740,117 @@
     padding: 4px 8px;
     font-size: 10px;
     width: 100%;
+  }
+}
+
+body:has(.b2b-portal) {
+  background-color: var(--bg);
+  background-image: radial-gradient(
+    circle at 60% -20%,
+    #242424 0,
+    var(--bg) 38rem
+  );
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+.b2b-portal .card-wrap {
+  background: linear-gradient(145deg, #1a1a1a, #131313);
+  border-color: var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.b2b-portal-header .b2b-portal-title {
+  margin: 0;
+  min-width: 0;
+  max-width: none;
+  font-size: 16px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.b2b-portal-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 12px;
+  align-items: center;
+}
+.b2b-portal .b2b-location-details {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+.b2b-location-details > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.b2b-portal .b2b-location-details p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.b2b-portal .b2b-location-details .b2b-cashback {
+  margin-top: 5px;
+  font-size: 12px;
+}
+.b2b-portal .b2b-location-details h2 {
+  font-size: 16px;
+  line-height: 1.3;
+}
+.b2b-location-contact {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.b2b-location-contact a {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.b2b-portal-navigation {
+  display: grid;
+  gap: 8px;
+}
+.b2b-portal-navigation > .button {
+  width: 100%;
+  min-height: 44px;
+  white-space: normal;
+}
+.b2b-portal .b2b-products {
+  margin-top: 0;
+}
+.b2b-portal .b2b-history {
+  margin-top: 0;
+}
+@media (max-width: 800px) {
+  .b2b-portal-overview {
+    grid-template-columns: minmax(0, 1fr) 100px;
+    gap: 8px;
+  }
+  .b2b-portal .b2b-location-details {
+    grid-template-columns: minmax(0, 1fr);
+    text-align: center;
+    gap: 8px;
+    padding: 10px;
+  }
+  .b2b-portal .b2b-location-details h2 {
+    font-size: 15px;
+  }
+  .b2b-portal .b2b-product {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .b2b-portal .b2b-product-controls {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .b2b-portal .b2b-product .b2b-stock {
+    width: auto;
+    min-height: 28px;
+    padding: 5px 9px;
   }
 }
