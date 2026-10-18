@@ -62,39 +62,45 @@ export function History({
   ]
     .sort()
     .reverse();
-  const visible = historyOrders(orders, month, year),
+  const visible = historyOrders(
+      orders,
+      mode === "admin" ? month : "",
+      mode === "admin" ? year : "",
+    ),
     order = orders.find((o) => o.id === active);
   return (
     <section className="b2b-history" aria-label="Istoricul comenzilor">
       {!hideHeading && <h2>Istoricul comenzilor</h2>}
-      <div className="b2b-history-filters">
-        <FilterSelect
-          label="Luna comenzilor"
-          value={month}
-          options={monthOptions}
-          onChange={setMonth}
-        />
-        <FilterSelect
-          label="Anul comenzilor"
-          value={year}
-          options={[
-            { value: "", label: "Toți anii" },
-            ...years.map((y) => ({ value: y, label: y })),
-          ]}
-          onChange={setYear}
-        />
-        {(month || year) && (
-          <button
-            className="button ghost"
-            onClick={() => {
-              setMonth("");
-              setYear("");
-            }}
-          >
-            Resetează perioada
-          </button>
-        )}
-      </div>
+      {mode === "admin" && (
+        <div className="b2b-history-filters">
+          <FilterSelect
+            label="Luna comenzilor"
+            value={month}
+            options={monthOptions}
+            onChange={setMonth}
+          />
+          <FilterSelect
+            label="Anul comenzilor"
+            value={year}
+            options={[
+              { value: "", label: "Toți anii" },
+              ...years.map((y) => ({ value: y, label: y })),
+            ]}
+            onChange={setYear}
+          />
+          {(month || year) && (
+            <button
+              className="button ghost"
+              onClick={() => {
+                setMonth("");
+                setYear("");
+              }}
+            >
+              Resetează perioada
+            </button>
+          )}
+        </div>
+      )}
       <Feedback success={success} />
       {!visible.length && (
         <p className="meta b2b-muted">
@@ -172,9 +178,9 @@ function OrderDialog({
     version: number;
     target: Status;
   } | null>(null);
-  const [step, setStep] = useState<
-    "details" | "edit" | "catalog" | "review" | "status"
-  >("details");
+  const [step, setStep] = useState<"details" | "edit" | "review" | "status">(
+    "details",
+  );
   const [counts, setCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(order.items.map((i) => [i.id, i.quantity])),
   );
@@ -341,7 +347,7 @@ function OrderDialog({
       setBusy(false);
     }
   }
-  const editing = step === "edit" || step === "catalog" || step === "review";
+  const editing = step === "edit" || step === "review";
   const title =
     step === "details"
       ? `Comanda #${order.id}`
@@ -349,11 +355,9 @@ function OrderDialog({
         ? targetStatus === "paid"
           ? "Confirmă achitarea"
           : "Confirmă comanda"
-        : step === "catalog"
-          ? "Adaugă produse"
-          : step === "review"
-            ? "Verifică modificările"
-            : `Modifică comanda #${order.id}`;
+        : step === "review"
+          ? "Verifică modificările"
+          : `Modifică comanda #${order.id}`;
   const shownLines =
     step === "details"
       ? order.items
@@ -430,26 +434,12 @@ function OrderDialog({
             <h4 className="b2b-checkout-label">
               {step === "details"
                 ? "Produse și detalii"
-                : step === "catalog"
+                : step === "edit"
                   ? "Catalog"
                   : "Produse selectate"}
             </h4>
-            {step === "edit" && (
-              <button
-                className="button ghost"
-                disabled={busy || !editable}
-                onClick={() => setStep("catalog")}
-              >
-                Adaugă produse
-              </button>
-            )}
-            {step === "catalog" && (
-              <button className="button ghost" onClick={() => setStep("edit")}>
-                Înapoi la modificare
-              </button>
-            )}
           </div>
-          {step === "catalog" && (
+          {step === "edit" && (
             <input
               type="search"
               aria-label="Caută produse pentru comandă"
@@ -461,12 +451,12 @@ function OrderDialog({
           <ul
             className="b2b-review b2b-checkout-list"
             aria-label={
-              step === "catalog"
+              step === "edit"
                 ? "Catalog pentru modificare"
                 : "Produsele comenzii"
             }
           >
-            {(step === "catalog"
+            {(step === "edit"
               ? products.filter((p) =>
                   normalize(p.name + " " + p.flavor).includes(
                     normalize(search),
@@ -479,7 +469,7 @@ function OrderDialog({
                   <strong>{p.name}</strong>
                   <span className="b2b-checkout-flavor"> · {p.flavor}</span>
                 </span>
-                {step === "edit" || step === "catalog" ? (
+                {step === "edit" ? (
                   quantities(p)
                 ) : (
                   <span className="b2b-checkout-amount">
@@ -495,7 +485,7 @@ function OrderDialog({
               </li>
             ))}
           </ul>
-          {step === "catalog" &&
+          {step === "edit" &&
             !products.some((p) =>
               normalize(p.name + " " + p.flavor).includes(normalize(search)),
             ) && (
@@ -587,11 +577,6 @@ function OrderDialog({
                 }}
               >
                 Verifică modificările
-              </button>
-            )}
-            {step === "catalog" && (
-              <button className="button" onClick={() => setStep("edit")}>
-                Gata
               </button>
             )}
             {step === "review" && (

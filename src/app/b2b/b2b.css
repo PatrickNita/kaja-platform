@@ -1307,3 +1307,35 @@ body:has(.b2b-portal) {
 .b2b-toolbar > .button {
   margin-left: auto;
 }
+/* The controls and amount occupy fixed tracks, independently of the value. */
+.b2b-edit-quantity {
+  display: grid;
+  grid-template-columns: 112px 112px;
+  gap: 8px;
+  align-items: center;
+  justify-content: end;
+}
+.b2b-edit-quantity .b2b-quantity {
+  display: grid;
+  grid-template-columns: 32px 40px 32px;
+  gap: 4px;
+  width: 112px;
+  align-items: center;
+}
+.b2b-edit-quantity .b2b-quantity output {
+  min-width: 0;
+  width: 40px;
+  font-variant-numeric: tabular-nums;
+}
+.b2b-edit-quantity > strong {
+  width: 112px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .b2b-edit-quantity {
+    grid-template-columns: 112px;
+    gap: 4px;
+  }
+}
