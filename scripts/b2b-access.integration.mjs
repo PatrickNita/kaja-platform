@@ -184,6 +184,41 @@ try {
   assert.equal((await server.currentLocation()).id, 4);
   const sharedToken = crypto.decryptToken(group.token_cipher);
   await entry(1, sharedToken);
+  for (const ua of ["TelegramBot (like TwitterBot)", "WhatsApp/2.0"]) {
+    const response = await accessRoute.GET(
+      new Request(base + "/comenzi/acces/1/" + sharedToken, {
+        headers: { "user-agent": ua },
+      }),
+      { params: Promise.resolve({ id: "1", token: sharedToken }) },
+    );
+    assert.equal(response.status, 200);
+    assert(response.headers.get("content-type").includes("text/html"));
+    assert.equal(response.headers.get("set-cookie"), null);
+    assert.equal(response.headers.get("vary"), "User-Agent");
+    const html = await response.text();
+    assert(html.includes("KAJA - Local 1, Local 2, Local 3"));
+    assert(html.includes("Link pentru comenzi"));
+    assert(!html.includes(sharedToken));
+    assert(!html.includes("068694838"));
+    checks++;
+  }
+  const singlePreview = await accessRoute.GET(
+    new Request(base + "/comenzi/acces/4/" + old[3], {
+      headers: { "user-agent": "TelegramBot" },
+    }),
+    { params: Promise.resolve({ id: "4", token: old[3] }) },
+  );
+  assert((await singlePreview.text()).includes("KAJA - Local 4"));
+  checks++;
+  const invalidPreview = await accessRoute.GET(
+    new Request(base + "/comenzi/acces/1/" + old[0], {
+      headers: { "user-agent": "TelegramBot" },
+    }),
+    { params: Promise.resolve({ id: "1", token: old[0] }) },
+  );
+  assert.equal(invalidPreview.status, 404);
+  checks++;
+
   let data = await server.loadData(await server.currentLocation());
   assert.equal(data.locations.length, 3);
   assert(!data.locations.some((l) => l.link));

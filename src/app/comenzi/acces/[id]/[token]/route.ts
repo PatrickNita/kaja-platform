@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 import { query, B2B_COOKIE, SUPPORT } from "../../../../../lib/b2b/server";
 import { tokenHash, sessionValue } from "../../../../../lib/b2b/crypto";
 
+import { isLinkPreview, previewHtml } from "../../../../../lib/b2b/preview";
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; token: string }> },
@@ -10,6 +12,7 @@ export async function GET(
   const { id, token } = await params;
   const headers = {
     "Cache-Control": "private, no-store",
+    Vary: "User-Agent",
     "Referrer-Policy": "no-referrer",
     "X-Robots-Tag": "noindex, nofollow",
   };
@@ -22,14 +25,22 @@ export async function GET(
     token.length !== 43
   )
     return new NextResponse(SUPPORT, { status: 404, headers });
-  const [location] = await query<{ id: number; version: number }>(
-    sql`select g.id,g.version from b2b_access_groups g where g.id=${Number(id)} and g.token_hash=${tokenHash(token)} and exists(select 1 from b2b_locations l where l.access_group_id=g.id)`,
+  const [location] = await query<{
+    id: number;
+    version: number;
+    names: string[];
+  }>(
+    sql`select g.id,g.version,(select jsonb_agg(l.name order by lower(l.name),l.id) from b2b_locations l where l.access_group_id=g.id) as names from b2b_access_groups g where g.id=${Number(id)} and g.token_hash=${tokenHash(token)} and exists(select 1 from b2b_locations l where l.access_group_id=g.id)`,
   );
   if (!location) {
     const response = new NextResponse(SUPPORT, { status: 404, headers });
     response.cookies.delete(B2B_COOKIE);
     return response;
   }
+  if (isLinkPreview(request.headers.get("user-agent") ?? ""))
+    return new NextResponse(previewHtml(location.names), {
+      headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
+    });
   const response = NextResponse.redirect(new URL("/comenzi", request.url));
   Object.entries(headers).forEach(([k, v]) => response.headers.set(k, v));
   response.cookies.set(

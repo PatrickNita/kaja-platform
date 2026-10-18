@@ -4,6 +4,18 @@ import { B2BPortal } from "../b2b/client";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "KAJA — Comenzi",
+  description: "Link pentru comenzi",
+  openGraph: {
+    title: "KAJA — Comenzi",
+    description: "Link pentru comenzi",
+    siteName: "KAJA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "KAJA — Comenzi",
+    description: "Link pentru comenzi",
+  },
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
