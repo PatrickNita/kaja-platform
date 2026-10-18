@@ -866,10 +866,11 @@ export function B2BPortal({ data }: { data: B2BData }) {
                 key={local.id}
                 className={local.id === location.id ? "button" : "button ghost"}
                 aria-pressed={local.id === location.id}
+                title={`${local.name} · ${local.address}`}
                 onClick={() => switchLocation(local)}
               >
                 <strong>{local.name}</strong>
-                <span>{local.address}</span>
+                <span className="b2b-location-option-address">· {local.address}</span>
               </button>
             ))}
           </div>
