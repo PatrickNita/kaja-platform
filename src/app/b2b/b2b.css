@@ -21,7 +21,7 @@
 }
 .b2b-portal-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 12px;
   padding: 4px 0;

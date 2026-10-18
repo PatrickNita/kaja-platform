@@ -1,5 +1,6 @@
 "use client";
 import "./b2b.css";
+import Image from "next/image";
 
 import {
   useEffect,
@@ -653,7 +654,14 @@ export function B2BPortal({ data }: { data: B2BData }) {
   return (
     <main className="b2b-portal">
       <header className="b2b-portal-header">
-        <strong>KAJA</strong>
+        <Image
+          className="logo"
+          src="/kaja-logo.png"
+          alt="KAJA"
+          width={1024}
+          height={240}
+          priority
+        />
       </header>
       <div className="b2b-portal-overview">
         <LocationDetails location={location} />
