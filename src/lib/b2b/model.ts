@@ -58,6 +58,9 @@ export type Location = {
   details_version: number;
   access_group_id?: number;
   group_size?: number;
+  company_name?: string | null;
+  idno?: string | null;
+  last_order_at?: string | null;
   cashback: number;
   link?: string;
 };

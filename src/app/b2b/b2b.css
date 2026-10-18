@@ -1084,3 +1084,226 @@ body:has(.b2b-portal) {
   font-size: 12px;
   font-weight: 400;
 }
+.b2b-select {
+  position: relative;
+  min-width: 0;
+  width: 240px;
+  max-width: 100%;
+}
+.b2b-select .b2b-filter-trigger {
+  min-height: 44px;
+  white-space: normal;
+}
+.b2b-history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.b2b-toolbar {
+  flex-wrap: wrap;
+}
+.b2b-toolbar input {
+  flex: 1 1 200px;
+}
+.b2b-order-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.b2b-order-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 16px;
+  min-width: 0;
+  color: var(--ink);
+  cursor: pointer;
+  border: 1px solid var(--line);
+}
+.b2b-order-card strong {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.b2b-order-card time {
+  font-size: 12px;
+  color: var(--muted);
+}
+.b2b-order-card.placed {
+  border-top: 2px solid #b9994c;
+}
+.b2b-order-card.confirmed {
+  border-top: 2px solid #6497d0;
+}
+.b2b-order-card.paid {
+  border-top: 2px solid #67a581;
+}
+.b2b-order-card:hover {
+  border-color: var(--line-strong);
+}
+.b2b-status {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid;
+  border-radius: 20px;
+  padding: 4px 8px;
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.b2b-status.placed {
+  color: #ead18c;
+  background: #aa84291a;
+  border-color: #aa842960;
+}
+.b2b-status.confirmed {
+  color: #b1d1f5;
+  background: #508aca1a;
+  border-color: #508aca60;
+}
+.b2b-status.paid {
+  color: #9ee6b7;
+  background: #34725229;
+  border-color: #63b38166;
+}
+.b2b-order-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.b2b-order-contact {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.b2b-order-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.b2b-order-dialog > input {
+  flex-shrink: 0;
+}
+.b2b-order-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.b2b-order-dialog-actions .button {
+  flex: 1 1 160px;
+}
+.b2b-status-confirm {
+  overflow-y: auto;
+  min-height: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.b2b-edit-quantity {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.b2b-edit-quantity > strong {
+  font-size: 12px;
+}
+.b2b-edit-quantity .b2b-quantity button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  font-size: 20px;
+}
+.b2b-edit-quantity .b2b-quantity output {
+  min-width: 22px;
+  font-size: 12px;
+}
+.b2b-location-list-extended .b2b-list-head,
+.b2b-location-list-extended .b2b-location-row {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+.b2b-location-list-manager .b2b-list-head,
+.b2b-location-list-manager .b2b-location-row {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+}
+.b2b-location-last,
+.b2b-location-company,
+.b2b-location-idno {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  display: grid;
+  gap: 4px;
+}
+.b2b-location-last {
+  color: var(--muted);
+}
+@media (max-width: 1199px) {
+  .b2b-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .b2b-location-list-extended .b2b-location-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .b2b-location-last {
+    grid-column: 3;
+    grid-row: 3;
+    font-size: 10px;
+  }
+  .b2b-location-list-extended .b2b-row-actions {
+    grid-row: 4;
+  }
+  .b2b-location-list-manager .b2b-row-actions {
+    grid-row: 5;
+  }
+  .b2b-location-company {
+    grid-column: 1 / 3;
+    grid-row: 4;
+  }
+  .b2b-location-idno {
+    grid-column: 3;
+    grid-row: 4;
+  }
+  .b2b-location-list-extended .b2b-list-head {
+    display: none;
+  }
+}
+@media (max-width: 599px) {
+  .b2b-order-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .b2b-order-card {
+    padding: 12px;
+    gap: 8px;
+  }
+  .b2b-history-filters .b2b-select {
+    flex: 1 1 120px;
+  }
+  .b2b-toolbar .b2b-select {
+    flex: 1 1 200px;
+    width: 100%;
+  }
+  .b2b-order-dialog .b2b-order-section-heading .button {
+    min-height: 44px;
+    padding: 8px;
+  }
+}
+.b2b-toolbar {
+  justify-content: flex-start;
+}
+.b2b-toolbar > .button {
+  margin-left: auto;
+}

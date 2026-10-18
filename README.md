@@ -53,3 +53,7 @@ Apply `scripts/migrate-b2b-access.mjs` rather than running the 0015 SQL file alo
 Production uses the existing Vercel encryption secret in a staged production deployment. The explicit build command is `node scripts/migrate-b2b-access-production.mjs && next build`, with build variable `B2B_APPLY_ACCESS_GROUPS=1` and `--prod --skip-domain`. Normal Git deployments retain `next build` and do not run migrations. Publish the tested commit after the staged migration/build succeeds. The runner is idempotent. Do not rotate the encryption key to perform this migration.
 
 `node --env-file=.env.production.local scripts/b2b-access.integration.mjs` exercises real route/server code in a temporary `kaja_b2b_test_*` schema, with a generated test encryption key and transaction-local search_path. It removes only that test schema afterwards and never inserts test records in public tables.
+
+### B2B company fields and order history (0016)
+
+Apply `node --env-file=.env.production.local scripts/migrate-b2b-company.mjs` before deploying this revision. It adds optional company_name/idno columns and records only migration 0016, leaving existing orders, credits and contact access groups unchanged. Corporate fields are selected server-side only for Patrick/Ionut and accepted only when an authorized manager edits a venue. The presentation tests are `node scripts/b2b-presentation.unit.mjs`; the isolated database suite also checks field visibility and edit/confirmation concurrency.

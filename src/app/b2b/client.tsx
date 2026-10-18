@@ -1,26 +1,21 @@
 "use client";
 import "./b2b.css";
 import Image from "next/image";
+import { ConfirmDialog, Feedback, request } from "./ui";
+import { History } from "./order-history";
+import { FilterSelect } from "./filter-select";
+import { sortLocations, formatOrderDate } from "../../lib/b2b/presentation";
 import { contactKey } from "../../lib/b2b/contact";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   stockStatus,
   stockLabel,
   stockLimit,
-  canEditOrder,
   canManageOrders,
   money,
-  nextStatus,
-  statusLabel,
   type B2BData,
   type Location,
   type Order,
@@ -35,84 +30,6 @@ function searchKey(text: string) {
     .toLowerCase();
 }
 
-async function request(body: Record<string, unknown>) {
-  const response = await fetch("/api/b2b", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).catch(() => {
-    throw new Error(
-      "Conexiunea a eșuat. Verifică internetul și încearcă din nou.",
-    );
-  });
-  const result = await response.json().catch(() => null);
-  if (!response.ok || !result)
-    throw new Error(result?.error ?? "Operația nu a reușit. Încearcă din nou.");
-  return result;
-}
-function Feedback({ error, success }: { error?: string; success?: string }) {
-  return (
-    <>
-      {error && (
-        <p className="b2b-error" role="alert">
-          {error}
-        </p>
-      )}
-      {success && (
-        <p className="b2b-success" role="status">
-          {success}
-        </p>
-      )}
-    </>
-  );
-}
-function ConfirmDialog({
-  children,
-  onClose,
-  busy,
-  title = "Confirmă comanda",
-  className = "",
-}: {
-  className?: string;
-  title?: string;
-  children: ReactNode;
-  onClose: () => void;
-  busy: boolean;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    ref.current?.showModal();
-    return () => {
-      ref.current?.close();
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-  return (
-    <dialog
-      className={`entry-modal-surface b2b-dialog ${className}`}
-      ref={ref}
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!busy) onClose();
-      }}
-    >
-      <div className="b2b-dialog-head">
-        <h3 className="item-title">{title}</h3>
-        <button
-          type="button"
-          aria-label="Închide dialogul"
-          disabled={busy}
-          onClick={onClose}
-        >
-          ×
-        </button>
-      </div>
-      {children}
-    </dialog>
-  );
-}
 function LocationGuide({
   location,
   link,
@@ -228,7 +145,9 @@ function LocationForm({
   location,
   onDone,
   modal = false,
+  internalFields = false,
 }: {
+  internalFields?: boolean;
   modal?: boolean;
   location?: Location;
   onDone: () => void;
@@ -317,6 +236,26 @@ function LocationForm({
           defaultValue={location?.phone}
         />
       </label>
+      {location && internalFields && (
+        <>
+          <label>
+            Denumire SRL
+            <input
+              name="companyName"
+              maxLength={160}
+              defaultValue={location.company_name ?? ""}
+            />
+          </label>
+          <label>
+            IDNO
+            <input
+              name="idno"
+              maxLength={32}
+              defaultValue={location.idno ?? ""}
+            />
+          </label>
+        </>
+      )}
       <Feedback error={error} />
       <div className="b2b-actions">
         <button className="button" disabled={busy}>
@@ -631,130 +570,8 @@ export function OrderEditor({
   );
 }
 
-function History({
-  orders,
-  manager,
-  allowEdit,
-  onEdit,
-  hideHeading = false,
-}: {
-  hideHeading?: boolean;
-  orders: Order[];
-  manager: boolean;
-  allowEdit: boolean;
-  onEdit: (order: Order) => void;
-}) {
-  const router = useRouter();
-  const [pending, setPending] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  async function transition(order: Order) {
-    const status = nextStatus(order.status);
-    if (!status || pending !== null) return;
-    const question =
-      status === "paid"
-        ? `Confirmi că această comandă #${order.id}, de ${money(order.total)}, este achitată? Se acordă ${money(Math.round(order.total * 0.05))} cashback, iar comanda se blochează definitiv.`
-        : `Confirmi comanda #${order.id} pentru ${order.location_name}? Localul nu o va mai putea modifica.`;
-    if (!window.confirm(question)) return;
-    setPending(order.id);
-    setError("");
-    try {
-      await request({
-        mode: "admin",
-        operation: "status",
-        orderId: order.id,
-        version: order.version,
-        status,
-      });
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Operația nu a reușit.");
-    } finally {
-      setPending(null);
-    }
-  }
-  return (
-    <section className="b2b-history" aria-label="Istoricul comenzilor">
-      {!hideHeading && <h2>Istoricul comenzilor</h2>}
-      <Feedback error={error} />
-      {orders.length === 0 && (
-        <p className="meta b2b-muted">Nu există comenzi încă.</p>
-      )}
-      {orders.map((order) => (
-        <article
-          className="card-wrap b2b-order"
-          id={`comanda-${order.id}`}
-          key={order.id}
-        >
-          <div className="b2b-order-heading">
-            <h3>
-              Comanda #{order.id} · {order.location_name}
-            </h3>
-            <span className={`status b2b-status ${order.status}`}>
-              {statusLabel[order.status]}
-            </span>
-          </div>
-          <p className="b2b-muted">
-            {new Intl.DateTimeFormat("ro-RO", {
-              dateStyle: "medium",
-              timeStyle: "short",
-              timeZone: "Europe/Chisinau",
-            }).format(new Date(order.created_at))}{" "}
-            · Plasată de {order.author}
-          </p>
-          <details>
-            <summary>Produse și detalii · {money(order.total)}</summary>
-            <p>
-              {order.location_snapshot.address}
-              <br />
-              {order.location_snapshot.contact} ·{" "}
-              {order.location_snapshot.phone}
-            </p>
-            <ul className="b2b-review">
-              {order.items.map((item) => (
-                <li key={item.id}>
-                  <span>
-                    {item.name} · {item.flavor} · {item.quantity} × {item.grams}{" "}
-                    g
-                  </span>
-                  <strong>{money(item.price * item.quantity)}</strong>
-                </li>
-              ))}
-            </ul>
-          </details>
-          {order.status === "paid" && (
-            <p className="b2b-cashback">
-              Cashback acordat: {money(order.cashback)}
-            </p>
-          )}
-          <div className="b2b-actions">
-            {allowEdit && canEditOrder(order.status, manager) && (
-              <button className="button ghost" onClick={() => onEdit(order)}>
-                Modifică comanda
-              </button>
-            )}
-            {manager && nextStatus(order.status) && (
-              <button
-                className="button"
-                disabled={pending !== null}
-                onClick={() => transition(order)}
-              >
-                {pending === order.id
-                  ? "Se actualizează…"
-                  : order.status === "placed"
-                    ? "Confirmă comanda"
-                    : "Marchează achitată"}
-              </button>
-            )}
-          </div>
-        </article>
-      ))}
-    </section>
-  );
-}
-
 export function B2BPortal({ data }: { data: B2BData }) {
   const [view, setView] = useState<"order" | "history">("order");
-  const [editing, setEditing] = useState<Order | null>(null);
   const [success, setSuccess] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [choosingLocation, setChoosingLocation] = useState(false);
@@ -775,17 +592,8 @@ export function B2BPortal({ data }: { data: B2BData }) {
       ? data.locations.reduce((sum, l) => sum + l.cashback, 0)
       : undefined;
   function switchLocation(next: Location) {
-    if (
-      next.id !== location.id &&
-      editing &&
-      !window.confirm(
-        "Schimbi locația și închizi modificarea comenzii? Selecția rămâne salvată pentru localul curent.",
-      )
-    )
-      return;
     if (next.id !== location.id) {
       setSelectedLocation(next.id);
-      setEditing(null);
       setSuccess("");
       try {
         localStorage.setItem(storageKey, String(next.id));
@@ -793,11 +601,6 @@ export function B2BPortal({ data }: { data: B2BData }) {
     }
     setChoosingLocation(false);
   }
-  const currentEdit = editing
-    ? data.orders.find(
-        (o) => o.id === editing.id && o.location_id === location?.id,
-      )
-    : null;
   if (!location)
     return (
       <p role="alert">
@@ -827,7 +630,6 @@ export function B2BPortal({ data }: { data: B2BData }) {
             aria-pressed={view === "order"}
             onClick={() => {
               setView("order");
-              setEditing(null);
               setSuccess("");
             }}
           >
@@ -870,49 +672,25 @@ export function B2BPortal({ data }: { data: B2BData }) {
                 onClick={() => switchLocation(local)}
               >
                 <strong>{local.name}</strong>
-                <span className="b2b-location-option-address">· {local.address}</span>
+                <span className="b2b-location-option-address">
+                  · {local.address}
+                </span>
               </button>
             ))}
           </div>
         </ConfirmDialog>
       )}
       <Feedback success={success} />
-      {view === "order" && editing && (
-        <button
-          className="button ghost"
-          onClick={() => {
-            setEditing(null);
-            setSuccess("");
-          }}
-        >
-          Înapoi la comandă nouă
-        </button>
-      )}
       {view === "order" && (
         <div id="formular-comanda">
-          {currentEdit && !canEditOrder(currentEdit.status, false) ? (
-            <p role="status">
-              Comanda a fost confirmată și nu mai poate fi modificată.{" "}
-              <button className="button ghost" onClick={() => setEditing(null)}>
-                Comandă nouă
-              </button>
-            </p>
-          ) : (
-            <OrderEditor
-              key={`${location.id}:${editing?.id ?? "new"}:${currentEdit?.version ?? 0}`}
-              hideHeading
-              mode="portal"
-              location={location}
-              products={data.products}
-              order={currentEdit ?? undefined}
-              onDone={(id) => {
-                setEditing(null);
-                setSuccess(
-                  `Comanda #${id} a fost ${editing ? "actualizată" : "plasată"}.`,
-                );
-              }}
-            />
-          )}
+          <OrderEditor
+            key={location.id}
+            hideHeading
+            mode="portal"
+            location={location}
+            products={data.products}
+            onDone={(id) => setSuccess(`Comanda #${id} a fost plasată.`)}
+          />
         </div>
       )}
       {view === "history" && (
@@ -920,16 +698,10 @@ export function B2BPortal({ data }: { data: B2BData }) {
           <History
             hideHeading
             orders={data.orders.filter((o) => o.location_id === location.id)}
+            products={data.products}
             manager={false}
-            allowEdit={true}
-            onEdit={(order) => {
-              setView("order");
-              setEditing(order);
-              setSuccess("");
-              document
-                .getElementById("formular-comanda")
-                ?.scrollIntoView({ behavior: "smooth" });
-            }}
+            allowEdit
+            mode="portal"
           />
         </div>
       )}
@@ -1215,6 +987,7 @@ export function B2BAdmin({
   const manager = canManageOrders(memberSlug);
   const [view, setView] = useState(initialView);
   const [locationSearch, setLocationSearch] = useState("");
+  const [locationSort, setLocationSort] = useState("name");
   const [guideLocation, setGuideLocation] = useState<Location | null>(null);
   const [linkLocation, setLinkLocation] = useState<number | null>(null);
   const [historyLocation, setHistoryLocation] = useState<number | null>(null);
@@ -1241,20 +1014,19 @@ export function B2BAdmin({
     null,
   );
   const [selected, setSelected] = useState<number | null>(null);
-  const [editing, setEditing] = useState<Order | null>(null);
   const [showOrder, setShowOrder] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const location = data.locations.find((l) => l.id === selected);
-  const matchingLocations = data.locations.filter((local) =>
-    searchKey(local.name).includes(searchKey(locationSearch)),
+  const matchingLocations = sortLocations(
+    data.locations.filter((local) =>
+      searchKey(local.name).includes(searchKey(locationSearch)),
+    ),
+    locationSort,
   );
   const visibleLink = data.locations.find((l) => l.id === linkLocation);
-  const editOrder = editing
-    ? data.orders.find((o) => o.id === editing.id)
-    : undefined;
   async function rotate(local: Location) {
     if (
       !window.confirm(
@@ -1312,13 +1084,10 @@ export function B2BAdmin({
       return false;
     if (location && dirty) {
       try {
-        sessionStorage.removeItem(
-          `kaja-b2b-cart:admin:${location.id}:${editing?.id ?? "new"}`,
-        );
+        sessionStorage.removeItem(`kaja-b2b-cart:admin:${location.id}:new`);
       } catch {}
     }
     setSelected(value);
-    setEditing(null);
     setDirty(false);
     setShowOrder(false);
     setSuccess("");
@@ -1356,6 +1125,15 @@ export function B2BAdmin({
             value={locationSearch}
             onChange={(e) => setLocationSearch(e.target.value)}
           />
+          <FilterSelect
+            label="Sortare localuri"
+            value={locationSort}
+            options={[
+              { value: "name", label: "Denumire A–Z" },
+              { value: "latest", label: "Ultima comandă — cele mai recente" },
+            ]}
+            onChange={setLocationSort}
+          />
           <button className="button" onClick={() => setLocationForm("new")}>
             Adaugă local
           </button>
@@ -1366,18 +1144,29 @@ export function B2BAdmin({
         <LocationForm
           key={locationForm === "new" ? "new" : locationForm.id}
           modal={locationForm === "new"}
+          internalFields={manager}
           location={locationForm === "new" ? undefined : locationForm}
           onDone={() => setLocationForm(null)}
         />
       )}
       {view === "locations" && (
-        <section className="b2b-location-list" aria-label="Lista localurilor">
+        <section
+          className={`b2b-location-list b2b-location-list-extended ${manager ? "b2b-location-list-manager" : ""}`}
+          aria-label="Lista localurilor"
+        >
           <div className="b2b-list-head" aria-hidden="true">
             <span>Local</span>
             <span>Adresă</span>
             <span>Persoană contact</span>
             <span>Nr. telefon</span>
             <span>Cashback</span>
+            <span>Ultima comandă</span>
+            {manager && (
+              <>
+                <span>Denumire SRL</span>
+                <span>IDNO</span>
+              </>
+            )}
             <span>Acțiuni</span>
             <span />
           </div>
@@ -1403,6 +1192,26 @@ export function B2BAdmin({
                 <span className="b2b-mobile-label">Cashback</span>
                 <strong>{money(local.cashback)}</strong>
               </div>
+              <div className="b2b-location-last">
+                <span className="b2b-mobile-label">Ultima comandă</span>
+                <time dateTime={local.last_order_at ?? undefined}>
+                  {local.last_order_at
+                    ? formatOrderDate(local.last_order_at)
+                    : "—"}
+                </time>
+              </div>
+              {manager && (
+                <>
+                  <div className="b2b-location-company">
+                    <span className="b2b-mobile-label">Denumire SRL</span>
+                    {local.company_name || "—"}
+                  </div>
+                  <div className="b2b-location-idno">
+                    <span className="b2b-mobile-label">IDNO</span>
+                    {local.idno || "—"}
+                  </div>
+                </>
+              )}
               <div className="b2b-row-actions">
                 <button className="button ghost" onClick={() => copy(local)}>
                   Copiază linkul
@@ -1421,7 +1230,6 @@ export function B2BAdmin({
                               )
                                 return;
                               setSelected(local.id);
-                              setEditing(null);
                               setShowOrder(true);
                             },
                           },
@@ -1514,7 +1322,6 @@ export function B2BAdmin({
                   className="button ghost"
                   onClick={() => {
                     setShowOrder(false);
-                    setEditing(null);
                   }}
                 >
                   Închide formularul
@@ -1522,27 +1329,22 @@ export function B2BAdmin({
               )}
             </div>
           )}
-          {showOrder &&
-            (editOrder?.status === "paid" ? (
-              <p>Comanda este achitată și nu mai poate fi modificată.</p>
-            ) : (
-              <OrderEditor
-                key={`${location.id}:${editing?.id ?? "new"}:${editOrder?.version ?? 0}`}
-                location={location}
-                products={data.products}
-                mode="admin"
-                order={editOrder}
-                onCartChange={setDirty}
-                onDone={(id) => {
-                  setShowOrder(false);
-                  setEditing(null);
-                  setDirty(false);
-                  setSuccess(
-                    `Comanda #${id} a fost salvată pentru ${location.name}.`,
-                  );
-                }}
-              />
-            ))}
+          {showOrder && (
+            <OrderEditor
+              key={location.id}
+              location={location}
+              products={data.products}
+              mode="admin"
+              onCartChange={setDirty}
+              onDone={(id) => {
+                setShowOrder(false);
+                setDirty(false);
+                setSuccess(
+                  `Comanda #${id} a fost salvată pentru ${location.name}.`,
+                );
+              }}
+            />
+          )}
         </>
       )}
       {view === "history" && (
@@ -1550,22 +1352,10 @@ export function B2BAdmin({
           orders={data.orders.filter(
             (o) => !historyLocation || o.location_id === historyLocation,
           )}
+          products={data.products}
           manager={manager}
           allowEdit={manager}
-          onEdit={(order) => {
-            if (
-              dirty &&
-              !window.confirm(
-                "Deschizi altă comandă? Selecția curentă rămâne salvată în această sesiune.",
-              )
-            )
-              return;
-            setSelected(order.location_id);
-            setEditing(order);
-            setShowOrder(true);
-            setDirty(false);
-            setSuccess("");
-          }}
+          mode="admin"
         />
       )}
     </div>

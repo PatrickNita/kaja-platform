@@ -83,7 +83,26 @@ export async function POST(request: Request) {
           { error: "Doar Patrick și Ionut pot edita localuri." },
           { status: 403 },
         );
-      const fields = locationFields.parse(body);
+      if (
+        operation === "createLocation" &&
+        (body.companyName !== undefined || body.idno !== undefined)
+      )
+        return NextResponse.json(
+          {
+            error:
+              "Datele interne se completează doar la modificarea localului.",
+          },
+          { status: 403 },
+        );
+      const fields =
+        operation === "editLocation"
+          ? locationFields
+              .extend({
+                companyName: z.string().trim().max(160).optional(),
+                idno: z.string().trim().max(32).optional(),
+              })
+              .parse(body)
+          : locationFields.parse(body);
       const token = newToken();
       const [updated] = await query(
         assignLocation(

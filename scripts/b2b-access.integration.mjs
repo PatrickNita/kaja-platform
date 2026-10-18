@@ -161,6 +161,12 @@ try {
   assert.equal(migration.groups, 2);
   assert.equal(migration.sharedGroups, 1);
   assert.equal((await migrateAccessGroups(db)).alreadyApplied, true);
+  await db.query(
+    readFileSync(
+      new URL("../drizzle/0016_b2b_company.sql", import.meta.url),
+      "utf8",
+    ),
+  );
   server = load("src/lib/b2b/server.ts");
   server.internalMember = async () => {
     const [m] = await db.query("select * from members where slug=$1", [
@@ -231,6 +237,80 @@ try {
     (await db.query("select amount from b2b_cashback where location_id=2"))[0]
       .amount,
     4000,
+  );
+  // Editing and confirmation with the same version cannot overwrite one another.
+  const [racing] = await db.query(
+    "select * from b2b_orders where location_id=1",
+  );
+  const racePayloads = [
+    {
+      mode: "admin",
+      operation: "saveOrder",
+      locationId: 1,
+      orderId: racing.id,
+      version: racing.version,
+      quantities: [{ productId: 1, quantity: 2 }],
+    },
+    {
+      mode: "admin",
+      operation: "status",
+      orderId: racing.id,
+      version: racing.version,
+      status: "confirmed",
+    },
+  ];
+  const raceResults = await Promise.all(
+    racePayloads.map((body) =>
+      route.POST(
+        new Request(base + "/api/b2b", {
+          method: "POST",
+          headers: {
+            host: "localhost:3000",
+            origin: base,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }),
+      ),
+    ),
+  );
+  assert.deepEqual(raceResults.map((r) => r.status).sort(), [200, 409]);
+  checks += 2;
+  const [afterRace] = await db.query("select * from b2b_orders where id=$1", [
+    racing.id,
+  ]);
+  assert.equal(
+    new Date(afterRace.created_at).getTime(),
+    new Date(racing.created_at).getTime(),
+  );
+  const [editableConfirmed] = await db.query(
+    "select * from b2b_orders where location_id=3",
+  );
+  await api({
+    mode: "admin",
+    operation: "status",
+    orderId: editableConfirmed.id,
+    version: 1,
+    status: "confirmed",
+  });
+  await api({
+    mode: "admin",
+    operation: "saveOrder",
+    locationId: 3,
+    orderId: editableConfirmed.id,
+    version: 2,
+    quantities: [{ productId: 1, quantity: 4 }],
+  });
+  await api(
+    {
+      mode: "admin",
+      operation: "saveOrder",
+      locationId: 2,
+      orderId: order.id,
+      version: 3,
+      quantities: [{ productId: 1, quantity: 4 }],
+    },
+    409,
   );
   const concurrent = await Promise.all([
     api({
@@ -435,6 +515,80 @@ try {
   assert.equal(
     contactKey("  Andréi  Popescu ", "+373 68 694 838"),
     contactKey("andrei popescu", "068694838"),
+  );
+  // Corporate data is optional, never accepted at creation, and visible only to managers.
+  member = { slug: "patrick", name: "Patrick" };
+  await api(
+    {
+      mode: "admin",
+      operation: "createLocation",
+      ...fields("Not allowed"),
+      companyName: "Hidden SRL",
+      idno: "1234567890123",
+    },
+    403,
+  );
+  const [corporateLocation] = await db.query(
+    "select * from b2b_locations where id=2",
+  );
+  await api({
+    mode: "admin",
+    operation: "editLocation",
+    locationId: 2,
+    version: corporateLocation.details_version,
+    companyName: "Exemplu SRL",
+    idno: "1234567890123",
+    ...fields("Local 2", "Maria", "069123456"),
+  });
+  for (const slug of ["patrick", "ionut", "andrei", "igor"]) {
+    member = { slug, name: slug };
+    const visible = await server.loadData();
+    const venue = visible.locations.find((l) => l.id === 2);
+    if (["patrick", "ionut"].includes(slug)) {
+      assert.equal(venue.company_name, "Exemplu SRL");
+      assert.equal(venue.idno, "1234567890123");
+    } else {
+      assert(!("company_name" in venue));
+      assert(!("idno" in venue));
+      await api(
+        {
+          mode: "admin",
+          operation: "editLocation",
+          locationId: 2,
+          version: 999,
+          companyName: "Forbidden",
+          ...fields("Local 2"),
+        },
+        403,
+      );
+    }
+  }
+  await entry(4, old[3]);
+  const portal = await server.loadData(await server.currentLocation());
+  assert(
+    portal.locations.every((l) => !("company_name" in l) && !("idno" in l)),
+  );
+  const venue = portal.locations.find((l) => l.id === 2);
+  const [last] = await db.query(
+    "select max(created_at) as date from b2b_orders where location_id=2",
+  );
+  assert.equal(
+    new Date(venue.last_order_at).getTime(),
+    new Date(last.date).getTime(),
+  );
+  const [paidOrder] = await db.query(
+    "select * from b2b_orders where location_id=2",
+  );
+  await api(
+    {
+      mode: "portal",
+      operation: "saveOrder",
+      locationId: 2,
+      orderId: paidOrder.id,
+      version: paidOrder.version,
+      quantities: [{ productId: 1, quantity: 1 }],
+    },
+    409,
   );
   console.log(
     "PASS: " +

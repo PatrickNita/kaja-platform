@@ -1,0 +1,620 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  canEditOrder,
+  money,
+  nextStatus,
+  statusLabel,
+  stockLimit,
+  type Order,
+  type Product,
+  type Status,
+} from "../../lib/b2b/model";
+import {
+  formatOrderDate,
+  historyOrders,
+  periodParts,
+  shortStatus,
+} from "../../lib/b2b/presentation";
+import { ConfirmDialog, Feedback, request } from "./ui";
+import { FilterSelect } from "./filter-select";
+const normalize = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+const monthOptions = [
+  { value: "", label: "Toate lunile" },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1).padStart(2, "0"),
+    label: new Intl.DateTimeFormat("ro-RO", {
+      month: "long",
+      timeZone: "UTC",
+    }).format(new Date(Date.UTC(2026, i, 1))),
+  })),
+];
+export function History({
+  orders,
+  products,
+  manager,
+  allowEdit,
+  mode,
+  hideHeading = false,
+}: {
+  orders: Order[];
+  products: Product[];
+  manager: boolean;
+  allowEdit: boolean;
+  mode: "admin" | "portal";
+  hideHeading?: boolean;
+}) {
+  const [month, setMonth] = useState(""),
+    [year, setYear] = useState(""),
+    [active, setActive] = useState<number | null>(null),
+    [success, setSuccess] = useState("");
+  const years = [
+    ...new Set([
+      ...orders.map((o) => periodParts(o.created_at).year),
+      ...(year ? [year] : []),
+    ]),
+  ]
+    .sort()
+    .reverse();
+  const visible = historyOrders(orders, month, year),
+    order = orders.find((o) => o.id === active);
+  return (
+    <section className="b2b-history" aria-label="Istoricul comenzilor">
+      {!hideHeading && <h2>Istoricul comenzilor</h2>}
+      <div className="b2b-history-filters">
+        <FilterSelect
+          label="Luna comenzilor"
+          value={month}
+          options={monthOptions}
+          onChange={setMonth}
+        />
+        <FilterSelect
+          label="Anul comenzilor"
+          value={year}
+          options={[
+            { value: "", label: "Toți anii" },
+            ...years.map((y) => ({ value: y, label: y })),
+          ]}
+          onChange={setYear}
+        />
+        {(month || year) && (
+          <button
+            className="button ghost"
+            onClick={() => {
+              setMonth("");
+              setYear("");
+            }}
+          >
+            Resetează perioada
+          </button>
+        )}
+      </div>
+      <Feedback success={success} />
+      {!visible.length && (
+        <p className="meta b2b-muted">
+          {orders.length
+            ? "Nu există comenzi pentru perioada selectată."
+            : "Nu există comenzi încă."}
+        </p>
+      )}
+      <div className="b2b-order-grid">
+        {visible.map((o) => (
+          <button
+            key={o.id}
+            id={"comanda-" + o.id}
+            className={"card-wrap b2b-order-card " + o.status}
+            onClick={() => {
+              setActive(o.id);
+              setSuccess("");
+            }}
+            aria-label={
+              "Deschide comanda #" +
+              o.id +
+              " · " +
+              o.location_name +
+              " · " +
+              formatOrderDate(o.created_at) +
+              " · " +
+              shortStatus[o.status]
+            }
+          >
+            <strong>{o.location_name}</strong>
+            <time dateTime={o.created_at}>{formatOrderDate(o.created_at)}</time>
+            <span className={"b2b-status " + o.status}>
+              {shortStatus[o.status]}
+            </span>
+          </button>
+        ))}
+      </div>
+      {order && (
+        <OrderDialog
+          key={order.id}
+          order={order}
+          products={products}
+          mode={mode}
+          manager={manager}
+          allowEdit={allowEdit}
+          onClose={() => setActive(null)}
+          onSaved={(message) => {
+            setSuccess(message);
+            setActive(null);
+          }}
+        />
+      )}
+    </section>
+  );
+}
+function OrderDialog({
+  order,
+  products,
+  mode,
+  manager,
+  allowEdit,
+  onClose,
+  onSaved,
+}: {
+  order: Order;
+  products: Product[];
+  mode: "admin" | "portal";
+  manager: boolean;
+  allowEdit: boolean;
+  onClose: () => void;
+  onSaved: (message: string) => void;
+}) {
+  const router = useRouter();
+  const [statusIntent, setStatusIntent] = useState<{
+    version: number;
+    target: Status;
+  } | null>(null);
+  const [step, setStep] = useState<
+    "details" | "edit" | "catalog" | "review" | "status"
+  >("details");
+  const [counts, setCounts] = useState<Record<number, number>>(() =>
+    Object.fromEntries(order.items.map((i) => [i.id, i.quantity])),
+  );
+  const [baseVersion, setBaseVersion] = useState(order.version),
+    [ready, setReady] = useState(false),
+    [search, setSearch] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const inFlight = useRef(false),
+    storageKey = `kaja-b2b-cart:${mode}:${order.location_id}:${order.id}`;
+  const editable = allowEdit && canEditOrder(order.status, manager),
+    stale = baseVersion !== order.version;
+  const selected = products.filter((p) => (counts[p.id] ?? 0) > 0),
+    total = selected.reduce((s, p) => s + p.price * counts[p.id], 0),
+    units = selected.reduce((s, p) => s + counts[p.id], 0);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+      if (
+        saved?.version === order.version &&
+        saved.counts &&
+        typeof saved.counts === "object"
+      )
+        setCounts(
+          Object.fromEntries(
+            products.map((p) => [
+              p.id,
+              Number.isInteger(saved.counts[p.id])
+                ? Math.max(
+                    0,
+                    Math.min(
+                      saved.counts[p.id],
+                      stockLimit(
+                        p.name,
+                        order.items.find((i) => i.id === p.id)?.quantity ?? 0,
+                      ),
+                    ),
+                  )
+                : 0,
+            ]),
+          ),
+        );
+    } catch {}
+    setReady(true);
+  }, [storageKey, order.version, products, order.items]);
+  useEffect(() => {
+    if (ready && !inFlight.current) {
+      try {
+        sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({ version: baseVersion, counts }),
+        );
+      } catch {}
+    }
+  }, [ready, counts, baseVersion, storageKey]);
+  function change(product: Product, delta: number) {
+    setCounts((c) => ({
+      ...c,
+      [product.id]: Math.max(
+        0,
+        Math.min(
+          (c[product.id] ?? 0) + delta,
+          stockLimit(
+            product.name,
+            order.items.find((i) => i.id === product.id)?.quantity ?? 0,
+          ),
+        ),
+      ),
+    }));
+  }
+  function quantities(p: Product) {
+    return (
+      <div className="b2b-edit-quantity">
+        <div className="b2b-quantity">
+          <button
+            type="button"
+            aria-label={"Scade " + p.name}
+            disabled={busy || !ready || !editable || !(counts[p.id] > 0)}
+            onClick={() => change(p, -1)}
+          >
+            −
+          </button>
+          <output aria-label={"Cantitate " + p.name} aria-live="polite">
+            {counts[p.id] ?? 0}
+          </output>
+          <button
+            type="button"
+            aria-label={"Adaugă " + p.name}
+            disabled={
+              busy ||
+              !ready ||
+              !editable ||
+              (counts[p.id] ?? 0) >=
+                stockLimit(
+                  p.name,
+                  order.items.find((i) => i.id === p.id)?.quantity ?? 0,
+                )
+            }
+            onClick={() => change(p, 1)}
+          >
+            +
+          </button>
+        </div>
+        <strong>{money((counts[p.id] ?? 0) * p.price)}</strong>
+      </div>
+    );
+  }
+  async function save() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await request({
+        mode,
+        operation: "saveOrder",
+        locationId: order.location_id,
+        orderId: order.id,
+        version: baseVersion,
+        quantities: selected.map((p) => ({
+          productId: p.id,
+          quantity: counts[p.id],
+        })),
+      });
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch {}
+      router.refresh();
+      onSaved("Comanda #" + order.id + " a fost actualizată.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Salvarea nu a reușit.");
+      router.refresh();
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
+  const targetStatus =
+    step === "status"
+      ? (statusIntent?.target ?? null)
+      : nextStatus(order.status);
+  const statusStale =
+    step === "status" && statusIntent?.version !== order.version;
+  async function transition() {
+    if (!targetStatus || statusStale || inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await request({
+        mode: "admin",
+        operation: "status",
+        orderId: order.id,
+        version: statusIntent?.version,
+        status: targetStatus,
+      });
+      router.refresh();
+      onSaved("Comanda #" + order.id + " · " + statusLabel[targetStatus]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Actualizarea nu a reușit.");
+      router.refresh();
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
+  const editing = step === "edit" || step === "catalog" || step === "review";
+  const title =
+    step === "details"
+      ? `Comanda #${order.id}`
+      : step === "status"
+        ? targetStatus === "paid"
+          ? "Confirmă achitarea"
+          : "Confirmă comanda"
+        : step === "catalog"
+          ? "Adaugă produse"
+          : step === "review"
+            ? "Verifică modificările"
+            : `Modifică comanda #${order.id}`;
+  const shownLines =
+    step === "details"
+      ? order.items
+      : selected.map((p) => ({ ...p, quantity: counts[p.id] }));
+  return (
+    <ConfirmDialog
+      title={title}
+      busy={busy}
+      onClose={onClose}
+      className="b2b-checkout b2b-order-dialog"
+    >
+      <div className="b2b-checkout-destination">
+        <span className="b2b-checkout-label">Local destinatar</span>
+        <p className="b2b-checkout-location">
+          <strong>{order.location_name}</strong> ·{" "}
+          {order.location_snapshot.address}
+        </p>
+        <p className="b2b-order-contact">
+          {order.location_snapshot.contact} · {order.location_snapshot.phone}
+        </p>
+      </div>
+      {step === "details" && (
+        <div className="b2b-order-metadata">
+          <time dateTime={order.created_at}>
+            {formatOrderDate(order.created_at)}
+          </time>
+          <span>Plasată de {order.author}</span>
+          <span className={"b2b-status " + order.status}>
+            {shortStatus[order.status]}
+          </span>
+        </div>
+      )}
+      {step === "status" ? (
+        <div className="b2b-status-confirm">
+          <p>
+            {targetStatus === "paid"
+              ? `Confirmi achitarea comenzii de ${money(order.total)}? Se acordă ${money(Math.round(order.total * 0.05))} cashback localului. Comanda va fi blocată pentru modificări.`
+              : "După confirmare, localul nu mai poate modifica această comandă. Patrick și Ionut o pot modifica până la achitare."}
+          </p>
+          {statusStale && (
+            <p className="b2b-error" role="alert">
+              Comanda a fost actualizată între timp. Revino la detalii pentru a
+              verifica starea curentă.
+            </p>
+          )}
+          <Feedback error={error} />
+          <div className="b2b-actions">
+            <button
+              className="button ghost"
+              disabled={busy}
+              onClick={() => {
+                setStep("details");
+                setError("");
+              }}
+            >
+              Înapoi
+            </button>
+            <button
+              className="button"
+              disabled={busy || !targetStatus || statusStale}
+              onClick={transition}
+            >
+              {busy
+                ? "Se actualizează…"
+                : targetStatus === "paid"
+                  ? "Confirmă achitarea"
+                  : "Confirmă comanda"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="b2b-order-section-heading">
+            <h4 className="b2b-checkout-label">
+              {step === "details"
+                ? "Produse și detalii"
+                : step === "catalog"
+                  ? "Catalog"
+                  : "Produse selectate"}
+            </h4>
+            {step === "edit" && (
+              <button
+                className="button ghost"
+                disabled={busy || !editable}
+                onClick={() => setStep("catalog")}
+              >
+                Adaugă produse
+              </button>
+            )}
+            {step === "catalog" && (
+              <button className="button ghost" onClick={() => setStep("edit")}>
+                Înapoi la modificare
+              </button>
+            )}
+          </div>
+          {step === "catalog" && (
+            <input
+              type="search"
+              aria-label="Caută produse pentru comandă"
+              placeholder="Caută după denumire sau gust…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          )}
+          <ul
+            className="b2b-review b2b-checkout-list"
+            aria-label={
+              step === "catalog"
+                ? "Catalog pentru modificare"
+                : "Produsele comenzii"
+            }
+          >
+            {(step === "catalog"
+              ? products.filter((p) =>
+                  normalize(p.name + " " + p.flavor).includes(
+                    normalize(search),
+                  ),
+                )
+              : shownLines
+            ).map((p) => (
+              <li key={p.id}>
+                <span className="b2b-checkout-product">
+                  <strong>{p.name}</strong>
+                  <span className="b2b-checkout-flavor"> · {p.flavor}</span>
+                </span>
+                {step === "edit" || step === "catalog" ? (
+                  quantities(p)
+                ) : (
+                  <span className="b2b-checkout-amount">
+                    {"quantity" in p ? Number(p.quantity) : counts[p.id]} buc. ·{" "}
+                    <strong>
+                      {money(
+                        p.price *
+                          ("quantity" in p ? Number(p.quantity) : counts[p.id]),
+                      )}
+                    </strong>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {step === "catalog" &&
+            !products.some((p) =>
+              normalize(p.name + " " + p.flavor).includes(normalize(search)),
+            ) && (
+              <p role="status" className="b2b-muted">
+                Nu există produse potrivite.
+              </p>
+            )}
+          {step === "edit" && !selected.length && (
+            <p role="status" className="b2b-muted">
+              Adaugă cel puțin un produs pentru a salva comanda.
+            </p>
+          )}
+          <div className="b2b-checkout-footer">
+            <p className="b2b-checkout-total">
+              <span>Total</span>
+              <span className="b2b-checkout-amount">
+                {step === "details"
+                  ? order.items.reduce((s, i) => s + i.quantity, 0)
+                  : units}{" "}
+                buc. ·{" "}
+                <strong>
+                  {money(step === "details" ? order.total : total)}
+                </strong>
+              </span>
+            </p>
+            {step === "details" && order.status === "paid" && (
+              <p className="b2b-cashback">
+                Cashback acordat: {money(order.cashback)}
+              </p>
+            )}
+            {editing && (!editable || stale) && (
+              <div role="alert" className="b2b-error">
+                Comanda a fost actualizată între timp. Selecția ta este
+                păstrată.{" "}
+                <button
+                  className="button ghost"
+                  onClick={() => {
+                    setCounts(
+                      Object.fromEntries(
+                        order.items.map((i) => [i.id, i.quantity]),
+                      ),
+                    );
+                    setBaseVersion(order.version);
+                    setStep("details");
+                    setError("");
+                  }}
+                >
+                  Reîncarcă detaliile
+                </button>
+              </div>
+            )}
+            <Feedback error={error} />
+            {step === "details" && (
+              <div className="b2b-order-dialog-actions">
+                {editable && (
+                  <button
+                    className="button ghost"
+                    onClick={() => setStep("edit")}
+                  >
+                    Modifică comanda
+                  </button>
+                )}
+                {manager && targetStatus && (
+                  <button
+                    className="button"
+                    onClick={() => {
+                      setStatusIntent({
+                        version: order.version,
+                        target: targetStatus,
+                      });
+                      setStep("status");
+                      setError("");
+                    }}
+                  >
+                    {targetStatus === "paid"
+                      ? "Marchează ca achitată"
+                      : "Confirmă comanda"}
+                  </button>
+                )}
+              </div>
+            )}
+            {step === "edit" && (
+              <button
+                className="button"
+                disabled={!ready || !selected.length || !editable || stale}
+                onClick={() => {
+                  setError("");
+                  setStep("review");
+                }}
+              >
+                Verifică modificările
+              </button>
+            )}
+            {step === "catalog" && (
+              <button className="button" onClick={() => setStep("edit")}>
+                Gata
+              </button>
+            )}
+            {step === "review" && (
+              <>
+                <button
+                  className="button ghost"
+                  disabled={busy}
+                  onClick={() => setStep("edit")}
+                >
+                  Înapoi la modificare
+                </button>
+                <button
+                  className="button"
+                  disabled={busy || !selected.length || !editable || stale}
+                  onClick={save}
+                >
+                  {busy ? "Se salvează…" : "Salvează modificările"}
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </ConfirmDialog>
+  );
+}

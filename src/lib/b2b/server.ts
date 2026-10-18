@@ -5,6 +5,7 @@ import { db } from "../db";
 import { currentMember } from "../auth";
 import { members } from "../schema";
 import { decryptToken, parseSession } from "./crypto";
+import { canManageOrders } from "./model";
 import type { B2BData, Location, Order, Product } from "./model";
 export const SUPPORT =
   "Contactează-ne la 076922600 pe Telegram pentru suport tehnic.";
@@ -44,12 +45,15 @@ export async function currentLocation(locationId?: number) {
 }
 export async function loadData(location?: Location): Promise<B2BData> {
   const access = location ? await currentAccess() : null;
+  const member = location ? null : await currentMember();
+  if (!location && !member) throw Error("Acces neautorizat.");
+  const internalFields = member && canManageOrders(member.slug);
   if (location && !access) throw Error("Acces neautorizat.");
   const scope = access
     ? sql`where g.id=${access.id} and g.version=${access.version}`
     : sql``;
   const locations = await query<Location & { token_cipher?: string }>(
-    sql`select l.id,l.name,l.address,l.contact,l.phone,g.version,l.details_version,l.access_group_id,(select count(*)::integer from b2b_locations peer where peer.access_group_id=g.id) as group_size,coalesce((select sum(amount)::integer from b2b_cashback where location_id=l.id),0) as cashback ${access ? sql`` : sql`,g.token_cipher`} from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id ${scope} order by lower(l.name),l.id`,
+    sql`select l.id,l.name,l.address,l.contact,l.phone,g.version,l.details_version,l.access_group_id,(select max(o.created_at) from b2b_orders o where o.location_id=l.id) as last_order_at ${internalFields ? sql`,l.company_name,l.idno` : sql``},(select count(*)::integer from b2b_locations peer where peer.access_group_id=g.id) as group_size,coalesce((select sum(amount)::integer from b2b_cashback where location_id=l.id),0) as cashback ${access ? sql`` : sql`,g.token_cipher`} from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id ${scope} order by lower(l.name),l.id`,
   );
   const [products, orders] = await Promise.all([
     query<Product>(
