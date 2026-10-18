@@ -602,8 +602,9 @@
 .b2b-checkout-destination {
   display: grid;
   gap: 6px;
+  margin-inline: -12px;
   padding: 12px;
-  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 1px var(--line);
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.18);
 }
@@ -682,6 +683,10 @@
   min-height: 44px;
 }
 @media (max-width: 420px) {
+  .b2b-checkout-destination {
+    margin-inline: -8px;
+    padding-inline: 8px;
+  }
   .b2b-checkout[open] {
     padding: 12px;
     gap: 8px;
