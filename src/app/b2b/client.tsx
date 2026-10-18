@@ -117,19 +117,18 @@ function LocationDetails({ location }: { location: Location }) {
       className="card-wrap b2b-location-details"
       aria-label="Datele localului"
     >
-      <div className="b2b-location-identity">
-        <h2 className="item-title">{location.name}</h2>
-        <p className="b2b-cashback">
-          CASHBACK: <strong>{money(location.cashback)}</strong>
-        </p>
-      </div>
+      <h2 className="item-title b2b-location-name">{location.name}</h2>
       <p className="b2b-location-address">{location.address}</p>
-      <div className="b2b-location-contact">
-        <p>{location.contact}</p>
-        <a href={"tel:" + location.phone.replace(/[^+\d]/g, "")}>
-          {location.phone}
-        </a>
-      </div>
+      <p className="b2b-location-person">{location.contact}</p>
+      <a
+        className="b2b-location-phone"
+        href={"tel:" + location.phone.replace(/[^+\d]/g, "")}
+      >
+        {location.phone}
+      </a>
+      <p className="b2b-cashback">
+        CASHBACK: <strong>{money(location.cashback)}</strong>
+      </p>
     </section>
   );
 }
@@ -265,6 +264,7 @@ export function OrderEditor({
   const [counts, setCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(order?.items.map((i) => [i.id, i.quantity]) ?? []),
   );
+  const [productSearch, setProductSearch] = useState("");
   const [ready, setReady] = useState(false);
   const [requestKey, setRequestKey] = useState("");
   const [review, setReview] = useState(false);
@@ -374,66 +374,83 @@ export function OrderEditor({
       {!hideHeading && (
         <h2>{order ? `Modifică comanda #${order.id}` : "Comandă nouă"}</h2>
       )}
+      <input
+        className="b2b-product-search"
+        type="search"
+        aria-label="Caută după denumire sau gust"
+        placeholder="Caută după denumire sau gust…"
+        value={productSearch}
+        onChange={(event) => setProductSearch(event.target.value)}
+      />
+      {!products.some((p) =>
+        searchKey(p.name + " " + p.flavor).includes(searchKey(productSearch)),
+      ) && <p role="status">Nu există produse care corespund căutării.</p>}
       <div className="b2b-products">
-        {products.map((product) => (
-          <article className="card-wrap b2b-product" key={product.id}>
-            <div>
-              <h3 className="item-title">{product.name}</h3>
-              <p className="b2b-product-meta">
-                {product.flavor} · <span>{product.grams} g</span> ·{" "}
-                <span>{money(product.price)}</span>
-              </p>
-            </div>
-            <div className="b2b-product-controls">
-              <span className={`b2b-stock ${stockStatus(product.name)}`}>
-                {stockLabel[stockStatus(product.name)]}
-              </span>
-              <div className="b2b-quantity">
-                <button
-                  type="button"
-                  aria-label={`Scade ${product.name}`}
-                  disabled={!ready || busy || !(counts[product.id] > 0)}
-                  onClick={() =>
-                    setCounts((c) => ({
-                      ...c,
-                      [product.id]: Math.max(0, (c[product.id] ?? 0) - 1),
-                    }))
-                  }
-                >
-                  −
-                </button>
-                <output
-                  aria-label={`Cantitate ${product.name}`}
-                  aria-live="polite"
-                >
-                  {counts[product.id] ?? 0}
-                </output>
-                <button
-                  type="button"
-                  aria-label={`Adaugă ${product.name}`}
-                  disabled={
-                    !ready ||
-                    busy ||
-                    (counts[product.id] ?? 0) >=
-                      stockLimit(
-                        product.name,
-                        order?.items.find((i) => i.id === product.id)
-                          ?.quantity ?? 0,
-                      )
-                  }
-                  onClick={() =>
-                    setCounts((c) => ({
-                      ...c,
-                      [product.id]: (c[product.id] ?? 0) + 1,
-                    }))
-                  }
-                >
-                  +
-                </button>
+        {products
+          .filter((p) =>
+            searchKey(p.name + " " + p.flavor).includes(
+              searchKey(productSearch),
+            ),
+          )
+          .map((product) => (
+            <article className="card-wrap b2b-product" key={product.id}>
+              <div className="b2b-product-info">
+                <h3 className="item-title">{product.name}</h3>
+                <p className="b2b-product-meta">
+                  {product.flavor} · <span>{product.grams}g</span> ·{" "}
+                  <span>{money(product.price)}</span>
+                </p>
               </div>
-            </div>
-          </article>
-        ))}
+              <div className="b2b-product-controls">
+                <span className={`b2b-stock ${stockStatus(product.name)}`}>
+                  {stockLabel[stockStatus(product.name)]}
+                </span>
+                <div className="b2b-quantity">
+                  <button
+                    type="button"
+                    aria-label={`Scade ${product.name}`}
+                    disabled={!ready || busy || !(counts[product.id] > 0)}
+                    onClick={() =>
+                      setCounts((c) => ({
+                        ...c,
+                        [product.id]: Math.max(0, (c[product.id] ?? 0) - 1),
+                      }))
+                    }
+                  >
+                    −
+                  </button>
+                  <output
+                    aria-label={`Cantitate ${product.name}`}
+                    aria-live="polite"
+                  >
+                    {counts[product.id] ?? 0}
+                  </output>
+                  <button
+                    type="button"
+                    aria-label={`Adaugă ${product.name}`}
+                    disabled={
+                      !ready ||
+                      busy ||
+                      (counts[product.id] ?? 0) >=
+                        stockLimit(
+                          product.name,
+                          order?.items.find((i) => i.id === product.id)
+                            ?.quantity ?? 0,
+                        )
+                    }
+                    onClick={() =>
+                      setCounts((c) => ({
+                        ...c,
+                        [product.id]: (c[product.id] ?? 0) + 1,
+                      }))
+                    }
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
       </div>
       <div className="b2b-cart-bar">
         <div>
@@ -472,20 +489,22 @@ export function OrderEditor({
             {selected.map((p) => (
               <li key={p.id}>
                 <span className="b2b-checkout-product">
-                  {p.name} · {p.flavor}
+                  <strong>{p.name}</strong>
+                  <span className="b2b-checkout-flavor"> · {p.flavor}</span>
                 </span>
-                <strong>
-                  {counts[p.id]} buc. · {money(p.price * counts[p.id])}
-                </strong>
+                <span className="b2b-checkout-amount">
+                  {counts[p.id]} buc. ·{" "}
+                  <strong>{money(p.price * counts[p.id])}</strong>
+                </span>
               </li>
             ))}
           </ul>
           <div className="b2b-checkout-footer">
             <p className="b2b-checkout-total">
               <span>Total</span>
-              <strong>
-                {units} buc. · {money(total)}
-              </strong>
+              <span className="b2b-checkout-amount">
+                {units} buc. · <strong>{money(total)}</strong>
+              </span>
             </p>
             <Feedback error={error} />
             <button className="button" disabled={busy} onClick={submit}>
@@ -635,13 +654,6 @@ export function B2BPortal({ data }: { data: B2BData }) {
     <main className="b2b-portal">
       <header className="b2b-portal-header">
         <strong>KAJA</strong>
-        <h1 className="b2b-portal-title">
-          {view === "history"
-            ? "Istoric comenzi"
-            : editing
-              ? `Modifică comanda #${editing.id}`
-              : "Comandă nouă"}
-        </h1>
       </header>
       <div className="b2b-portal-overview">
         <LocationDetails location={location} />
