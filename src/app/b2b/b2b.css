@@ -593,9 +593,32 @@
   padding: 16px;
 }
 .b2b-checkout > .b2b-dialog-head,
+.b2b-checkout-destination,
+.b2b-checkout-products-title,
 .b2b-checkout-location,
 .b2b-checkout-footer {
   flex-shrink: 0;
+}
+.b2b-checkout-destination {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.b2b-checkout-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.b2b-checkout-products-title {
+  padding-top: 4px;
+  color: var(--ink);
 }
 .b2b-checkout-location {
   margin: 0;

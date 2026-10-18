@@ -478,11 +478,17 @@ export function OrderEditor({
           busy={busy}
           onClose={() => setReview(false)}
         >
-          <p className="b2b-checkout-location">
-            <strong>{location.name}</strong>
-            <span aria-hidden="true"> · </span>
-            {order ? order.location_snapshot.address : location.address}
-          </p>
+          <div className="b2b-checkout-destination">
+            <span className="b2b-checkout-label">Local destinatar</span>
+            <p className="b2b-checkout-location">
+              <strong>{location.name}</strong>
+              <span aria-hidden="true"> · </span>
+              {order ? order.location_snapshot.address : location.address}
+            </p>
+          </div>
+          <h4 className="b2b-checkout-label b2b-checkout-products-title">
+            Produse selectate
+          </h4>
           <ul
             className="b2b-review b2b-checkout-list"
             aria-label="Produsele comenzii"
