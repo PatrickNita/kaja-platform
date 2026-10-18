@@ -1,6 +1,7 @@
 "use client";
 import "./b2b.css";
 import Image from "next/image";
+import { contactKey } from "../../lib/b2b/contact";
 
 import {
   useEffect,
@@ -194,7 +195,13 @@ ${link}
   );
 }
 
-function LocationDetails({ location }: { location: Location }) {
+function LocationDetails({
+  location,
+  totalCashback,
+}: {
+  location: Location;
+  totalCashback?: number;
+}) {
   return (
     <section
       className="card-wrap b2b-location-details"
@@ -210,7 +217,8 @@ function LocationDetails({ location }: { location: Location }) {
         {location.phone}
       </a>
       <p className="b2b-cashback">
-        CASHBACK: <strong>{money(location.cashback)}</strong>
+        {totalCashback === undefined ? "CASHBACK" : "CASHBACK TOTAL"}:{" "}
+        <strong>{money(totalCashback ?? location.cashback)}</strong>
       </p>
     </section>
   );
@@ -232,10 +240,23 @@ function LocationForm({
     event.preventDefault();
     if (busy) return;
     const values = Object.fromEntries(new FormData(event.currentTarget));
+    const contactChanged = Boolean(
+      location &&
+      contactKey(location.contact, location.phone) !==
+        contactKey(String(values.contact), String(values.phone)),
+    );
+    if (
+      contactChanged &&
+      !window.confirm(
+        "Schimbarea contactului modifică accesul la acest local: vechiul contact pierde accesul, iar noul contact îl primește. Comenzile și cashbackul localului se păstrează. Confirmi?",
+      )
+    )
+      return;
     setBusy(true);
     setError("");
     try {
       await request({
+        confirmContactChange: contactChanged,
         mode: "admin",
         operation: location ? "editLocation" : "createLocation",
         locationId: location?.id,
@@ -735,10 +756,54 @@ export function B2BPortal({ data }: { data: B2BData }) {
   const [view, setView] = useState<"order" | "history">("order");
   const [editing, setEditing] = useState<Order | null>(null);
   const [success, setSuccess] = useState("");
-  const location = data.locations[0];
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [choosingLocation, setChoosingLocation] = useState(false);
+  const storageKey =
+    "kaja-b2b-location:" +
+    (data.locations[0]?.access_group_id ?? data.locations[0]?.id ?? "none");
+  useEffect(() => {
+    try {
+      const previous = Number(localStorage.getItem(storageKey));
+      if (data.locations.some((l) => l.id === previous))
+        setSelectedLocation(previous);
+    } catch {}
+  }, [storageKey, data.locations]);
+  const location =
+    data.locations.find((l) => l.id === selectedLocation) ?? data.locations[0];
+  const totalCashback =
+    data.locations.length > 1
+      ? data.locations.reduce((sum, l) => sum + l.cashback, 0)
+      : undefined;
+  function switchLocation(next: Location) {
+    if (
+      next.id !== location.id &&
+      editing &&
+      !window.confirm(
+        "Schimbi locația și închizi modificarea comenzii? Selecția rămâne salvată pentru localul curent.",
+      )
+    )
+      return;
+    if (next.id !== location.id) {
+      setSelectedLocation(next.id);
+      setEditing(null);
+      setSuccess("");
+      try {
+        localStorage.setItem(storageKey, String(next.id));
+      } catch {}
+    }
+    setChoosingLocation(false);
+  }
   const currentEdit = editing
-    ? data.orders.find((o) => o.id === editing.id)
+    ? data.orders.find(
+        (o) => o.id === editing.id && o.location_id === location?.id,
+      )
     : null;
+  if (!location)
+    return (
+      <p role="alert">
+        Accesul la local nu mai este disponibil. Redeschide linkul de acces.
+      </p>
+    );
   return (
     <main className="b2b-portal">
       <header className="b2b-portal-header">
@@ -752,8 +817,11 @@ export function B2BPortal({ data }: { data: B2BData }) {
         />
       </header>
       <div className="b2b-portal-overview">
-        <LocationDetails location={location} />
-        <nav className="b2b-portal-navigation" aria-label="Navigare comenzi">
+        <LocationDetails location={location} totalCashback={totalCashback} />
+        <nav
+          className={`b2b-portal-navigation ${data.locations.length > 1 ? "b2b-multi-location" : ""}`}
+          aria-label="Navigare comenzi"
+        >
           <button
             className={view === "order" ? "button" : "button ghost"}
             aria-pressed={view === "order"}
@@ -775,8 +843,38 @@ export function B2BPortal({ data }: { data: B2BData }) {
           >
             Istoric comenzi
           </button>
+          {data.locations.length > 1 && (
+            <button
+              className="button ghost"
+              onClick={() => setChoosingLocation(true)}
+            >
+              Schimbă locația
+            </button>
+          )}
         </nav>
       </div>
+      {choosingLocation && (
+        <ConfirmDialog
+          title="Schimbă locația"
+          busy={false}
+          onClose={() => setChoosingLocation(false)}
+          className="b2b-location-picker"
+        >
+          <div className="b2b-location-options">
+            {data.locations.map((local) => (
+              <button
+                key={local.id}
+                className={local.id === location.id ? "button" : "button ghost"}
+                aria-pressed={local.id === location.id}
+                onClick={() => switchLocation(local)}
+              >
+                <strong>{local.name}</strong>
+                <span>{local.address}</span>
+              </button>
+            ))}
+          </div>
+        </ConfirmDialog>
+      )}
       <Feedback success={success} />
       {view === "order" && editing && (
         <button
@@ -820,7 +918,7 @@ export function B2BPortal({ data }: { data: B2BData }) {
         <div id="istoric-comenzi">
           <History
             hideHeading
-            orders={data.orders}
+            orders={data.orders.filter((o) => o.location_id === location.id)}
             manager={false}
             allowEdit={true}
             onEdit={(order) => {
@@ -1157,10 +1255,15 @@ export function B2BAdmin({
     ? data.orders.find((o) => o.id === editing.id)
     : undefined;
   async function rotate(local: Location) {
-    if (!window.confirm(`Generezi un link nou pentru ${local.name}?`)) return;
     if (
       !window.confirm(
-        "Linkul vechi și toate sesiunile deschise cu el vor expira imediat. Confirmi definitiv regenerarea?",
+        `Generezi un link nou pentru toate cele ${local.group_size ?? 1} localuri ale acestui contact?`,
+      )
+    )
+      return;
+    if (
+      !window.confirm(
+        "Linkul comun vechi și toate sesiunile deschise cu el vor expira imediat pentru toate localurile acestui contact. Confirmi definitiv regenerarea?",
       )
     )
       return;
@@ -1170,6 +1273,7 @@ export function B2BAdmin({
       await request({
         mode: "admin",
         operation: "rotateLink",
+        groupId: local.access_group_id,
         locationId: local.id,
         version: local.version,
         confirmed: true,

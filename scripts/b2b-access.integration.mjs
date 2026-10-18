@@ -1,0 +1,446 @@
+// Runs real route/server code against a temporary, isolated PostgreSQL schema.
+// Never inserts test locations, orders or members into public tables.
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { resolve, dirname } from "node:path";
+import { randomBytes, randomUUID } from "node:crypto";
+import ts from "typescript";
+import { neon } from "@neondatabase/serverless";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { migrateAccessGroups } from "./migrate-b2b-access.mjs";
+import { contactKey } from "../src/lib/b2b/contact.ts";
+process.env.B2B_LINK_ENCRYPTION_KEY = randomBytes(32).toString("hex");
+const require = createRequire(import.meta.url);
+assert(process.env.DATABASE_URL, "DATABASE_URL required");
+const schemaName = "kaja_b2b_test_" + randomBytes(6).toString("hex");
+const root = neon(process.env.DATABASE_URL);
+const testUrl = new URL(process.env.DATABASE_URL);
+testUrl.searchParams.set("options", "-c search_path=" + schemaName);
+const setPath = () => root.query("set local search_path to " + schemaName);
+const db = {
+  query(q, params = []) {
+    return {
+      q,
+      params,
+      then(ok, fail) {
+        return root
+          .transaction([setPath(), root.query(q, params)])
+          .then((r) => r[1])
+          .then(ok, fail);
+      },
+    };
+  },
+  transaction(statements) {
+    return root
+      .transaction([
+        setPath(),
+        ...statements.map((s) => root.query(s.q, s.params)),
+      ])
+      .then((r) => r.slice(1));
+  },
+};
+const dialect = new PgDialect();
+let member = { slug: "patrick", name: "Patrick" },
+  cookie = "";
+const cache = new Map();
+function load(path) {
+  path = resolve(path);
+  if (cache.has(path)) return cache.get(path);
+  const result = {};
+  cache.set(path, result);
+  const code = ts.transpileModule(readFileSync(path, "utf8"), {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+    },
+  }).outputText;
+  new Function("exports", "require", code)(result, (name) => {
+    if (name === "server-only") return {};
+    if (name === "next/cache") return { revalidatePath() {} };
+    if (name === "next/headers")
+      return {
+        cookies: async () => ({
+          get: () => (cookie ? { value: cookie } : undefined),
+        }),
+      };
+    if (path.endsWith("server.ts") && name === "../auth")
+      return { currentMember: async () => member };
+    if (path.endsWith("server.ts") && name === "../db")
+      return {
+        db: {
+          execute: async (statement) => {
+            const q = dialect.sqlToQuery(statement);
+            return { rows: await db.query(q.sql, q.params) };
+          },
+        },
+      };
+    if (name.startsWith(".")) return load(resolve(dirname(path), name + ".ts"));
+    return require(name);
+  });
+  return result;
+}
+const base = "http://localhost:3000";
+let checks = 0;
+async function api(payload, status = 200) {
+  const response = await route.POST(
+    new Request(base + "/api/b2b", {
+      method: "POST",
+      headers: {
+        host: "localhost:3000",
+        origin: base,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }),
+  );
+  const value = await response.json();
+  assert.equal(response.status, status, JSON.stringify(value));
+  checks++;
+  return value;
+}
+const fields = (name, contact = "Andrei", phone = "068694838") => ({
+  name,
+  address: "Str. Test 1",
+  contact,
+  phone,
+});
+let route, server, crypto, accessRoute;
+async function entry(groupId, token, status = 307) {
+  const res = await accessRoute.GET(
+    new Request(base + "/comenzi/acces/" + groupId + "/" + token),
+    { params: Promise.resolve({ id: String(groupId), token }) },
+  );
+  assert.equal(res.status, status);
+  checks++;
+  if (status === 307) cookie = res.cookies.get("kaja_b2b").value;
+  return res;
+}
+try {
+  await root.query("create schema " + schemaName);
+  assert.equal(
+    (await db.query("select current_schema() as name"))[0].name,
+    schemaName,
+  );
+  await db.query(
+    "create table members(id serial primary key,slug varchar(32) not null unique,name varchar(64) not null)",
+  );
+  const baseline = readFileSync(
+    new URL("../drizzle/0014_b2b.sql", import.meta.url),
+    "utf8",
+  );
+  await db.transaction(
+    baseline.split("--> statement-breakpoint").map((q) => db.query(q)),
+  );
+  await db.query(
+    "insert into members(slug,name) values('patrick','Patrick'),('ionut','Ionut'),('igor','Igor'),('andrei','Andrei')",
+  );
+  crypto = load("src/lib/b2b/crypto.ts");
+  const old = [];
+  for (const [i, c, p] of [
+    [1, "Andrei", "068694838"],
+    [2, " ANDREI ", "+373 68 694 838"],
+    [3, "Andrei", "0037368694838"],
+    [4, "Maria", "069123456"],
+  ]) {
+    const token = crypto.newToken();
+    old.push(token);
+    await db.query(
+      "insert into b2b_locations(name,address,contact,phone,token_hash,token_cipher,created_by,updated_by) values($1,$2,$3,$4,$5,$6,1,1)",
+      [
+        "Local " + i,
+        "Str. Test " + i,
+        c,
+        p,
+        crypto.tokenHash(token),
+        crypto.encryptToken(token),
+      ],
+    );
+  }
+  const migration = await migrateAccessGroups(db);
+  assert.equal(migration.groups, 2);
+  assert.equal(migration.sharedGroups, 1);
+  assert.equal((await migrateAccessGroups(db)).alreadyApplied, true);
+  server = load("src/lib/b2b/server.ts");
+  server.internalMember = async () => {
+    const [m] = await db.query("select * from members where slug=$1", [
+      member.slug,
+    ]);
+    return m;
+  };
+  route = load("src/app/api/b2b/route.ts");
+  accessRoute = load("src/app/comenzi/acces/[id]/[token]/route.ts");
+  let [group] = await db.query("select * from b2b_access_groups where id=1");
+  for (let i = 1; i <= 3; i++) await entry(i, old[i - 1], 404);
+  cookie = crypto.sessionValue(1, 1);
+  assert.equal(await server.currentAccess(), null);
+  await entry(4, old[3]);
+  assert.equal((await server.currentLocation()).id, 4);
+  const sharedToken = crypto.decryptToken(group.token_cipher);
+  await entry(1, sharedToken);
+  let data = await server.loadData(await server.currentLocation());
+  assert.equal(data.locations.length, 3);
+  assert(!data.locations.some((l) => l.link));
+  assert.equal(await server.currentLocation(4), null);
+  await api(
+    {
+      mode: "portal",
+      operation: "saveOrder",
+      locationId: 4,
+      requestKey: randomUUID(),
+      quantities: [{ productId: 1, quantity: 1 }],
+    },
+    401,
+  );
+  for (const locationId of [1, 2, 3])
+    await api({
+      mode: "portal",
+      operation: "saveOrder",
+      locationId,
+      requestKey: randomUUID(),
+      quantities: [{ productId: 1, quantity: locationId }],
+    });
+  data = await server.loadData(await server.currentLocation());
+  assert.deepEqual(data.orders.map((o) => o.location_id).sort(), [1, 2, 3]);
+  let [order] = await db.query("select * from b2b_orders where location_id=2");
+  await api({
+    mode: "admin",
+    operation: "status",
+    orderId: order.id,
+    version: 1,
+    status: "confirmed",
+  });
+  await api({
+    mode: "admin",
+    operation: "status",
+    orderId: order.id,
+    version: 2,
+    status: "paid",
+  });
+  await api(
+    {
+      mode: "admin",
+      operation: "status",
+      orderId: order.id,
+      version: 2,
+      status: "paid",
+    },
+    409,
+  );
+  assert.equal(
+    (await db.query("select amount from b2b_cashback where location_id=2"))[0]
+      .amount,
+    4000,
+  );
+  const concurrent = await Promise.all([
+    api({
+      mode: "admin",
+      operation: "createLocation",
+      ...fields("Nou A", "Mihai", "069000001"),
+    }),
+    api({
+      mode: "admin",
+      operation: "createLocation",
+      ...fields("Nou B", "MIHAI", "+37369000001"),
+    }),
+  ]);
+  const ids = concurrent.map((x) => x.result.id);
+  const created = await db.query(
+    "select access_group_id from b2b_locations where id=any($1::int[])",
+    [ids],
+  );
+  assert.equal(created[0].access_group_id, created[1].access_group_id);
+  await api({
+    mode: "admin",
+    operation: "createLocation",
+    ...fields("Local 5"),
+  });
+  const [fifth] = await db.query(
+    "select * from b2b_locations where name='Local 5'",
+  );
+  assert.equal(fifth.access_group_id, 1);
+  const adminData = await server.loadData();
+  assert.equal(
+    new Set(
+      adminData.locations
+        .filter((l) => l.access_group_id === 1)
+        .map((l) => l.link),
+    ).size,
+    1,
+  );
+  await api(
+    {
+      mode: "admin",
+      operation: "editLocation",
+      locationId: 2,
+      version: 1,
+      ...fields("Local 2", "Maria", "069123456"),
+    },
+    409,
+  );
+  await api({
+    mode: "admin",
+    operation: "editLocation",
+    locationId: 2,
+    version: 1,
+    confirmContactChange: true,
+    ...fields("Local 2", "Maria", "069123456"),
+  });
+  assert.equal(await server.currentLocation(2), null);
+  data = await server.loadData(await server.currentLocation());
+  assert(!data.orders.some((o) => o.location_id === 2));
+  assert.equal(
+    data.locations.reduce((n, l) => n + l.cashback, 0),
+    0,
+  );
+  await api(
+    {
+      mode: "portal",
+      operation: "saveOrder",
+      locationId: 2,
+      orderId: order.id,
+      version: 3,
+      quantities: [{ productId: 1, quantity: 3 }],
+    },
+    401,
+  );
+  await entry(4, old[3]);
+  data = await server.loadData(await server.currentLocation());
+  assert.equal(data.locations.length, 2);
+  assert.equal(
+    data.locations.reduce((n, l) => n + l.cashback, 0),
+    4000,
+  );
+  assert(data.orders.some((o) => o.id === order.id));
+  for (const role of ["igor", "andrei"]) {
+    member = { slug: role, name: role };
+    await api(
+      {
+        mode: "admin",
+        operation: "editLocation",
+        locationId: 1,
+        version: 1,
+        ...fields("Forbidden"),
+      },
+      403,
+    );
+    await api(
+      {
+        mode: "admin",
+        operation: "rotateLink",
+        locationId: 1,
+        groupId: 1,
+        version: 2,
+        confirmed: true,
+        invalidateSessions: true,
+      },
+      403,
+    );
+    await api(
+      {
+        mode: "admin",
+        operation: "createLocation",
+        ...fields("Created " + role),
+      },
+      200,
+    );
+  }
+  member = { slug: "ionut", name: "Ionut" };
+  await entry(1, sharedToken);
+  await api(
+    {
+      mode: "admin",
+      operation: "rotateLink",
+      locationId: 1,
+      groupId: 1,
+      version: 2,
+      confirmed: true,
+    },
+    400,
+  );
+  await api({
+    mode: "admin",
+    operation: "rotateLink",
+    locationId: 1,
+    groupId: 1,
+    version: 2,
+    confirmed: true,
+    invalidateSessions: true,
+  });
+  assert.equal(await server.currentAccess(), null);
+  await entry(1, sharedToken, 404);
+  [group] = await db.query("select * from b2b_access_groups where id=1");
+  await entry(1, crypto.decryptToken(group.token_cipher));
+  await api({
+    mode: "portal",
+    operation: "saveOrder",
+    locationId: 1,
+    requestKey: randomUUID(),
+    quantities: [{ productId: 1, quantity: 1 }],
+  });
+  // A request that authenticated before a transfer must still fail at mutation time.
+  const originalCurrentLocation = server.currentLocation;
+  server.currentLocation = async (id) => {
+    const result = await originalCurrentLocation(id);
+    if (result && id === 1) {
+      await api({
+        mode: "admin",
+        operation: "editLocation",
+        locationId: 1,
+        version: 1,
+        confirmContactChange: true,
+        ...fields("Local 1", "Maria", "069123456"),
+      });
+    }
+    return result;
+  };
+  await api(
+    {
+      mode: "portal",
+      operation: "saveOrder",
+      locationId: 1,
+      requestKey: randomUUID(),
+      quantities: [{ productId: 1, quantity: 1 }],
+    },
+    409,
+  );
+  server.currentLocation = originalCurrentLocation;
+  // Rotation between authentication and mutation also rejects the stale session.
+  server.currentLocation = async (id) => {
+    const result = await originalCurrentLocation(id);
+    if (result) {
+      await api({
+        mode: "admin",
+        operation: "rotateLink",
+        locationId: 3,
+        groupId: 1,
+        version: group.version,
+        confirmed: true,
+        invalidateSessions: true,
+      });
+    }
+    return result;
+  };
+  await api(
+    {
+      mode: "portal",
+      operation: "saveOrder",
+      locationId: 3,
+      requestKey: randomUUID(),
+      quantities: [{ productId: 1, quantity: 1 }],
+    },
+    409,
+  );
+  server.currentLocation = originalCurrentLocation;
+  assert.equal(
+    contactKey("  Andréi  Popescu ", "+373 68 694 838"),
+    contactKey("andrei popescu", "068694838"),
+  );
+  console.log(
+    "PASS: " +
+      checks +
+      " real API scenarios; migration, singleton compatibility, shared links, sessions, isolation, concurrent grouping, per-location cashback and contact transfer.",
+  );
+} finally {
+  await root.query("drop schema if exists " + schemaName + " cascade");
+}

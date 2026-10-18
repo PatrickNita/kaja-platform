@@ -56,6 +56,8 @@ export type Location = {
   phone: string;
   version: number;
   details_version: number;
+  access_group_id?: number;
+  group_size?: number;
   cashback: number;
   link?: string;
 };
@@ -81,7 +83,8 @@ export type B2BData = {
 
 export type StockStatus = "available" | "limited" | "unavailable";
 export const stockOverrides: Partial<Record<string, StockStatus>> = {};
-export const stockStatus = (name: string): StockStatus => stockOverrides[name] ?? "available";
+export const stockStatus = (name: string): StockStatus =>
+  stockOverrides[name] ?? "available";
 export const stockLabel: Record<StockStatus, string> = {
   available: "În stoc",
   limited: "Stoc limitat",

@@ -45,3 +45,11 @@ submission, single cashback credit and link/session invalidation.
 
 Orders are immutable after payment. Cashback is a read-only accumulated balance,
 credited once per paid order; no online payment or cashback redemption is offered.
+
+### B2B shared contact access (0015)
+
+Apply `scripts/migrate-b2b-access.mjs` rather than running the 0015 SQL file alone against an existing database: the runner performs the encrypted-token backfill, preserves single-location links, revokes old shared-contact links/sessions and records the migration in one transaction. Existing orders and cashback are untouched. It locks locations and verifies their snapshot before applying; rerun if concurrent edits invalidate that snapshot.
+
+Production uses the existing Vercel encryption secret in a staged production deployment. The explicit build command is `node scripts/migrate-b2b-access-production.mjs && next build`, with build variable `B2B_APPLY_ACCESS_GROUPS=1` and `--prod --skip-domain`. Normal Git deployments retain `next build` and do not run migrations. Publish the tested commit after the staged migration/build succeeds. The runner is idempotent. Do not rotate the encryption key to perform this migration.
+
+`node --env-file=.env.production.local scripts/b2b-access.integration.mjs` exercises real route/server code in a temporary `kaja_b2b_test_*` schema, with a generated test encryption key and transaction-local search_path. It removes only that test schema afterwards and never inserts test records in public tables.

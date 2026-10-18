@@ -16,6 +16,9 @@ import {
   type Product,
 } from "../../../lib/b2b/model";
 
+import { contactKey } from "../../../lib/b2b/contact";
+import { assignLocation } from "../../../lib/b2b/access-statements";
+
 const id = z.number().int().positive();
 const locationFields = z.object({
   name: z.string().trim().min(1).max(160),
@@ -54,7 +57,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { mode, operation } = envelope.parse(body);
     const member = mode === "admin" ? await internalMember() : null;
-    const location = mode === "portal" ? await currentLocation() : null;
+    const location =
+      mode === "portal"
+        ? await currentLocation(
+            body.locationId === undefined
+              ? undefined
+              : id.parse(body.locationId),
+          )
+        : null;
     if (mode === "portal" && !location)
       return NextResponse.json(
         { error: SUPPORT, expired: true },
@@ -74,22 +84,26 @@ export async function POST(request: Request) {
           { status: 403 },
         );
       const fields = locationFields.parse(body);
-      if (operation === "createLocation") {
-        const token = newToken();
-        const [created] = await query<{
-          id: number;
-        }>(sql`insert into b2b_locations(name,address,contact,phone,token_hash,token_cipher,created_by,updated_by)
-          values(${fields.name},${fields.address},${fields.contact},${fields.phone},${tokenHash(token)},${encryptToken(token)},${member.id},${member.id}) returning id`);
-        result = created;
-      } else {
-        const locationId = id.parse(body.locationId);
-        const version = id.parse(body.version);
-        const [updated] = await query(
-          sql`update b2b_locations set name=${fields.name},address=${fields.address},contact=${fields.contact},phone=${fields.phone},updated_by=${member.id},updated_at=now(),details_version=details_version+1 where id=${locationId} and details_version=${version} returning id`,
-        );
-        if (!updated)
-          return NextResponse.json({ error: conflict }, { status: 409 });
-      }
+      const token = newToken();
+      const [updated] = await query(
+        assignLocation(
+          fields,
+          contactKey(fields.contact, fields.phone),
+          tokenHash(token),
+          encryptToken(token),
+          member.id,
+          operation === "editLocation"
+            ? {
+                id: id.parse(body.locationId),
+                version: id.parse(body.version),
+                confirmed: body.confirmContactChange === true,
+              }
+            : undefined,
+        ),
+      );
+      if (!updated)
+        return NextResponse.json({ error: conflict }, { status: 409 });
+      result = updated;
     } else if (operation === "rotateLink") {
       if (!manager || !member)
         return NextResponse.json(
@@ -105,7 +119,7 @@ export async function POST(request: Request) {
         );
       const token = newToken();
       const [updated] = await query(
-        sql`update b2b_locations set token_hash=${tokenHash(token)},token_cipher=${encryptToken(token)},version=version+1,updated_by=${member.id},updated_at=now() where id=${locationId} and version=${version} returning id`,
+        sql`update b2b_access_groups g set token_hash=${tokenHash(token)},token_cipher=${encryptToken(token)},version=g.version+1 where g.id=${id.parse(body.groupId)} and g.version=${version} and exists(select 1 from b2b_locations l where l.id=${locationId} and l.access_group_id=g.id) returning g.id`,
       );
       if (!updated)
         return NextResponse.json({ error: conflict }, { status: 409 });
@@ -163,16 +177,18 @@ export async function POST(request: Request) {
         );
       const lineJson = JSON.stringify(lines);
       // Revalidate the location's session generation inside each mutation, too.
-      const access = location ? sql`and l.version=${location.version}` : sql``;
+      const authorized = sql`select l.* from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id where l.id=${locationId} ${location ? sql`and g.id=${location.access_group_id!} and g.version=${location.version}` : sql``} for share of l,g`;
+      const access = sql``;
       if (body.orderId) {
         const orderId = id.parse(body.orderId),
           version = id.parse(body.version);
         const allowed = manager
           ? sql`o.status in ('placed','confirmed')`
           : sql`o.status='placed'`;
-        const [updated] = await query(sql`with changed as (
+        const [updated] =
+          await query(sql`with authorized as materialized (${authorized}), changed as (
           update b2b_orders o set total=${total},version=o.version+1,updated_at=now()
-          from b2b_locations l where o.id=${orderId} and o.location_id=${locationId} and l.id=o.location_id
+          from authorized l where o.id=${orderId} and o.location_id=${locationId} and l.id=o.location_id
           and o.version=${version} and ${allowed} ${access} returning o.id
         ), removed as (
           delete from b2b_order_items i using changed c where i.order_id=c.id
@@ -189,10 +205,12 @@ export async function POST(request: Request) {
         result = { id: orderId };
       } else {
         const requestKey = z.uuid().parse(body.requestKey);
-        const [created] = await query<{ id: number }>(sql`with created as (
+        const [created] = await query<{
+          id: number;
+        }>(sql`with authorized as materialized (${authorized}), created as (
           insert into b2b_orders(location_id,location_snapshot,author,author_member_id,request_key,total)
           select l.id,jsonb_build_object('name',l.name,'address',l.address,'contact',l.contact,'phone',l.phone),
-          ${member?.name ?? "Local"},${member?.id ?? null},${requestKey}::uuid,${total} from b2b_locations l
+          ${member?.name ?? "Local"},${member?.id ?? null},${requestKey}::uuid,${total} from authorized l
           where l.id=${locationId} ${access} on conflict(request_key) do nothing returning id
         ), inserted as (
           insert into b2b_order_items(order_id,product_id,name,flavor,grams,price,quantity)
@@ -202,7 +220,7 @@ export async function POST(request: Request) {
         if (created) result = created;
         else {
           const [existing] = await query<{ id: number }>(
-            sql`select o.id from b2b_orders o join b2b_locations l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
+            sql`with authorized as materialized (${authorized}) select o.id from b2b_orders o join authorized l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
           );
           if (!existing)
             return NextResponse.json({ error: conflict }, { status: 409 });

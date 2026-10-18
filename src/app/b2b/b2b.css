@@ -1050,3 +1050,25 @@ body:has(.b2b-portal) {
   width: 100%;
   min-height: 44px;
 }
+.b2b-portal-navigation.b2b-multi-location {
+  grid-template-rows: repeat(3, minmax(44px, 1fr));
+}
+.b2b-location-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: 60dvh;
+  overflow-y: auto;
+}
+.b2b-location-options .button {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding: 12px;
+}
+.b2b-location-options span {
+  font-size: 12px;
+  font-weight: 400;
+}

@@ -23,7 +23,7 @@ export async function GET(
   )
     return new NextResponse(SUPPORT, { status: 404, headers });
   const [location] = await query<{ id: number; version: number }>(
-    sql`select id,version from b2b_locations where id=${Number(id)} and token_hash=${tokenHash(token)}`,
+    sql`select g.id,g.version from b2b_access_groups g where g.id=${Number(id)} and g.token_hash=${tokenHash(token)} and exists(select 1 from b2b_locations l where l.access_group_id=g.id)`,
   );
   if (!location) {
     const response = new NextResponse(SUPPORT, { status: 404, headers });

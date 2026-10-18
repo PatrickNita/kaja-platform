@@ -51,6 +51,10 @@ new Function("exports", "require", compile("../src/app/api/b2b/route.ts"))(
               : [{ id: 12 }];
         },
       };
+    if (name.endsWith("/b2b/contact"))
+      return require("../src/lib/b2b/contact.ts");
+    if (name.endsWith("/b2b/access-statements"))
+      return require("../src/lib/b2b/access-statements.ts");
     return require(name);
   },
 );
@@ -92,7 +96,7 @@ async function check({
     assert.equal(calls, old === null ? 1 : 2, "Rejected stock must not mutate");
 }
 await check({ status: 200 });
-await check({ admin:true, status:200 });
+await check({ admin: true, status: 200 });
 model.stockOverrides.STWY = "unavailable";
 await check({});
 await check({ admin: true });

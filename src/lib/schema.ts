@@ -173,7 +173,11 @@ export const telegramDebounce = pgTable("telegram_debounce", {
 
 
 // B2B is isolated from the internal workspace catalogue and member sessions.
+export const b2bAccessGroups = pgTable('b2b_access_groups', {
+ id:serial('id').primaryKey(),contactKey:text('contact_key').notNull().unique(),tokenHash:varchar('token_hash',{length:64}).notNull().unique(),tokenCipher:text('token_cipher').notNull(),version:integer('version').notNull().default(1),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
 export const b2bLocations = pgTable('b2b_locations', {
+ accessGroupId:integer('access_group_id').notNull().references(()=>b2bAccessGroups.id),
  id: serial('id').primaryKey(), name: varchar('name',{length:160}).notNull(), address: varchar('address',{length:500}).notNull(),
  contact: varchar('contact',{length:160}).notNull(), phone: varchar('phone',{length:40}).notNull(),
  tokenHash: varchar('token_hash',{length:64}).notNull().unique(), tokenCipher: text('token_cipher').notNull(),

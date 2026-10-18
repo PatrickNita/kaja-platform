@@ -41,6 +41,10 @@ new Function("exports", "require", code)(exports, (name) => {
       tokenHash: () => "test-hash",
       encryptToken: () => "test-cipher",
     };
+  if (name.endsWith("/b2b/contact"))
+    return require("../src/lib/b2b/contact.ts");
+  if (name.endsWith("/b2b/access-statements"))
+    return require("../src/lib/b2b/access-statements.ts");
   return real(name);
 });
 const fields = {
