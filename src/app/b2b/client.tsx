@@ -112,6 +112,88 @@ function ConfirmDialog({
     </dialog>
   );
 }
+function LocationGuide({
+  location,
+  link,
+  onClose,
+}: {
+  location: Location;
+  link: string;
+  onClose: () => void;
+}) {
+  const [language, setLanguage] = useState<"ro" | "ru">("ro");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const text =
+    language === "ro"
+      ? `Salut! Acesta este linkul de comandă pentru localul vostru:
+
+${link}
+
+Alegeți produsele cu + / −, apăsați „Verifică comanda”, apoi „Plasează comanda”. Puteți căuta după denumire sau gust.
+
+În „Istoric comenzi” vedeți comenzile și starea lor. Le puteți modifica până la confirmare. După achitare, primiți 5% cashback, afișat în cont.
+
+Păstrați linkul: este accesul privat al localului vostru. Nu îl distribuiți în afara echipei.
+
+Pentru suport, contactați-ne pe Telegram: 076922600.`
+      : `Здравствуйте! Это ссылка для заказов вашего заведения:
+
+${link}
+
+Выберите товары кнопками + / −, нажмите «Verifică comanda», затем «Plasează comanda». Можно искать по названию или вкусу.
+
+В разделе «Istoric comenzi» доступны ваши заказы и их статус. Заказ можно изменить до подтверждения. После оплаты начисляется кешбэк 5%, который отображается в вашем аккаунте.
+
+Сохраните ссылку: это личный доступ вашего заведения. Не передавайте её за пределы вашей команды.
+
+По вопросам поддержки пишите в Telegram: 076922600.`;
+  async function copyGuide() {
+    setError("");
+    setSuccess("");
+    try {
+      await navigator.clipboard.writeText(text);
+      setSuccess("Ghidul a fost copiat.");
+    } catch {
+      setError("Copierea nu a reușit. Selectează textul și copiază-l manual.");
+    }
+  }
+  return (
+    <ConfirmDialog
+      title={"Ghid localuri · " + location.name}
+      busy={false}
+      onClose={onClose}
+      className="b2b-guide"
+    >
+      <div className="b2b-actions" role="group" aria-label="Limba ghidului">
+        {(["ro", "ru"] as const).map((value) => (
+          <button
+            key={value}
+            className={language === value ? "button" : "button ghost"}
+            aria-pressed={language === value}
+            onClick={() => {
+              setLanguage(value);
+              setError("");
+              setSuccess("");
+            }}
+          >
+            {value.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <div className="b2b-guide-text" lang={language} tabIndex={0}>
+        {text}
+      </div>
+      <div className="b2b-guide-footer">
+        <Feedback error={error} success={success} />
+        <button className="button" onClick={copyGuide}>
+          Copiază ghidul
+        </button>
+      </div>
+    </ConfirmDialog>
+  );
+}
+
 function LocationDetails({ location }: { location: Location }) {
   return (
     <section
@@ -1034,6 +1116,7 @@ export function B2BAdmin({
   const manager = canManageOrders(memberSlug);
   const [view, setView] = useState(initialView);
   const [locationSearch, setLocationSearch] = useState("");
+  const [guideLocation, setGuideLocation] = useState<Location | null>(null);
   const [linkLocation, setLinkLocation] = useState<number | null>(null);
   const [historyLocation, setHistoryLocation] = useState<number | null>(null);
   useEffect(() => {
@@ -1247,6 +1330,10 @@ export function B2BAdmin({
                         setLinkLocation(local.id);
                       },
                     },
+                    {
+                      label: "Ghid localuri",
+                      run: () => setGuideLocation(local),
+                    },
                     ...(manager
                       ? [
                           {
@@ -1275,6 +1362,13 @@ export function B2BAdmin({
             )
           )}
         </section>
+      )}
+      {guideLocation && (
+        <LocationGuide
+          location={guideLocation}
+          link={origin + guideLocation.link}
+          onClose={() => setGuideLocation(null)}
+        />
       )}
       {visibleLink && (
         <ConfirmDialog

@@ -1016,3 +1016,37 @@ body:has(.b2b-portal) {
     font-size: inherit;
   }
 }
+
+.b2b-guide[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
+.b2b-guide > .b2b-dialog-head,
+.b2b-guide > .b2b-actions,
+.b2b-guide-footer {
+  flex-shrink: 0;
+}
+.b2b-guide-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+  line-height: 1.6;
+  user-select: text;
+}
+.b2b-guide-footer {
+  display: grid;
+  gap: 8px;
+}
+.b2b-guide-footer .button {
+  width: 100%;
+  min-height: 44px;
+}
