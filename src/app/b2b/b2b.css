@@ -249,6 +249,9 @@
   align-items: center;
   gap: 16px;
 }
+.b2b-dialog-head > h3:focus {
+  outline: none;
+}
 .b2b-dialog-head button {
   width: 44px;
   height: 44px;
