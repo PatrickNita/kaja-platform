@@ -25,6 +25,22 @@ const text = notificationMessages(event).join("\n");
 assert.match(text, /COMANDĂ NOUĂ #12/);
 assert.match(text, /12:00/);
 assert.match(text, /2 buc\. × 400 MDL = 800 MDL/);
+assert.match(text, /Plasată de: Patrick/);
+assert.match(text, /IDNO: —/);
+for (const kind of ["created", "edited"]) {
+  const localText = notificationMessages({
+    ...event,
+    kind,
+    actor: "Local",
+    location: { ...event.location, idno: "1234567890123" },
+  }).join("\n");
+  assert(!/Plasată de|Modificată de/.test(localText));
+  assert.match(localText, /IDNO: 1234567890123/);
+}
+assert.match(
+  notificationMessages({ ...event, kind: "edited", actor: "Ionut" }).join("\n"),
+  /Modificată de: Ionut/,
+);
 const edited = {
   ...event,
   kind: "edited",

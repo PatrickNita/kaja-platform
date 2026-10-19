@@ -42,10 +42,12 @@ export function ConfirmDialog({
   onClose,
   busy,
   title = "Confirmă comanda",
+  subtitle,
   className = "",
 }: {
   className?: string;
   title?: string;
+  subtitle?: ReactNode;
   children: ReactNode;
   onClose: () => void;
   busy: boolean;
@@ -79,6 +81,7 @@ export function ConfirmDialog({
       <div className="b2b-dialog-head">
         <h3 id={titleId} className="item-title" tabIndex={-1}>
           {title}
+          {subtitle && <span className="b2b-dialog-date"> — {subtitle}</span>}
         </h3>
         <button
           type="button"

@@ -675,8 +675,10 @@ try {
   assert.equal(events[0].payload.total, 120000);
   assert.deepEqual(Object.keys(events[0].payload.location).sort(), [
     "address",
+    "idno",
     "name",
   ]);
+  assert.equal(events[0].payload.location.idno, "1234567890123");
   await api({
     mode: "admin",
     operation: "saveOrder",
@@ -712,6 +714,7 @@ try {
   );
   assert.equal(events.length, 2);
   assert.equal(events[1].payload.kind, "edited");
+  assert.equal(events[1].payload.location.idno, "1234567890123");
   assert.equal(events[1].payload.previous[0].quantity, 2);
   assert.deepEqual(
     events[1].payload.previous.map((l) => l.id),

@@ -10,7 +10,7 @@ export type OrderNotification = {
   orderId: number;
   at: string;
   actor: string;
-  location: { name: string; address: string };
+  location: { name: string; address: string; idno?: string | null };
   lines: NotificationLine[];
   previous: NotificationLine[];
   total: number;
@@ -26,9 +26,13 @@ export function notificationMessages(event: OrderNotification): string[] {
   const text = [
     `${event.kind === "created" ? "COMANDĂ NOUĂ" : "COMANDĂ MODIFICATĂ"} #${event.orderId}`,
     `${clean(event.location.name)} · ${clean(event.location.address)}`,
+    `IDNO: ${event.location.idno?.trim() ? clean(event.location.idno) : "—"}`,
     date,
-    `${event.kind === "created" ? "Plasată" : "Modificată"} de: ${clean(event.actor)}`,
   ];
+  if (event.actor !== "Local")
+    text.push(
+      `${event.kind === "created" ? "Plasată" : "Modificată"} de: ${clean(event.actor)}`,
+    );
   if (event.kind === "edited") {
     text.push("", "MODIFICĂRI");
     const ids = new Set(

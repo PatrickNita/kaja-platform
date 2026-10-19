@@ -7,7 +7,9 @@ Configurația de producție nu se copiază în Git sau în mesaje.
 
 Se notifică doar comenzi create și modificări efective de cantități/produse.
 Fiecare eveniment este salvat atomic cu comanda, unic după comandă/versiune.
-Instantele precedente și curente sunt păstrate fără linkuri de acces sau date fiscale.
+Instantaneele precedente și curente sunt păstrate fără linkuri de acces.
+IDNO este preluat exclusiv pe server și inclus în notificare; nu este expus în portal.
+Autorul „Local” nu este afișat în mesaj; numele membrilor interni rămân afișate.
 Coada `b2b-telegram` trimite imediat și reîncearcă erorile.
 Mesajele lungi sunt împărțite; progresul este salvat pe fragmente.
 Telegram nu oferă o cheie de idempotentă pentru `sendMessage`: o întrerupere exact

@@ -521,7 +521,6 @@ export function OrderEditor({
           onClose={() => setReview(false)}
         >
           <div className="b2b-checkout-destination">
-            <span className="b2b-checkout-label">Local destinatar</span>
             <p className="b2b-checkout-location">
               <strong>{location.name}</strong>
               <span aria-hidden="true"> · </span>
@@ -1244,10 +1243,7 @@ export function B2BAdmin({
                     : "Fără comenzi"}
                 </span>
               </button>
-              <article
-                className="b2b-location-row"
-                aria-label={local.name}
-              >
+              <article className="b2b-location-row" aria-label={local.name}>
                 <div className="b2b-location-cell">
                   <h3 className="item-title">{local.name}</h3>
                 </div>

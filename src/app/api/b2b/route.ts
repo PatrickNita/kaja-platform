@@ -228,7 +228,7 @@ export async function POST(request: Request) {
         ), notified as (
           insert into b2b_notifications(order_id,order_version,payload)
           select c.id,c.version,jsonb_build_object('kind','edited','orderId',c.id,'at',now(),'actor',${member?.name ?? "Local"}::text,
-          'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address'),
+          'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address','idno',(select l.idno from authorized l)),
           'lines',${lineJson}::jsonb,'previous',p.lines,'total',${total}::integer) from changed c join previous p on p.id=c.id
           where (select jsonb_agg(jsonb_build_array(x.id,x.quantity) order by x.id) from jsonb_to_recordset(p.lines) as x(id integer,quantity integer))
             is distinct from (select jsonb_agg(jsonb_build_array(x.id,x.quantity) order by x.id) from jsonb_to_recordset(${lineJson}::jsonb) as x(id integer,quantity integer))
@@ -255,7 +255,7 @@ export async function POST(request: Request) {
         ), notified as (
           insert into b2b_notifications(order_id,order_version,payload)
           select c.id,c.version,jsonb_build_object('kind','created','orderId',c.id,'at',now(),'actor',${member?.name ?? "Local"}::text,
-          'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address'),
+          'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address','idno',(select l.idno from authorized l)),
           'lines',${lineJson}::jsonb,'previous','[]'::jsonb,'total',${total}::integer) from created c returning id,order_id
         ) select c.id,n.id as notification_id from created c join notified n on n.order_id=c.id`);
         if (created) {

@@ -365,12 +365,16 @@ function OrderDialog({
   return (
     <ConfirmDialog
       title={title}
+      subtitle={
+        <time dateTime={order.created_at}>
+          {formatOrderDate(order.created_at)}
+        </time>
+      }
       busy={busy}
       onClose={onClose}
       className="b2b-checkout b2b-order-dialog"
     >
       <div className="b2b-checkout-destination">
-        <span className="b2b-checkout-label">Local destinatar</span>
         <p className="b2b-checkout-location">
           <strong>{order.location_name}</strong> ·{" "}
           {order.location_snapshot.address}
@@ -381,10 +385,7 @@ function OrderDialog({
       </div>
       {step === "details" && (
         <div className="b2b-order-metadata">
-          <time dateTime={order.created_at}>
-            {formatOrderDate(order.created_at)}
-          </time>
-          <span>Plasată de {order.author}</span>
+          {order.author !== "Local" && <span>Plasată de {order.author}</span>}
           <span className={"b2b-status " + order.status}>
             {shortStatus[order.status]}
           </span>
