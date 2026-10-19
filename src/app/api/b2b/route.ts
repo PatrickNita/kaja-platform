@@ -18,6 +18,7 @@ import {
 
 import { contactKey } from "../../../lib/b2b/contact";
 import { assignLocation } from "../../../lib/b2b/access-statements";
+import { enqueueOrderNotification } from "../../../lib/b2b/telegram";
 
 const id = z.number().int().positive();
 const locationFields = z.object({
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
       );
     const manager = Boolean(member && canManageOrders(member.slug));
     let result: unknown;
+    let notificationId: number | undefined;
     if (operation === "createLocation" || operation === "editLocation") {
       if (!member)
         return NextResponse.json(
@@ -204,11 +206,16 @@ export async function POST(request: Request) {
         const allowed = manager
           ? sql`o.status in ('placed','confirmed')`
           : sql`o.status='placed'`;
-        const [updated] =
-          await query(sql`with authorized as materialized (${authorized}), changed as (
+        const [updated] = await query<{
+          id: number;
+          notification_id: number | null;
+        }>(sql`with authorized as materialized (${authorized}), previous as materialized (
+          select o.*,coalesce((select jsonb_agg(jsonb_build_object('id',i.product_id,'name',i.name,'flavor',i.flavor,'price',i.price,'quantity',i.quantity) order by i.product_id) from b2b_order_items i where i.order_id=o.id),'[]'::jsonb) as lines
+          from b2b_orders o join authorized l on l.id=o.location_id where o.id=${orderId} and o.location_id=${locationId} for update of o
+        ), changed as (
           update b2b_orders o set total=${total},version=o.version+1,updated_at=now()
-          from authorized l where o.id=${orderId} and o.location_id=${locationId} and l.id=o.location_id
-          and o.version=${version} and ${allowed} ${access} returning o.id
+          from previous p where o.id=p.id
+          and o.version=${version} and ${allowed} ${access} returning o.id,o.version,o.location_snapshot
         ), removed as (
           delete from b2b_order_items i using changed c where i.order_id=c.id
           and not exists(select 1 from jsonb_to_recordset(${lineJson}::jsonb) as x(id integer) where x.id=i.product_id)
@@ -218,26 +225,43 @@ export async function POST(request: Request) {
           jsonb_to_recordset(${lineJson}::jsonb) as x(id integer,name text,flavor text,grams integer,price integer,quantity integer)
           on conflict(order_id,product_id) do update set quantity=excluded.quantity
           returning order_id
-        ) select id from changed`);
+        ), notified as (
+          insert into b2b_notifications(order_id,order_version,payload)
+          select c.id,c.version,jsonb_build_object('kind','edited','orderId',c.id,'at',now(),'actor',${member?.name ?? "Local"}::text,
+          'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address'),
+          'lines',${lineJson}::jsonb,'previous',p.lines,'total',${total}::integer) from changed c join previous p on p.id=c.id
+          where (select jsonb_agg(jsonb_build_array(x.id,x.quantity) order by x.id) from jsonb_to_recordset(p.lines) as x(id integer,quantity integer))
+            is distinct from (select jsonb_agg(jsonb_build_array(x.id,x.quantity) order by x.id) from jsonb_to_recordset(${lineJson}::jsonb) as x(id integer,quantity integer))
+          returning id,order_id
+        ) select c.id,n.id as notification_id from changed c left join notified n on n.order_id=c.id`);
         if (!updated)
           return NextResponse.json({ error: conflict }, { status: 409 });
         result = { id: orderId };
+        notificationId = updated.notification_id ?? undefined;
       } else {
         const requestKey = z.uuid().parse(body.requestKey);
         const [created] = await query<{
           id: number;
+          notification_id: number;
         }>(sql`with authorized as materialized (${authorized}), created as (
           insert into b2b_orders(location_id,location_snapshot,author,author_member_id,request_key,total)
           select l.id,jsonb_build_object('name',l.name,'address',l.address,'contact',l.contact,'phone',l.phone),
           ${member?.name ?? "Local"},${member?.id ?? null},${requestKey}::uuid,${total} from authorized l
-          where l.id=${locationId} ${access} on conflict(request_key) do nothing returning id
+          where l.id=${locationId} ${access} on conflict(request_key) do nothing returning id,version,location_snapshot
         ), inserted as (
           insert into b2b_order_items(order_id,product_id,name,flavor,grams,price,quantity)
           select c.id,x.id,x.name,x.flavor,x.grams,x.price,x.quantity from created c,
           jsonb_to_recordset(${lineJson}::jsonb) as x(id integer,name text,flavor text,grams integer,price integer,quantity integer)
-        ) select id from created`);
-        if (created) result = created;
-        else {
+        ), notified as (
+          insert into b2b_notifications(order_id,order_version,payload)
+          select c.id,c.version,jsonb_build_object('kind','created','orderId',c.id,'at',now(),'actor',${member?.name ?? "Local"}::text,
+          'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address'),
+          'lines',${lineJson}::jsonb,'previous','[]'::jsonb,'total',${total}::integer) from created c returning id,order_id
+        ) select c.id,n.id as notification_id from created c join notified n on n.order_id=c.id`);
+        if (created) {
+          result = { id: created.id };
+          notificationId = created.notification_id;
+        } else {
           const [existing] = await query<{ id: number }>(
             sql`with authorized as materialized (${authorized}) select o.id from b2b_orders o join authorized l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
           );
@@ -270,6 +294,7 @@ export async function POST(request: Request) {
       if (!updated)
         return NextResponse.json({ error: conflict }, { status: 409 });
     }
+    if (notificationId) await enqueueOrderNotification(notificationId);
     revalidatePath("/b2b");
     revalidatePath("/comenzi");
     return NextResponse.json({ ok: true, result });

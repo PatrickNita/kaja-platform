@@ -204,3 +204,19 @@ export const b2bOrderItems = pgTable('b2b_order_items', {
 export const b2bCashback = pgTable('b2b_cashback', {
  orderId:integer('order_id').primaryKey().references(()=>b2bOrders.id),locationId:integer('location_id').notNull().references(()=>b2bLocations.id),amount:integer('amount').notNull(),creditedBy:integer('credited_by').notNull().references(()=>members.id),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 },table=>[index('b2b_cashback_location').on(table.locationId)]);
+
+export const b2bNotifications = pgTable("b2b_notifications", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull().references(() => b2bOrders.id),
+  orderVersion: integer("order_version").notNull(),
+  payload: jsonb("payload").notNull(),
+  sentParts: integer("sent_parts").notNull().default(0),
+  sentAt: timestamp("sent_at", {withTimezone:true}),
+  processingToken: uuid("processing_token"),
+  processingAt: timestamp("processing_at", {withTimezone:true}),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at", {withTimezone:true}).notNull().defaultNow(),
+},table=>[
+  uniqueIndex("b2b_notifications_order_version").on(table.orderId,table.orderVersion),
+  index("b2b_notifications_pending_idx").on(table.id).where(sql`${table.sentAt} is null`),
+]);

@@ -1,5 +1,15 @@
 {
   "functions": {
+    "src/app/api/queues/b2b-telegram/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "b2b-telegram",
+          "retryAfterSeconds": 60,
+          "initialDelaySeconds": 0
+        }
+      ]
+    },
     "src/app/api/queues/telegram-digest/route.ts": {
       "experimentalTriggers": [
         {

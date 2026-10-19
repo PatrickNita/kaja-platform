@@ -18,6 +18,7 @@ let member,
 const exports = {};
 const real = (name) => require(name);
 new Function("exports", "require", code)(exports, (name) => {
+  if (name.endsWith("/b2b/telegram")) return {enqueueOrderNotification: async () => {}};
   if (name === "next/server")
     return {
       NextResponse: { json: (data, init) => Response.json(data, init) },

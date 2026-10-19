@@ -44,6 +44,7 @@ const dialect = new PgDialect();
 let member = { slug: "patrick", name: "Patrick" },
   cookie = "";
 const cache = new Map();
+const notificationQueue = [];
 function load(path) {
   path = resolve(path);
   if (cache.has(path)) return cache.get(path);
@@ -56,6 +57,12 @@ function load(path) {
     },
   }).outputText;
   new Function("exports", "require", code)(result, (name) => {
+    if (name === "../../../lib/b2b/telegram")
+      return {
+        enqueueOrderNotification: async (eventId) => {
+          notificationQueue.push(eventId);
+        },
+      };
     if (name === "server-only") return {};
     if (name === "next/cache") return { revalidatePath() {} };
     if (name === "next/headers")
@@ -71,7 +78,12 @@ function load(path) {
         db: {
           execute: async (statement) => {
             const q = dialect.sqlToQuery(statement);
-            return { rows: await db.query(q.sql, q.params) };
+            try {
+              return { rows: await db.query(q.sql, q.params) };
+            } catch (error) {
+              console.error("Test database:", error.message);
+              throw error;
+            }
           },
         },
       };
@@ -166,6 +178,14 @@ try {
       new URL("../drizzle/0016_b2b_company.sql", import.meta.url),
       "utf8",
     ),
+  );
+  await db.transaction(
+    readFileSync(
+      new URL("../drizzle/0017_b2b_notifications.sql", import.meta.url),
+      "utf8",
+    )
+      .split("--> statement-breakpoint")
+      .map((q) => db.query(q)),
   );
   server = load("src/lib/b2b/server.ts");
   server.internalMember = async () => {
@@ -630,6 +650,179 @@ try {
       quantities: [{ productId: 1, quantity: 1 }],
     },
     409,
+  );
+  member = { slug: "patrick", name: "Patrick" };
+  const requestKey = randomUUID();
+  const newOrder = {
+    mode: "admin",
+    operation: "saveOrder",
+    locationId: 2,
+    requestKey,
+    quantities: [
+      { productId: 1, quantity: 2 },
+      { productId: 2, quantity: 1 },
+    ],
+  };
+  const first = await api(newOrder);
+  await api(newOrder);
+  let events = await db.query(
+    "select * from b2b_notifications where order_id=$1 order by id",
+    [first.result.id],
+  );
+  assert.equal(events.length, 1, "Repeated create has one event");
+  assert.equal(events[0].payload.kind, "created");
+  assert.equal(events[0].payload.actor, "Patrick");
+  assert.equal(events[0].payload.total, 120000);
+  assert.deepEqual(Object.keys(events[0].payload.location).sort(), [
+    "address",
+    "name",
+  ]);
+  await api({
+    mode: "admin",
+    operation: "saveOrder",
+    locationId: 2,
+    orderId: first.result.id,
+    version: 1,
+    quantities: newOrder.quantities,
+  });
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int as n from b2b_notifications where order_id=$1",
+        [first.result.id],
+      )
+    )[0].n,
+    1,
+    "Unchanged save has no event",
+  );
+  await api({
+    mode: "admin",
+    operation: "saveOrder",
+    locationId: 2,
+    orderId: first.result.id,
+    version: 2,
+    quantities: [
+      { productId: 1, quantity: 3 },
+      { productId: 3, quantity: 1 },
+    ],
+  });
+  events = await db.query(
+    "select * from b2b_notifications where order_id=$1 order by id",
+    [first.result.id],
+  );
+  assert.equal(events.length, 2);
+  assert.equal(events[1].payload.kind, "edited");
+  assert.equal(events[1].payload.previous[0].quantity, 2);
+  assert.deepEqual(
+    events[1].payload.previous.map((l) => l.id),
+    [1, 2],
+  );
+  assert.deepEqual(
+    events[1].payload.lines.map((l) => l.id),
+    [1, 3],
+  );
+  await api(
+    {
+      mode: "admin",
+      operation: "saveOrder",
+      locationId: 2,
+      orderId: first.result.id,
+      version: 2,
+      quantities: [{ productId: 1, quantity: 7 }],
+    },
+    409,
+  );
+  await api({
+    mode: "admin",
+    operation: "status",
+    orderId: first.result.id,
+    version: 3,
+    status: "confirmed",
+  });
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int as n from b2b_notifications where order_id=$1",
+        [first.result.id],
+      )
+    )[0].n,
+    2,
+    "Conflict/status has no event",
+  );
+  assert.equal(new Set(notificationQueue).size, notificationQueue.length);
+  const { deliverNotification, notificationMessages } = load(
+    "src/lib/b2b/telegram-delivery.ts",
+  );
+  const sent = [];
+  const fakeFetch = async (_url, init) => {
+    sent.push(JSON.parse(init.body));
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  await Promise.all(
+    [
+      deliverNotification(
+        events[0].id,
+        (q, p) => db.query(q, p),
+        "test-token",
+        "-100123",
+        fakeFetch,
+      ),
+      deliverNotification(
+        events[0].id,
+        (q, p) => db.query(q, p),
+        "test-token",
+        "-100123",
+        fakeFetch,
+      ),
+    ].map((p) =>
+      p.catch((e) => {
+        assert.match(e.message, /being processed/);
+      }),
+    ),
+  );
+  await deliverNotification(
+    events[0].id,
+    (q, p) => db.query(q, p),
+    "test-token",
+    "-100123",
+    fakeFetch,
+  );
+  assert.equal(sent.length, 1, "Concurrent/repeated delivery sends once");
+  assert.equal(sent[0].chat_id, "-100123");
+  assert(sent[0].text.includes("1.200 MDL"));
+  await assert.rejects(
+    deliverNotification(
+      events[1].id,
+      (q, p) => db.query(q, p),
+      "secret-token",
+      "-100123",
+      async () => {
+        throw Error("sensitive URL");
+      },
+    ),
+    /B2B Telegram delivery failed/,
+  );
+  assert.equal(
+    (
+      await db.query("select sent_at from b2b_notifications where id=$1", [
+        events[1].id,
+      ])
+    )[0].sent_at,
+    null,
+  );
+  await deliverNotification(
+    events[1].id,
+    (q, p) => db.query(q, p),
+    "test-token",
+    "-100123",
+    fakeFetch,
+  );
+  assert.equal(sent.length, 2);
+  assert(
+    notificationMessages(events[1].payload).join("\n").includes("2 → 3 buc."),
+  );
+  console.log(
+    "PASS: B2B notification snapshots, no-op/conflict/status suppression, request idempotency, concurrent delivery, Telegram failure and retry.",
   );
   console.log(
     "PASS: " +
