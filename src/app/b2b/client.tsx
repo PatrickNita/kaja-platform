@@ -274,7 +274,7 @@ function LocationForm({
   );
   return modal ? (
     <ConfirmDialog
-      title="Adaugă local"
+      title={location ? "Modifică local" : "Adaugă local"}
       className="b2b-location-modal"
       busy={busy}
       onClose={onDone}
@@ -841,7 +841,7 @@ function LocationActions({
               </button>
             ))}
           </div>,
-          document.body,
+          trigger.current?.closest("dialog") ?? document.body,
         )}
     </>
   );
@@ -988,6 +988,8 @@ export function B2BAdmin({
   const [view, setView] = useState(initialView);
   const [locationSearch, setLocationSearch] = useState("");
   const [locationSort, setLocationSort] = useState("name");
+  const [detailsLocation, setDetailsLocation] = useState<number | null>(null);
+  const detailsTrigger = useRef<HTMLButtonElement | null>(null);
   const [guideLocation, setGuideLocation] = useState<Location | null>(null);
   const [linkLocation, setLinkLocation] = useState<number | null>(null);
   const [historyLocation, setHistoryLocation] = useState<number | null>(null);
@@ -1026,6 +1028,7 @@ export function B2BAdmin({
     ),
     locationSort,
   );
+  const detail = data.locations.find((l) => l.id === detailsLocation);
   const visibleLink = data.locations.find((l) => l.id === linkLocation);
   async function rotate(local: Location) {
     if (
@@ -1093,6 +1096,55 @@ export function B2BAdmin({
     setSuccess("");
     return true;
   }
+  function locationActions(local: Location) {
+    return [
+      ...(manager
+        ? [
+            {
+              label: "Comandă pentru acest local",
+              run: () => {
+                if (selected !== local.id && !changeLocation(local.id)) return;
+                setSelected(local.id);
+                setShowOrder(true);
+              },
+            },
+          ]
+        : []),
+      {
+        label: "Vezi linkul",
+        run: () => {
+          setError("");
+          setSuccess("");
+          setLinkLocation(local.id);
+        },
+      },
+      {
+        label: "Ghid localuri",
+        run: () => setGuideLocation(local),
+      },
+      ...(manager
+        ? [
+            {
+              label: "Editează",
+              run: () => setLocationForm(local),
+            },
+            {
+              label: "Generează link nou",
+              run: () => {
+                void rotate(local);
+              },
+              disabled: busy,
+            },
+          ]
+        : []),
+    ].map((action) => ({
+      ...action,
+      run: () => {
+        setDetailsLocation(null);
+        action.run();
+      },
+    }));
+  }
   return (
     <div className="workspace-content b2b-admin">
       <nav className="catalogue-submenu filter-nav" aria-label="B2B">
@@ -1143,7 +1195,7 @@ export function B2BAdmin({
       {view === "locations" && locationForm && (
         <LocationForm
           key={locationForm === "new" ? "new" : locationForm.id}
-          modal={locationForm === "new"}
+          modal
           internalFields={manager}
           location={locationForm === "new" ? undefined : locationForm}
           onDone={() => setLocationForm(null)}
@@ -1171,101 +1223,78 @@ export function B2BAdmin({
             <span />
           </div>
           {matchingLocations.map((local) => (
-            <article
-              key={local.id}
-              className="b2b-location-row"
-              aria-label={local.name}
-            >
-              <div className="b2b-location-cell">
-                <h3 className="item-title">{local.name}</h3>
-              </div>
-              <div className="b2b-location-cell">
-                <p>{local.address}</p>
-              </div>
-              <div className="b2b-location-cell">{local.contact}</div>
-              <div className="b2b-location-cell">
-                <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
-                  {local.phone}
-                </a>
-              </div>
-              <div className="b2b-location-balance">
-                <span className="b2b-mobile-label">Cashback</span>
-                <strong>{money(local.cashback)}</strong>
-              </div>
-              <div className="b2b-location-last">
-                <span className="b2b-mobile-label">Ultima comandă</span>
-                <time dateTime={local.last_order_at ?? undefined}>
+            <div key={local.id} className="b2b-location-entry">
+              <button
+                type="button"
+                className="b2b-mobile-location"
+                aria-haspopup="dialog"
+                aria-label={"Detalii pentru " + local.name}
+                onClick={(event) => {
+                  detailsTrigger.current = event.currentTarget;
+                  setError("");
+                  setSuccess("");
+                  setDetailsLocation(local.id);
+                }}
+              >
+                <strong>{local.name}</strong>
+                <span className="b2b-mobile-address">{local.address}</span>
+                <span className="b2b-mobile-last">
                   {local.last_order_at
-                    ? formatOrderDate(local.last_order_at)
-                    : "—"}
-                </time>
-              </div>
-              {manager && (
-                <>
-                  <div className="b2b-location-company">
-                    <span className="b2b-mobile-label">Denumire SRL</span>
-                    {local.company_name || "—"}
-                  </div>
-                  <div className="b2b-location-idno">
-                    <span className="b2b-mobile-label">IDNO</span>
-                    {local.idno || "—"}
-                  </div>
-                </>
-              )}
-              <div className="b2b-row-actions">
-                <button className="button ghost" onClick={() => copy(local)}>
-                  Copiază linkul
-                </button>
-                <LocationActions
-                  name={local.name}
-                  actions={[
-                    ...(manager
-                      ? [
-                          {
-                            label: "Comandă pentru acest local",
-                            run: () => {
-                              if (
-                                selected !== local.id &&
-                                !changeLocation(local.id)
-                              )
-                                return;
-                              setSelected(local.id);
-                              setShowOrder(true);
-                            },
-                          },
-                        ]
-                      : []),
-                    {
-                      label: "Vezi linkul",
-                      run: () => {
-                        setError("");
-                        setSuccess("");
-                        setLinkLocation(local.id);
-                      },
-                    },
-                    {
-                      label: "Ghid localuri",
-                      run: () => setGuideLocation(local),
-                    },
-                    ...(manager
-                      ? [
-                          {
-                            label: "Editează",
-                            run: () => setLocationForm(local),
-                          },
-                          {
-                            label: "Generează link nou",
-                            run: () => {
-                              void rotate(local);
-                            },
-                            disabled: busy,
-                          },
-                        ]
-                      : []),
-                  ]}
-                />
-              </div>
-            </article>
+                    ? "Ultima comandă: " + formatOrderDate(local.last_order_at)
+                    : "Fără comenzi"}
+                </span>
+              </button>
+              <article
+                className="b2b-location-row"
+                aria-label={local.name}
+              >
+                <div className="b2b-location-cell">
+                  <h3 className="item-title">{local.name}</h3>
+                </div>
+                <div className="b2b-location-cell">
+                  <p>{local.address}</p>
+                </div>
+                <div className="b2b-location-cell">{local.contact}</div>
+                <div className="b2b-location-cell">
+                  <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
+                    {local.phone}
+                  </a>
+                </div>
+                <div className="b2b-location-balance">
+                  <span className="b2b-mobile-label">Cashback</span>
+                  <strong>{money(local.cashback)}</strong>
+                </div>
+                <div className="b2b-location-last">
+                  <span className="b2b-mobile-label">Ultima comandă</span>
+                  <time dateTime={local.last_order_at ?? undefined}>
+                    {local.last_order_at
+                      ? formatOrderDate(local.last_order_at)
+                      : "—"}
+                  </time>
+                </div>
+                {manager && (
+                  <>
+                    <div className="b2b-location-company">
+                      <span className="b2b-mobile-label">Denumire SRL</span>
+                      {local.company_name || "—"}
+                    </div>
+                    <div className="b2b-location-idno">
+                      <span className="b2b-mobile-label">IDNO</span>
+                      {local.idno || "—"}
+                    </div>
+                  </>
+                )}
+                <div className="b2b-row-actions">
+                  <button className="button ghost" onClick={() => copy(local)}>
+                    Copiază linkul
+                  </button>
+                  <LocationActions
+                    name={local.name}
+                    actions={locationActions(local)}
+                  />
+                </div>
+              </article>
+            </div>
           ))}
           {!data.locations.length ? (
             <p className="b2b-empty">Nu există localuri încă.</p>
@@ -1275,6 +1304,70 @@ export function B2BAdmin({
             )
           )}
         </section>
+      )}
+      {detail && (
+        <ConfirmDialog
+          title={detail.name}
+          className="b2b-location-info"
+          busy={busy}
+          onClose={() => {
+            setDetailsLocation(null);
+            requestAnimationFrame(() =>
+              detailsTrigger.current?.focus({ preventScroll: true }),
+            );
+          }}
+        >
+          <div className="b2b-location-info-body">
+            <div className="b2b-location-info-group">
+              <span className="b2b-info-label">Local și adresă</span>
+              <strong>{detail.name}</strong>
+              <span>{detail.address}</span>
+            </div>
+            <div className="b2b-location-info-group">
+              <span className="b2b-info-label">Persoană de contact</span>
+              <strong>{detail.contact}</strong>
+              <a href={"tel:" + detail.phone.replace(/[^+\d]/g, "")}>
+                {detail.phone}
+              </a>
+            </div>
+            <div className="b2b-location-info-pair">
+              <div className="b2b-location-info-group">
+                <span className="b2b-info-label">Cashback</span>
+                <strong>{money(detail.cashback)}</strong>
+              </div>
+              <div className="b2b-location-info-group">
+                <span className="b2b-info-label">Ultima comandă</span>
+                <span>
+                  {detail.last_order_at
+                    ? formatOrderDate(detail.last_order_at)
+                    : "Fără comenzi"}
+                </span>
+              </div>
+            </div>
+            {manager && (
+              <div className="b2b-location-info-pair">
+                <div className="b2b-location-info-group">
+                  <span className="b2b-info-label">Denumire SRL</span>
+                  <span>{detail.company_name || "—"}</span>
+                </div>
+                <div className="b2b-location-info-group">
+                  <span className="b2b-info-label">IDNO</span>
+                  <span>{detail.idno || "—"}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="b2b-location-info-actions">
+            <button className="button ghost" onClick={() => copy(detail)}>
+              Copiază linkul
+            </button>
+            <LocationActions
+              name={detail.name}
+              actions={locationActions(detail)}
+            />
+          </div>
+          <Feedback error={error} success={success} />
+        </ConfirmDialog>
       )}
       {guideLocation && (
         <LocationGuide

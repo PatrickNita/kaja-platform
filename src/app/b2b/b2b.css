@@ -431,6 +431,109 @@
 .b2b-location-row + .b2b-location-row {
   border-top: 1px solid var(--line);
 }
+.b2b-location-entry + .b2b-location-entry {
+  border-top: 1px solid var(--line);
+}
+.b2b-mobile-location {
+  display: none;
+}
+.b2b-location-info[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  max-height: calc(100dvh - 24px);
+  overflow: hidden;
+}
+.b2b-location-info > .b2b-dialog-head,
+.b2b-location-info-actions {
+  flex-shrink: 0;
+}
+.b2b-location-info-body {
+  display: grid;
+  gap: 20px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.b2b-location-info-group {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.b2b-info-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.b2b-location-info-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.b2b-location-info-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 8px;
+}
+.b2b-location-info-actions > .button {
+  min-width: 0;
+  min-height: 44px;
+}
+@media (max-width: 800px) {
+  .b2b-location-list {
+    display: grid;
+    gap: 8px;
+    border: 0;
+    background: transparent;
+  }
+  .b2b-location-entry {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .b2b-location-entry > .b2b-location-row {
+    display: none;
+  }
+  .b2b-mobile-location {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    padding: 16px;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    font: inherit;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  .b2b-mobile-location > strong {
+    font-size: 14px;
+  }
+  .b2b-mobile-address {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .b2b-mobile-last {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .b2b-mobile-location:hover {
+    background: var(--surface-soft);
+  }
+  .b2b-mobile-location:focus-visible {
+    outline-offset: -3px;
+  }
+}
 .b2b-location-cell {
   min-width: 0;
   display: grid;
