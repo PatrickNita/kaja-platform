@@ -451,7 +451,8 @@
 }
 .b2b-location-info-body {
   display: grid;
-  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
   min-height: 0;
   overflow-y: auto;
 }
@@ -470,6 +471,7 @@
 }
 .b2b-location-info-pair {
   display: grid;
+  grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   padding-top: 16px;
@@ -477,7 +479,7 @@
 }
 .b2b-location-info-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .b2b-location-info-actions > .button {
