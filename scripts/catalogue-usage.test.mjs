@@ -6,7 +6,7 @@ import { neon } from '@neondatabase/serverless';
 import { PgDialect } from 'drizzle-orm/pg-core';
 const require=createRequire(import.meta.url), exports={};
 new Function('exports','require',ts.transpileModule(readFileSync(new URL('../src/lib/catalogue-usage.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(exports,require);
-const {catalogueUsageQuery,productLocationCount,productUsageLabel}=exports;
+const {catalogueUsageQuery,productLocationCount,productUsageLabel,missingLocationsQuery}=exports;
 assert.equal(productLocationCount('  brain   FREEZE ',[{id:1,name:'BRAIN FREEZE',locations:3}]),3);
 assert.equal(productLocationCount('Gheata',[{id:1,name:'Gheață',locations:1}]),1);
 assert.equal(productLocationCount('Unknown',[]),0);
@@ -25,6 +25,27 @@ if(process.env.DATABASE_URL){
  db.query('delete from pg_temp.b2b_order_items where product_id=1 and order_id=3'),
  db.query(query.sql,query.params),
  ]);
+ const missing = new PgDialect().sqlToQuery(missingLocationsQuery(1));
+ const missingNilla = new PgDialect().sqlToQuery(missingLocationsQuery(2));
+ const missingChck = new PgDialect().sqlToQuery(missingLocationsQuery(3));
+ const missingResults=await db.transaction([
+ db.query('create temporary table b2b_locations(id integer,name text,address text,contact text) on commit drop'),
+ db.query('create temporary table b2b_orders(id integer,location_id integer,status text) on commit drop'),
+ db.query('create temporary table b2b_order_items(order_id integer,product_id integer,quantity integer) on commit drop'),
+ db.query("insert into pg_temp.b2b_locations values (11,'Z LOCAL','Z address','Same contact'),(12,'A LOCAL','A address','Same contact'),(13,'M LOCAL','M address','Same contact'),(14,'B LOCAL','B address','Other contact')"),
+ db.query("insert into pg_temp.b2b_orders values (1,11,'placed'),(2,11,'paid'),(3,12,'confirmed'),(4,13,'paid')"),
+ db.query('insert into pg_temp.b2b_order_items values (1,1,1),(2,1,2),(3,1,1),(4,1,1),(1,2,1),(2,2,0)'),
+ db.query(missing.sql,missing.params),db.query(missingNilla.sql,missingNilla.params),db.query(missingChck.sql,missingChck.params),
+ db.query('delete from pg_temp.b2b_order_items where product_id=1 and order_id=3'),db.query(missing.sql,missing.params),
+ db.query("insert into pg_temp.b2b_order_items values (5,1,1)"),db.query("insert into pg_temp.b2b_orders values(5,14,'placed')"),db.query("insert into pg_temp.b2b_order_items values(3,1,1)"),db.query(missing.sql,missing.params),
+ ]);
+ assert.deepEqual(missingResults[6].map(l=>l.id),[14]);
+ assert.deepEqual(missingResults[7].map(l=>l.id),[12,14,13]);
+ assert.equal(missingResults[8].length,4);
+ assert.deepEqual(missingResults[10].map(l=>l.id),[12,14]);
+ assert.deepEqual(missingResults[14],[]);
+ for(const rows of [missingResults[6],missingResults[7],missingResults[8]]) for(const row of rows) assert.deepEqual(Object.keys(row).sort(),['address','id','name']);
+ console.log('PASS: missing venue SQL, all statuses, same contacts, repeated orders, alphabetical order, removed items, none/all ordered and restricted fields.');
  const first=results[6], after=results[8];assert.equal(productLocationCount('BRAIN FREEZE',first),3);assert.equal(productLocationCount('NILLA',first),1);assert.equal(productLocationCount('CHCK',first),0);assert.equal(productLocationCount('BRAIN FREEZE',after),2);
  console.log('PASS: real SQL, repeated venue orders, 3 distinct venues across all statuses, zero orders, removed/zero-quantity products.');
 }

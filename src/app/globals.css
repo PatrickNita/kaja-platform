@@ -424,3 +424,11 @@ input[type=file] { max-width:100%; }
 .feedback-languages button, .feedback-public-card .button { min-height: 44px; }
 .feedback-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 @media(max-width: 599px) { .feedback-public-card { padding: 16px; } }
+
+.catalogue-missing-locations { display: grid; gap: 12px; min-width: 0; }
+.catalogue-missing-locations > .button { justify-self: start; min-height: 44px; white-space: normal; text-align: left; }
+.catalogue-missing-list { list-style: none; padding: 0; margin: 12px 0 0; max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
+.catalogue-missing-list li { display: grid; gap: 6px; padding: 12px; overflow-wrap: anywhere; }
+.catalogue-missing-list li + li { border-top: 1px solid var(--line); }
+.catalogue-missing-list strong { font-size: 13px; }
+.catalogue-missing-list span { color: var(--muted); font-size: 12px; line-height: 1.5; }
