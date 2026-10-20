@@ -15,9 +15,9 @@ export function productLocationCount(name: string, usage: ProductUsage[]) {
 export const productUsageLabel = (count: number) => `Folosit în ${count} ${count === 1 ? "local" : "localuri"}`;
 
 export type MissingLocation = { id: number; name: string; address: string };
-export const missingLocationsQuery = (productId: number) => sql`
+export const missingLocationsQuery = (productId: number, ordered = false) => sql`
   select l.id,l.name,l.address from b2b_locations l
-  where not exists (
+  where ${ordered ? sql`exists` : sql`not exists`} (
     select 1 from b2b_orders o join b2b_order_items i on i.order_id=o.id
     where o.location_id=l.id and i.product_id=${productId} and i.quantity>0
   )

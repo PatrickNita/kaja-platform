@@ -8,8 +8,10 @@ import { missingLocationsQuery, productNameKey } from "../../../../../lib/catalo
 function json(body: unknown, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
 }
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!await currentMember()) return json({ error: "Acces neautorizat." }, 401);
+  const ordered = new URL(request.url).searchParams.get("ordered");
+  if (ordered !== null && ordered !== "true" && ordered !== "false") return json({ error: "Cerere invalidă." }, 400);
   const { id } = await params;
   if (!/^[1-9]\d*$/.test(id) || Number(id) > 2147483647) return json({ error: "Cerere invalidă." }, 400);
   if (!db) return json({ error: "Verificarea nu este disponibilă momentan. Încearcă din nou." }, 503);
@@ -19,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const products = await db.select({ id: b2bProducts.id, name: b2bProducts.name }).from(b2bProducts);
     const matched = products.filter((p) => productNameKey(p.name) === productNameKey(item.name ?? item.title));
     if (matched.length !== 1) return json({ error: "Verificarea nu este disponibilă: produsul nu poate fi asociat catalogului B2B." }, 422);
-    const result = await db.execute(missingLocationsQuery(matched[0].id));
+    const result = await db.execute(missingLocationsQuery(matched[0].id, ordered === "true"));
     return json({ locations: result.rows });
   } catch {
     return json({ error: "Localurile nu au putut fi încărcate. Încearcă din nou." }, 503);

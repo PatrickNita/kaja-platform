@@ -27,6 +27,9 @@ if(process.env.DATABASE_URL){
  ]);
  const missing = new PgDialect().sqlToQuery(missingLocationsQuery(1));
  const missingNilla = new PgDialect().sqlToQuery(missingLocationsQuery(2));
+ const ordered = new PgDialect().sqlToQuery(missingLocationsQuery(1,true));
+ const orderedNilla = new PgDialect().sqlToQuery(missingLocationsQuery(2,true));
+ const orderedChck = new PgDialect().sqlToQuery(missingLocationsQuery(3,true));
  const missingChck = new PgDialect().sqlToQuery(missingLocationsQuery(3));
  const missingResults=await db.transaction([
  db.query('create temporary table b2b_locations(id integer,name text,address text,contact text) on commit drop'),
@@ -38,12 +41,19 @@ if(process.env.DATABASE_URL){
  db.query(missing.sql,missing.params),db.query(missingNilla.sql,missingNilla.params),db.query(missingChck.sql,missingChck.params),
  db.query('delete from pg_temp.b2b_order_items where product_id=1 and order_id=3'),db.query(missing.sql,missing.params),
  db.query("insert into pg_temp.b2b_order_items values (5,1,1)"),db.query("insert into pg_temp.b2b_orders values(5,14,'placed')"),db.query("insert into pg_temp.b2b_order_items values(3,1,1)"),db.query(missing.sql,missing.params),
+ db.query(ordered.sql,ordered.params),db.query(orderedNilla.sql,orderedNilla.params),db.query(orderedChck.sql,orderedChck.params),
  ]);
  assert.deepEqual(missingResults[6].map(l=>l.id),[14]);
  assert.deepEqual(missingResults[7].map(l=>l.id),[12,14,13]);
  assert.equal(missingResults[8].length,4);
  assert.deepEqual(missingResults[10].map(l=>l.id),[12,14]);
  assert.deepEqual(missingResults[14],[]);
+ assert.deepEqual(missingResults[15].map(l=>l.id),[12,14,13,11]);
+ assert.deepEqual(missingResults[16].map(l=>l.id),[11]);
+ assert.deepEqual(missingResults[17],[]);
+ assert.equal(missingResults[15].length+missingResults[14].length,4);
+ assert.equal(missingResults[16].length+missingResults[7].length,4);
+ assert(!missingResults[16].some(l=>missingResults[7].some(m=>m.id===l.id)));
  for(const rows of [missingResults[6],missingResults[7],missingResults[8]]) for(const row of rows) assert.deepEqual(Object.keys(row).sort(),['address','id','name']);
  console.log('PASS: missing venue SQL, all statuses, same contacts, repeated orders, alphabetical order, removed items, none/all ordered and restricted fields.');
  const first=results[6], after=results[8];assert.equal(productLocationCount('BRAIN FREEZE',first),3);assert.equal(productLocationCount('NILLA',first),1);assert.equal(productLocationCount('CHCK',first),0);assert.equal(productLocationCount('BRAIN FREEZE',after),2);
