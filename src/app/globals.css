@@ -390,3 +390,39 @@ input:disabled, textarea:disabled, select:disabled, button:disabled { cursor:not
 .entry-inline-editor, .entry-card-content > *, .entry-gallery, .gallery-management > *, .gallery-upload-form > * { min-width:0; max-width:100%; }
 .entry-card-content > p { overflow-wrap:anywhere; line-height:1.55; }
 input[type=file] { max-width:100%; }
+/* Product feedback: public pages intentionally have no workspace navigation. */
+.feedback-secondary { color: var(--muted, #aaa); font-weight: 400; }
+.feedback-product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.feedback-product { width: 100%; min-height: 64px; text-align: left; white-space: normal; overflow-wrap: anywhere; padding: 20px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 12px; color: var(--ink); font-weight: 700; }
+.feedback-product.item:first-child { border-top: 1px solid var(--line); }
+.feedback-product:hover { border-color: var(--line-strong); background: var(--surface-soft); }
+.feedback-dialog { position: fixed; inset: 0; margin: auto; color: var(--ink); width: min(660px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; }
+.feedback-dialog::backdrop { background: rgba(0,0,0,.75); backdrop-filter: blur(6px); }
+.feedback-dialog .b2b-dialog-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.feedback-dialog .b2b-dialog-head button { width: 44px; height: 44px; flex: 0 0 44px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--ink); background: transparent; font-size: 26px; }
+.feedback-dialog .b2b-dialog-head { align-items: flex-start; }
+.feedback-dialog .b2b-dialog-head h3 { outline: none; overflow-wrap: anywhere; }
+.feedback-qr-panel { display: grid; gap: 12px; justify-items: center; padding: 8px 0 20px; border-bottom: 1px solid #3a3a3a; }
+.feedback-qr { width: 200px; height: 200px; max-width: 100%; background: #fff; border-radius: 8px; }
+.feedback-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; width: 100%; }
+.feedback-actions > * { min-height: 44px; white-space: normal; text-align: center; display: flex; justify-content: center; align-items: center; }
+.feedback-link { width: 100%; min-width: 0; }
+.feedback-comments { min-width: 0; }
+.feedback-comment { padding: 12px 0; border-bottom: 1px solid #3a3a3a; }
+.feedback-comment time { font-size: 12px; }
+.feedback-comment p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.public-feedback { width: min(580px, 100%); margin: 0 auto; padding: 32px 16px; }
+.public-feedback > .logo { display: block; width: 150px; height: auto; margin: 0 auto 24px; }
+.feedback-public-card { padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
+.public-feedback .item p { margin: 12px 0; }
+.feedback-dialog .b2b-error, .public-feedback .b2b-error { color: #ff8d84; }
+.feedback-dialog .b2b-success, .public-feedback .b2b-success { color: #a7dcb6; }
+.feedback-public-card h1 { font-size: 22px; overflow-wrap: anywhere; }
+.feedback-public-card .form { display: grid; gap: 12px; }
+.feedback-public-card textarea { width: 100%; min-height: 140px; resize: vertical; }
+.feedback-public-card small { color: #aaa; }
+.feedback-languages { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 20px; }
+.feedback-languages button, .feedback-public-card .button { min-height: 44px; }
+.feedback-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+@media(max-width: 900px) { .feedback-product-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 599px) { .feedback-product-grid { grid-template-columns: minmax(0,1fr); } .feedback-public-card { padding: 16px; } }

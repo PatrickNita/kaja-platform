@@ -11,6 +11,7 @@ type HiddenField = {
 };
 
 type Props = {
+  flavor?: string;
   entryId: string;
   title: string;
   body?: string;
@@ -28,15 +29,15 @@ function errorMessage(error: unknown) {
   return "Modificarea nu a putut fi salvată. Încearcă din nou.";
 }
 
-export function EntryInlineEditor({ entryId, title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl }: Props) {
+export function EntryInlineEditor({ entryId, title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl, flavor }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const generatedId = useId().replaceAll(":", "");
   const formId = `entry-edit-${generatedId}`;
   const [error, setError] = useState<string | null>(null);
   const { activeEntryId, draft, saving, beginEditing, closeEntry, setSaving, updateDraft, stopEditing, cancelEditing } = useEntryModalState();
   const editing = draft?.entryId === entryId;
-  const dirty = editing && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody);
-  const valid = editing && draft.title.trim().length > 0 && draft.body.trim().length > 0;
+  const dirty = editing && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody || draft.flavor !== draft.originalFlavor);
+  const valid = editing && draft.title.trim().length > 0 && draft.body.trim().length > 0 && (flavor === undefined || (draft.flavor ?? "").trim().length > 0);
 
   const cancel = () => {
     if (saving) return;
@@ -79,6 +80,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
 
     <div className="entry-card-content">
       {detailsMedia}
+      {editing && flavor !== undefined && <label>Gust<input form={formId} name="flavor" value={draft.flavor ?? ""} onChange={(event) => updateDraft("flavor", event.target.value)} required maxLength={200} /></label>}
       {editing ? <AutoResizeTextarea form={formId} className="entry-inline-body" name="body" value={draft.body} onChange={(event) => updateDraft("body", event.currentTarget.value)} required maxLength={4000} aria-label="Descriere" /> : body ? <p>{body}</p> : null}
       {children}
 
@@ -92,7 +94,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
             <button className="button" type="submit" form={formId} disabled={saving || !dirty || !valid}>{saving ? "Se salvează…" : "Salvează modificările"}</button>
             <button className="button ghost" type="button" onClick={cancel} disabled={saving}>Anulează</button>
           </> : <>
-            <button className="button ghost" type="button" onClick={(event) => { event.preventDefault(); setError(null); beginEditing(entryId, title, body ?? ""); }}>Modifică</button>
+            <button className="button ghost" type="button" onClick={(event) => { event.preventDefault(); setError(null); beginEditing(entryId, title, body ?? "", flavor); }}>Modifică</button>
             {deleteControl}
           </>}
         </div>

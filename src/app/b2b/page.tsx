@@ -50,6 +50,7 @@ export default async function B2BPage({
           <Link href="/?view=merch">Merch</Link>
           <Link href="/?view=information">Informații</Link>
           <Link href="/?view=uploads">Încărcări</Link>
+          <Link href="/feedback">Feedback</Link>
           <Link href="/b2b" className="active">
             B2B
           </Link>

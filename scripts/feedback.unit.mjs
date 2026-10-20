@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
+import ts from "typescript";
+const require = createRequire(import.meta.url);
+function load(file) {
+  const output = ts.transpileModule(readFileSync(new URL(file, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const exports = {}; new Function("exports", "require", output)(exports, require); return exports;
+}
+process.env.SESSION_SECRET = "feedback-unit-test-secret";
+const security = load("../src/lib/feedback-security.ts"), model = load("../src/lib/feedback-model.ts");
+const id = randomUUID(), now = 1792490000000, token = security.feedbackChallenge(id, now);
+assert(security.validFeedbackChallenge(id, token, now + 2000));
+assert(!security.validFeedbackChallenge(id, token, now + 1000));
+assert(!security.validFeedbackChallenge(id, token, now + 86400001));
+assert(!security.validFeedbackChallenge(randomUUID(), token, now + 3000));
+assert(!security.validFeedbackChallenge(id, token.replace(/.$/, "z"), now + 3000));
+assert(!security.validFeedbackChallenge(id, "garbage", now));
+assert.equal(security.feedbackSourceHash("a"), security.feedbackSourceHash("a"));
+assert.notEqual(security.feedbackSourceHash("a"), security.feedbackSourceHash("b"));
+assert(!security.feedbackSourceHash("127.0.0.1").includes("127.0.0.1"));
+const input = { product: id, body: "  gust bun  ", requestId: randomUUID(), challenge: token, website: "" };
+assert.equal(model.feedbackInput.parse(input).body, "gust bun");
+for (const body of ["", " \n ", "x".repeat(2001)]) assert(!model.feedbackInput.safeParse({ ...input, body }).success);
+assert(model.feedbackInput.safeParse({ ...input, body: "x".repeat(2000) }).success);
+assert(!model.feedbackInput.safeParse({ ...input, product: "../../orders" }).success);
+assert.equal(model.feedbackBrand("invalid"), "kaja");
+assert.equal(model.feedbackBrand("virginia"), "virginia");
+const permissions = load("../src/lib/workspace-permissions.ts");
+for (const slug of ["patrick", "ionut", "andrei", "igor"]) assert.equal(permissions.canManageWorkspaceItem({ id: 1, slug }, { section: "catalogue", catalogueGroup: "live", createdBy: 1 }), slug === "patrick");
+console.log("Feedback validation, signing, timing, source hashing, brand defaults and catalogue permissions passed.");

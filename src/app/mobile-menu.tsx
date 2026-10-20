@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Section =
   | "b2b"
+  | "feedback"
   | "activity"
   | "tasks"
   | "events"
@@ -251,6 +252,7 @@ export function MobileMenu({
               >
                 {sectionLabels.uploads}
               </a>
+              <a href="/feedback" className={view === "feedback" ? "active" : undefined}>Feedback</a>
               <a href="/b2b" className={view === "b2b" ? "active" : undefined}>
                 B2B
               </a>

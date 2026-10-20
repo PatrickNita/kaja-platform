@@ -207,11 +207,12 @@ export async function deleteRecord(formData: FormData) {
   refresh();
 }
 export async function createWorkspaceItem(formData: FormData) {
-  const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ brand, section: creatableWorkspaceSection, catalogueGroup: catalogueGroup.optional(), title, body, flavor: z.string().trim().max(200).optional() }).parse(Object.fromEntries(formData));
   if (input.section === "events" && member.slug !== "patrick") throw new Error("Doar Patrick poate adăuga evenimente.");
   if (input.section === "information" && member.slug !== "patrick") throw new Error("Doar Patrick poate adăuga informații.");
   if (input.section === "catalogue" && input.catalogueGroup !== "ideas" && member.slug !== "patrick") throw new Error("Doar Patrick poate adăuga produse în Catalog activ sau În curând.");
-  const [record] = await db!.insert(workspaceItems).values({ ...input, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
+  if (input.section === "catalogue" && input.catalogueGroup !== "ideas" && !input.flavor) throw new Error("Completează gustul produsului.");
+  const [record] = await db!.insert(workspaceItems).values({ ...input, productName: input.section === "catalogue" && input.catalogueGroup !== "ideas" ? input.title : null, flavor: input.section === "catalogue" && input.catalogueGroup !== "ideas" ? input.flavor : null, catalogueGroup: input.section === "catalogue" ? input.catalogueGroup ?? "live" : null, createdBy: member.id, updatedBy: member.id }).returning();
   await recordActivity(member, { brand: input.brand, entityType: input.section, entityId: record.id, action: "created", summary: input.section === "information" ? `a creat informația „${record.title}”` : `a creat o înregistrare „${record.title}”`, title: record.title, catalogueGroup: record.catalogueGroup }); refresh();
   return { id: record.id };
 }
@@ -219,12 +220,14 @@ export async function createWorkspaceItemForm(formData: FormData) {
   await createWorkspaceItem(formData);
 }
 export async function updateWorkspaceItem(formData: FormData) {
-  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: editableWorkspaceSection, title, body }).parse(Object.fromEntries(formData));
+  const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, section: editableWorkspaceSection, title, body, flavor: z.string().trim().max(200).optional() }).parse(Object.fromEntries(formData));
   const [item] = await db!.select({ catalogueGroup: workspaceItems.catalogueGroup, createdBy: workspaceItems.createdBy }).from(workspaceItems).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt)));
   if (!item) throw new Error("Înregistrarea nu mai există.");
   if (!canManageWorkspaceItem(member, { ...item, section: input.section })) throw new Error("Nu ai permisiunea să modifici această înregistrare.");
+  const isProduct = input.section === "catalogue" && item.catalogueGroup !== "ideas";
+  if (isProduct && !input.flavor) throw new Error("Completează gustul produsului.");
   await db!.batch([
-    db!.update(workspaceItems).set({ title: input.title, body: input.body, updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt))),
+    db!.update(workspaceItems).set({ title: input.title, body: input.body, ...(isProduct ? { productName: input.title, flavor: input.flavor } : {}), updatedBy: member.id, updatedAt: new Date() }).where(and(eq(workspaceItems.id, input.id), eq(workspaceItems.brand, input.brand), eq(workspaceItems.section, input.section), isNull(workspaceItems.deletedAt))),
     synchronizeActivityTitle({ brand: input.brand, entityType: input.section, entityId: input.id, title: input.title }),
   ] as const);
   refresh();

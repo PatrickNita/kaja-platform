@@ -8,9 +8,11 @@ type EntryDraft = {
   body: string;
   originalTitle: string;
   originalBody: string;
+  flavor?: string;
+  originalFlavor?: string;
 };
 
-type DraftField = "title" | "body";
+type DraftField = "title" | "body" | "flavor";
 
 type EntryModalState = {
   activeEntryId: string | null;
@@ -18,7 +20,7 @@ type EntryModalState = {
   saving: boolean;
   openEntry: (entryId: string) => void;
   closeEntry: () => void;
-  beginEditing: (entryId: string, title: string, body: string) => void;
+  beginEditing: (entryId: string, title: string, body: string, flavor?: string) => void;
   updateDraft: (field: DraftField, value: string) => void;
   stopEditing: () => void;
   cancelEditing: () => void;
@@ -36,7 +38,7 @@ type State = {
 type Action =
   | { type: "open"; entryId: string }
   | { type: "close" }
-  | { type: "begin-editing"; entryId: string; title: string; body: string }
+  | { type: "begin-editing"; entryId: string; title: string; body: string; flavor?: string }
   | { type: "update-draft"; field: DraftField; value: string }
   | { type: "stop-editing" }
   | { type: "set-saving"; saving: boolean };
@@ -66,6 +68,8 @@ function reducer(state: State, action: Action): State {
           body: action.body,
           originalTitle: action.title,
           originalBody: action.body,
+          flavor: action.flavor,
+          originalFlavor: action.flavor,
         },
         saving: false,
       };
@@ -95,7 +99,7 @@ export function EntryModalStateProvider({ children, memberSlug }: { children: Re
   const confirmDiscard = useCallback(() => {
     const { draft, saving } = stateRef.current;
     if (saving) return false;
-    if (draft && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody)
+    if (draft && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody || draft.flavor !== draft.originalFlavor)
       && !window.confirm("Ai modificări nesalvate. Renunți la ele?")) return false;
     clearDraft();
     return true;
@@ -117,7 +121,7 @@ export function EntryModalStateProvider({ children, memberSlug }: { children: Re
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
       const { draft, saving } = stateRef.current;
-      if (saving || (draft && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody))) {
+      if (saving || (draft && (draft.title !== draft.originalTitle || draft.body !== draft.originalBody || draft.flavor !== draft.originalFlavor))) {
         event.preventDefault();
         event.returnValue = "";
       }
@@ -160,14 +164,15 @@ export function EntryModalStateProvider({ children, memberSlug }: { children: Re
     dispatch({ type: "close" });
   }, [confirmDiscard]);
 
-  const beginEditing = useCallback((entryId: string, title: string, body: string) => {
+  const beginEditing = useCallback((entryId: string, title: string, body: string, flavor?: string) => {
     editingLocation.current = { url: window.location.href, historyState: window.history.state };
-    dispatch({ type: "begin-editing", entryId, title, body });
+    dispatch({ type: "begin-editing", entryId, title, body, flavor });
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey(entryId)) || "null") as EntryDraft | null;
       if (saved?.entryId === entryId && typeof saved.title === "string" && typeof saved.body === "string") {
         dispatch({ type: "update-draft", field: "title", value: saved.title });
         dispatch({ type: "update-draft", field: "body", value: saved.body });
+        if (flavor !== undefined && typeof saved.flavor === "string") dispatch({ type: "update-draft", field: "flavor", value: saved.flavor });
       }
     } catch { /* Ignore unavailable or invalid stored drafts. */ }
   }, [storageKey]);

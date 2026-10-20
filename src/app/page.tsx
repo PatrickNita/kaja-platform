@@ -44,6 +44,7 @@ type CommentEntity = "update" | "task" | "events" | "catalogue" | "merch";
 type EntryEntity = CommentEntity | "information";
 type EntryReactionType = "heart" | "like" | "dislike" | "poop" | "question";
 type EntryEditConfig = {
+  flavor?: string;
   action: (formData: FormData) => Promise<void>;
   hiddenFields: Array<{ name: string; value: string | number }>;
   deleteControl: ReactNode;
@@ -177,7 +178,7 @@ function EntryCard({ brand, type, id, title, body, author, authorSlug, attention
   const authorControls = <span className="entry-author-group">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} /><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={attentionInteractive ?? memberSlug === authorSlug} /></span>;
   const interactiveContent = <>{detailsExtra}{entryReactionsEnabled && <EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />}{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
   return <ModalEntryCard entryId={entryId} label={title} preview={compactPreview}>
-    <EntryInlineEditor entryId={entryId} title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor>
+    <EntryInlineEditor entryId={entryId} title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} flavor={edit?.flavor} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor>
   </ModalEntryCard>;
 }
 
@@ -200,6 +201,7 @@ function workspaceEditConfig({ brand, section, item, memberSlug, authorSlug }: {
   if (!canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup)) return undefined;
   return {
     action: updateWorkspaceItem,
+    flavor: section === "catalogue" && item.catalogueGroup !== "ideas" ? item.flavor ?? "" : undefined,
     hiddenFields: [{ name: "id", value: item.id }, { name: "brand", value: brand }, { name: "section", value: section }],
     deleteControl: <form action={deleteWorkspaceItem}>
       <input type="hidden" name="id" value={item.id} />
@@ -352,5 +354,5 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   if (view === "tasks" && !globalTasks) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
   const content = view === "activity" ? <><BrandFilterNav selected={brandFilter} view="activity" /><ActivityPanel initialRows={globalActivity} /><LegacyProposalDetails data={data} memberSlug={member.slug} /></> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brandFilter}&view=activity`} aria-label="Deschide Activitate"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brandFilter}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? "&tasks=all" : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}<a href="/b2b">B2B</a></nav></header><MobileMenu brand={brandFilter} view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
+  return <><WelcomeIntro memberName={member.name} memberSlug={member.slug} /><main className="workspace-shell"><header className="workspace-header"><div className="workspace-brand"><a className="workspace-logo-link" href={`/?brand=${brandFilter}&view=activity`} aria-label="Deschide Activitate"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></a><div className="identity"><span className="dot" /> {member.name}</div></div><nav className="workspace-nav" aria-label="Secțiuni de lucru">{sections.map((entry) => <a key={entry.key} href={`/?brand=${brandFilter}&view=${entry.key}${entry.key === "catalogue" ? `&catalogue=${group}` : ""}${entry.key === "tasks" ? "&tasks=all" : ""}`} className={view === entry.key ? "active" : undefined}>{entry.label}</a>)}<a href="/feedback">Feedback</a><a href="/b2b">B2B</a></nav></header><MobileMenu brand={brandFilter} view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
 }

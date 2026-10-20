@@ -50,6 +50,9 @@ export const workspaceItems = pgTable("workspace_items", {
   brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   section: varchar("section", { length: 20 }).notNull(),
   catalogueGroup: varchar("catalogue_group", { length: 20 }),
+  productName: varchar("product_name", { length: 160 }),
+  flavor: varchar("flavor", { length: 200 }),
+  feedbackId: uuid("feedback_id").defaultRandom().notNull().unique(),
   title: varchar("title", { length: 160 }).notNull(),
   body: text("body").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("To do"),
@@ -60,6 +63,20 @@ export const workspaceItems = pgTable("workspace_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const productFeedback = pgTable("product_feedback", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => workspaceItems.id),
+  body: text("body").notNull(),
+  requestId: uuid("request_id").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("product_feedback_item_created_idx").on(table.itemId, table.createdAt.desc(), table.id.desc())]);
+
+export const feedbackRateLimits = pgTable("feedback_rate_limits", {
+  sourceHash: varchar("source_hash", { length: 64 }).primaryKey(),
+  hits: integer("hits").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 export const workspaceItemImages = pgTable("workspace_item_images", {
