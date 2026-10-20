@@ -3,17 +3,14 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { MissingLocation } from "../lib/catalogue-usage";
 
 export function CatalogueMissingLocations({ itemId }: { itemId: number }) {
-  return <><CatalogueLocationList itemId={itemId} ordered /><CatalogueLocationList itemId={itemId} ordered={false} /></>;
-}
-function CatalogueLocationList({ itemId, ordered }: { itemId: number; ordered: boolean }) {
-  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<MissingLocation[] | null>(null);
   const [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
   const id = useId();
   useEffect(() => () => controller.current?.abort(), []);
-  async function load() {
+  async function load(ordered: boolean) {
     controller.current?.abort();
     const pending = new AbortController();
     controller.current = pending;
@@ -35,16 +32,19 @@ function CatalogueLocationList({ itemId, ordered }: { itemId: number; ordered: b
     }
   }
   return <section className="catalogue-missing-locations">
-    <button type="button" className="button ghost" aria-expanded={open} aria-controls={id} onClick={() => {
-      if (open) { controller.current?.abort(); setOpen(false); }
-      else { setOpen(true); void load(); }
-    }}>{open ? "Restrânge lista" : (ordered ? "Vezi localurile care au comandat" : "Vezi localurile care nu au comandat")}</button>
-    {open && <div id={id} aria-busy={loading}>
+    <div className="catalogue-location-buttons" role="group" aria-label="Localuri după comenzile produsului">
+      {[true, false].map((ordered) => <button key={String(ordered)} type="button" className={`button ${active === ordered ? "" : "ghost"}`} aria-expanded={active === ordered} aria-pressed={active === ordered} aria-controls={id} onClick={() => {
+        controller.current?.abort();
+        if (active === ordered) { setActive(null); setLoading(false); }
+        else { setActive(ordered); void load(ordered); }
+      }}>{ordered ? "Vezi localurile care au comandat" : "Vezi localurile care nu au comandat"}</button>)}
+    </div>
+    {active !== null && <div id={id} aria-busy={loading}>
       {loading && <p className="meta" role="status">Se încarcă localurile…</p>}
-      {error && <><p className="entry-edit-error" role="alert">{error}</p><button className="button ghost" type="button" onClick={() => void load()}>Reîncearcă</button></>}
+      {error && <><p className="entry-edit-error" role="alert">{error}</p><button className="button ghost" type="button" onClick={() => void load(active)}>Reîncearcă</button></>}
       {locations && <>
-        <p className="meta" role="status">{locations.length ? `${ordered ? "Au comandat" : "Nu au comandat"}: ${locations.length} ${locations.length === 1 ? "local" : "localuri"}` : (ordered ? "Niciun local nu a comandat acest produs." : "Toate localurile au comandat acest produs.")}</p>
-        {locations.length > 0 && <ul className="catalogue-missing-list" aria-label={ordered ? "Localurile care au comandat" : "Localurile care nu au comandat"} tabIndex={0}>{locations.map((location) => <li key={location.id}><strong>{location.name}</strong><span>{location.address}</span></li>)}</ul>}
+        <p className="meta" role="status">{locations.length ? `${active ? "Au comandat" : "Nu au comandat"}: ${locations.length} ${locations.length === 1 ? "local" : "localuri"}` : (active ? "Niciun local nu a comandat acest produs." : "Toate localurile au comandat acest produs.")}</p>
+        {locations.length > 0 && <ul className="catalogue-missing-list" aria-label={active ? "Localurile care au comandat" : "Localurile care nu au comandat"} tabIndex={0}>{locations.map((location) => <li key={location.id}><strong>{location.name}</strong><span>{location.address}</span></li>)}</ul>}
       </>}
     </div>}
   </section>;

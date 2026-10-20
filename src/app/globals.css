@@ -426,7 +426,8 @@ input[type=file] { max-width:100%; }
 @media(max-width: 599px) { .feedback-public-card { padding: 16px; } }
 
 .catalogue-missing-locations { display: grid; gap: 12px; min-width: 0; }
-.catalogue-missing-locations > .button { justify-self: start; min-height: 44px; white-space: normal; text-align: left; }
+.catalogue-location-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.catalogue-location-buttons > .button { min-width: 0; min-height: 44px; white-space: normal; text-align: center; height: 100%; }
 .catalogue-missing-list { list-style: none; padding: 0; margin: 12px 0 0; max-height: 320px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
 .catalogue-missing-list li { display: grid; gap: 6px; padding: 12px; overflow-wrap: anywhere; }
 .catalogue-missing-list li + li { border-top: 1px solid var(--line); }
