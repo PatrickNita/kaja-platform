@@ -128,7 +128,7 @@ export function History({
               t(shortStatus[o.status])
             }
           >
-            <strong>{o.location_name}</strong>
+            <strong>{mode === "portal" ? t(`Comanda #${o.id}`) : o.location_name}</strong>
             <time dateTime={o.created_at}>{formatOrderDate(o.created_at, language)}</time>
             <span className={"b2b-status " + o.status}>
               {t(shortStatus[o.status])}
