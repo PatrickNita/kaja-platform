@@ -1,3 +1,4 @@
+import { productUsageLabel } from "../lib/catalogue-usage";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -34,7 +35,7 @@ type BrandFilter = (typeof brandFilters)[number]["key"];
 type Data = NonNullable<Awaited<ReturnType<typeof workspaceData>>>;
 type TaskData = NonNullable<Awaited<ReturnType<typeof taskWorkspaceData>>>;
 type ActivityData = Awaited<ReturnType<typeof activityData>>;
-type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: string; authorSlug: string };
+type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: string; authorSlug: string; locationCount?: number };
 type CommentRow = Data["comments"][number];
 type ReactionRow = Data["reactions"][number];
 type EntryReactionRow = Data["entryReactions"][number];
@@ -168,14 +169,14 @@ function AttentionControl({ brand, entityType, entityId, active, interactive }: 
   </form>;
 }
 
-function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, previewExtra, detailsExtra, entryReactionsEnabled = true, attentionInteractive, showAuthor = true, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; previewExtra?: ReactNode; detailsExtra?: ReactNode; entryReactionsEnabled?: boolean; attentionInteractive?: boolean; showAuthor?: boolean; edit?: EntryEditConfig }) {
+function EntryCard({ brand, type, id, title, body, author, authorSlug, attentionActive, comments, reactions, entryReactions, memberSlug, media, detailsMedia, previewExtra, detailsExtra, entryReactionsEnabled = true, commentsEnabled = true, attentionEnabled = true, attentionInteractive, showAuthor = true, edit }: { brand: Brand; type: EntryEntity; id: number; title: string; body?: string; author: string; authorSlug: string; attentionActive: boolean; comments?: CommentRow[]; reactions?: ReactionRow[]; entryReactions: EntryReactionRow[]; memberSlug: string; media?: ReactNode; detailsMedia?: ReactNode; previewExtra?: ReactNode; detailsExtra?: ReactNode; entryReactionsEnabled?: boolean; commentsEnabled?: boolean; attentionEnabled?: boolean; attentionInteractive?: boolean; showAuthor?: boolean; edit?: EntryEditConfig }) {
   const entryId = `entry-${type}-${id}`;
-  const commentType = type === "information" ? null : type;
+  const commentType = type === "information" || !commentsEnabled ? null : type;
   const own = commentType ? (comments || []).filter(({ comment }) => comment.entityType === commentType && comment.entityId === id) : [];
   const ownEntryReactions = entryReactionsEnabled ? entryReactions.filter(({ reaction }) => reaction.entityType === type && reaction.entityId === id) : [];
   const last = own.at(-1);
-  const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group entry-preview-author">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} /><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} /></span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}{previewExtra}{entryReactionsEnabled && <EntryReactionPreview reactions={ownEntryReactions} />}</>;
-  const authorControls = <span className="entry-author-group">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} /><AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={attentionInteractive ?? memberSlug === authorSlug} /></span>;
+  const compactPreview = <>{media}<div className="entry-card-head"><h3 className="item-title">{title}</h3><span className="entry-author-group entry-preview-author">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} />{attentionEnabled && <AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={false} />}</span></div>{body && <p className="entry-preview">{preview(body)}</p>}{commentType && <div className="comment-preview">Comentarii ({own.length}){last && <> · ({last.author} – {date(last.comment.createdAt)})</>}</div>}{previewExtra}{entryReactionsEnabled && <EntryReactionPreview reactions={ownEntryReactions} />}</>;
+  const authorControls = <span className="entry-author-group">{showAuthor && <span className="entry-author">{author}</span>}<InlineBrand brand={brand} separated={showAuthor} />{attentionEnabled && <AttentionControl brand={brand} entityType={type} entityId={id} active={attentionActive} interactive={attentionInteractive ?? memberSlug === authorSlug} />}</span>;
   const interactiveContent = <>{detailsExtra}{entryReactionsEnabled && <EntryReactions brand={brand} entityType={type} entityId={id} reactions={ownEntryReactions} memberSlug={memberSlug} />}{commentType && <Comments brand={brand} entityType={commentType} entityId={id} comments={comments || []} reactions={reactions || []} memberSlug={memberSlug} />}</>;
   return <ModalEntryCard entryId={entryId} label={title} preview={compactPreview}>
     <EntryInlineEditor entryId={entryId} title={title} body={body} authorControls={authorControls} closeLabel={`Închide ${title}`} detailsMedia={detailsMedia} editAction={edit?.action} flavor={edit?.flavor} hiddenFields={edit?.hiddenFields} deleteControl={edit?.deleteControl}>{interactiveContent}</EntryInlineEditor>
@@ -220,14 +221,16 @@ function WorkspaceSection({ brandFilter, section, title, displayTitle, items, im
   const galleryEnabled = section === "merch" || section === "events" || (section === "catalogue" && catalogueGroup !== "ideas");
   const modalEnabled = section === "information" || section === "catalogue" || galleryEnabled;
   const composer = section === "merch" ? <MerchComposer initialBrand={initialBrand(brandFilter)} /> : galleryEnabled && (section === "events" || section === "catalogue") ? <GalleryComposer initialBrand={initialBrand(brandFilter)} section={section} catalogueGroup={catalogueGroup === "ideas" ? undefined : catalogueGroup} /> : <form action={createWorkspaceItemForm} className="form"><BrandFormPicker initialBrand={initialBrand(brandFilter)} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
-  const cards = items.map(({ item, author, authorSlug }) => {
+  const cards = items.map(({ item, author, authorSlug, locationCount }) => {
+    const usageOnly = item.brand === "kaja" && section === "catalogue" && item.catalogueGroup === "live";
+    const usage = usageOnly ? <p className="meta">{productUsageLabel(locationCount ?? 0)}</p> : undefined;
     const itemBrand = item.brand as Brand;
     const itemImages = images.filter((image) => image.itemId === item.id);
     const firstImage = itemImages[0];
     const manageable = canManageWorkspace(memberSlug, authorSlug, section, item.catalogueGroup);
     const media = firstImage ? <div className="entry-media-preview"><img src={`/api/item-images/${firstImage.id}`} alt={`Previzualizare ${item.title}`} />{itemImages.length > 1 && <span>{itemImages.length} imagini</span>}</div> : undefined;
     const detailsMedia = galleryEnabled ? <EntryGallery brand={itemBrand} section={section as "events" | "catalogue" | "merch"} itemId={item.id} title={item.title} images={itemImages} canManage={manageable} /> : undefined;
-    return <article key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} media={media} detailsMedia={detailsMedia} showAuthor={section === "catalogue" && item.catalogueGroup === "ideas"} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></article>;
+    return <article key={item.id} className="card-wrap"><EntryCard brand={itemBrand} type={section} id={item.id} title={item.title} body={item.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(attention, itemBrand, section, item.id)} comments={section === "information" ? undefined : comments} reactions={section === "information" ? undefined : reactions} entryReactions={entryReactions} memberSlug={memberSlug} commentsEnabled={!usageOnly} entryReactionsEnabled={!usageOnly} attentionEnabled={!usageOnly} previewExtra={usage} detailsExtra={usage} media={media} detailsMedia={detailsMedia} showAuthor={section === "catalogue" && item.catalogueGroup === "ideas"} edit={workspaceEditConfig({ brand: itemBrand, section, item, memberSlug, authorSlug })} /></article>;
   });
   const entryIds = items.map(({ item }) => `entry-${section}-${item.id}`);
   return <>{showBrandFilter && <BrandFilterNav selected={brandFilter} view={section} />}<section className="panel content-section"><div className="panel-head"><PageHeading title={displayTitle} count={cards.length} /></div>{canCreate && <Composer label={toggleLabel}>{composer}</Composer>}{modalEnabled ? <ModalEntryGrid entryIds={entryIds} label={title.toLowerCase()} twoColumnMobile={section === "merch"}>{cards}</ModalEntryGrid> : <div className="items card-grid">{cards}</div>}</section></>;
