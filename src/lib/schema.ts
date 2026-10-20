@@ -53,6 +53,7 @@ export const workspaceItems = pgTable("workspace_items", {
   productName: varchar("product_name", { length: 160 }),
   flavor: varchar("flavor", { length: 200 }),
   feedbackId: uuid("feedback_id").defaultRandom().notNull().unique(),
+  feedbackSlug: varchar("feedback_slug", { length: 200 }),
   title: varchar("title", { length: 160 }).notNull(),
   body: text("body").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("To do"),
@@ -63,7 +64,7 @@ export const workspaceItems = pgTable("workspace_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [uniqueIndex("workspace_items_brand_feedback_slug_unique").on(table.brand, table.feedbackSlug).where(sql`${table.feedbackSlug} is not null`)]);
 
 export const productFeedback = pgTable("product_feedback", {
   id: serial("id").primaryKey(),

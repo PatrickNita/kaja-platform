@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { feedbackBrands, type FeedbackBrand, type FeedbackProduct, type ProductComment } from "../../lib/feedback-model";
+import { feedbackPath, feedbackBrands, type FeedbackBrand, type FeedbackProduct, type ProductComment } from "../../lib/feedback-model";
 import { ConfirmDialog } from "../b2b/ui";
 
 export function FeedbackAdmin({ products, brand, origin }: { products: FeedbackProduct[]; brand: FeedbackBrand; origin: string }) {
@@ -20,7 +20,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const link = `${origin}/feedback/${product.id}`;
+  const link = `${origin}${feedbackPath(product)}`;
   useEffect(() => {
     const controller = new AbortController();
     fetch(`/api/feedback/${product.id}`, { signal: controller.signal, cache: "no-store" }).then(async (r) => { const data = await r.json(); if (!r.ok) throw Error(data.error); setComments(data.comments); setMore(data.more); }).catch((e) => { if (!controller.signal.aborted) setError(e.message || "Nu s-au putut încărca mesajele."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });

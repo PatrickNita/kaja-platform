@@ -29,4 +29,7 @@ assert.equal(model.feedbackBrand("invalid"), "kaja");
 assert.equal(model.feedbackBrand("virginia"), "virginia");
 const permissions = load("../src/lib/workspace-permissions.ts");
 for (const slug of ["patrick", "ionut", "andrei", "igor"]) assert.equal(permissions.canManageWorkspaceItem({ id: 1, slug }, { section: "catalogue", catalogueGroup: "live", createdBy: 1 }), slug === "patrick");
+assert.equal(model.feedbackPath({ brand: "kaja", slug: "2late" }), "/feedback/kaja/2late");
+assert.equal(model.feedbackPath({ brand: "virginia", slug: "produs" }), "/feedback/lumen/produs");
+assert.equal(model.feedbackPath({ brand: "hexenwerk", slug: "test" }), "/feedback/hexenwerk/test");
 console.log("Feedback validation, signing, timing, source hashing, brand defaults and catalogue permissions passed.");

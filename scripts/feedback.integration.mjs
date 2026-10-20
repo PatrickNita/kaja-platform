@@ -30,6 +30,7 @@ try {
   await root.query(`create schema ${schema}`);
   await q("create table workspace_items(id serial primary key, brand text,section text,catalogue_group text,title text,body text,deleted_at timestamptz)");
   for (const sql of readFileSync(new URL("../drizzle/0018_product_feedback.sql", import.meta.url), "utf8").split("--> statement-breakpoint")) await q(sql);
+  for (const sql of readFileSync(new URL("../drizzle/0020_feedback_product_slugs.sql", import.meta.url), "utf8").split("--> statement-breakpoint")) await q(sql);
   const [item] = await q("insert into workspace_items(brand,section,catalogue_group,title,body,product_name,flavor) values('kaja','catalogue','live','TEST','PRIVATE DESCRIPTION','TEST','Gust test') returning id,feedback_id");
   const source = randomBytes(32).toString("hex");
   const send = async (requestId = randomUUID(), product = item.feedback_id, body = "Test anonim", key = source) => (await q("select submit_product_feedback($1,$2,$3,$4) as result", [product, body, requestId, key]))[0].result;
@@ -45,7 +46,11 @@ try {
   assert.equal((await q("select feedback_id from workspace_items where id=$1", [item.id]))[0].feedback_id, item.feedback_id);
   const server = load("src/lib/feedback-server.ts");
   const publicProduct = await server.publicFeedbackProduct(item.feedback_id);
-  assert.deepEqual(Object.keys(publicProduct).sort(), ["brand", "flavor", "id", "name"]);
+  assert.deepEqual(Object.keys(publicProduct).sort(), ["brand", "flavor", "id", "name", "slug"]);
+  assert.equal(publicProduct.slug, "test");
+  assert.equal((await server.publicFeedbackProductBySlug("kaja", "test")).id, item.feedback_id);
+  assert.equal(await server.publicFeedbackProductBySlug("hexenwerk", "test"), null);
+  assert.equal(await server.publicFeedbackProductBySlug("kaja", "../test"), null);
   await assert.rejects(server.memberProductComments(item.feedback_id));
   await assert.rejects(server.memberFeedbackProducts("kaja"));
   for (const slug of ["patrick", "ionut", "igor", "andrei"]) { member = { slug }; assert.equal((await server.memberProductComments(item.feedback_id)).length, 6); assert.equal((await server.memberFeedbackProducts("kaja")).length, 1); }
@@ -54,7 +59,11 @@ try {
     await q("insert into workspace_items(brand,section,catalogue_group,title,body,product_name,flavor) values($1,'catalogue','live','TEST','PRIVATE','TEST BRAND','Gust')", [brand]);
     const rows = await server.memberFeedbackProducts(brand);
     assert.equal(rows.length, 1); assert.equal(rows[0].brand, brand);
+    assert.equal((await server.publicFeedbackProductBySlug(brand === "virginia" ? "lumen" : brand, rows[0].slug)).id, rows[0].id);
   }
+  const duplicates = await Promise.all([1,2].map(() => q("insert into workspace_items(brand,section,catalogue_group,title,product_name,flavor) values('kaja','catalogue','live','DUPLICATE','TEST','Gust') returning feedback_slug")));
+  assert.deepEqual(duplicates.map((rows) => rows[0].feedback_slug).sort(), ["test-2", "test-3"]);
+  await q("update workspace_items set deleted_at=now() where title='DUPLICATE'");
   await q("update workspace_items set deleted_at=now() where id=$1", [item.id]);
   assert.equal(await send(), "unavailable"); assert.equal(await server.publicFeedbackProduct(item.feedback_id), null);
   assert.equal((await server.memberProductComments(item.feedback_id)).length, 6);

@@ -10,12 +10,12 @@ const db=neon(process.env.DATABASE_URL);
 const output=process.env.FEEDBACK_QA_DIR; assert(output, 'FEEDBACK_QA_DIR required');mkdirSync(output,{recursive:true});
 const [owner]=await db.query("select id from members where slug='patrick'");
 const fixtureName='TEST FEEDBACK '+randomUUID();
-const [fixture]=await db.query("insert into workspace_items(brand,section,catalogue_group,title,body,product_name,flavor,created_by,updated_by) values('kaja','catalogue','live',$1,'PRIVATE TEST DESCRIPTION',$1,'Gust de test lung cu diacritice și detalii', $2,$2) returning id,feedback_id",[fixtureName,owner.id]);
+const [fixture]=await db.query("insert into workspace_items(brand,section,catalogue_group,title,body,product_name,flavor,created_by,updated_by) values('kaja','catalogue','live',$1,'PRIVATE TEST DESCRIPTION',$1,'Gust de test lung cu diacritice și detalii', $2,$2) returning id,feedback_id,feedback_slug",[fixtureName,owner.id]);
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const errors=[];
 try {
  const anon=await browser.newContext();const publicPage=await anon.newPage();publicPage.on('pageerror',e=>errors.push(e.message));
- await publicPage.goto(`${base}/feedback/${fixture.feedback_id}`);await publicPage.getByRole('button',{name:'RU',exact:true}).click();await publicPage.getByLabel('Анонимный комментарий').fill('TEST anonim din browser');
+ await publicPage.goto(`${base}/feedback/${fixture.feedback_id}`);assert.equal(new URL(publicPage.url()).pathname,`/feedback/kaja/${fixture.feedback_slug}`);await publicPage.getByRole('button',{name:'RU',exact:true}).click();await publicPage.getByLabel('Анонимный комментарий').fill('TEST anonim din browser');
  await publicPage.getByRole('button',{name:'RO',exact:true}).click();assert.equal(await publicPage.getByLabel('Comentariu anonim').inputValue(),'TEST anonim din browser');
  await publicPage.waitForTimeout(2100);
  await publicPage.getByRole('button',{name:'Trimite feedback',exact:true}).click();await publicPage.getByText('Mulțumim! Feedbackul tău a fost trimis.').waitFor();
@@ -39,7 +39,7 @@ try {
    assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    assert(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
    await dialog.getByRole('button',{name:'Copiază linkul'}).click();await dialog.getByText('Link copiat.').waitFor();
-   assert.equal(await p.evaluate(()=>navigator.clipboard.readText()),`https://kaja-platform.vercel.app/feedback/${fixture.feedback_id}`);
+   assert.equal(await p.evaluate(()=>navigator.clipboard.readText()),`https://kaja-platform.vercel.app/feedback/kaja/${fixture.feedback_slug}`);
    if(slug==='patrick') {await p.screenshot({path:`${output}/dialog-${width}.png`,fullPage:true});const qr=await context.request.get(`${base}/api/feedback/${fixture.feedback_id}/qr?download`);assert.equal(qr.status(),200);assert(qr.headers()['content-disposition'].includes('attachment'));const svg=await qr.text();assert(svg.startsWith('<svg'));writeFileSync(`${output}/qr.svg`,svg);await dialog.locator('.feedback-qr').screenshot({path:`${output}/qr.png`});}
    await p.keyboard.press('Escape');assert.equal(await p.getByRole('dialog').count(),0);assert(await card.evaluate(el=>document.activeElement===el));
   }

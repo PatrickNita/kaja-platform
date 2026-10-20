@@ -6,7 +6,11 @@ export const feedbackBrands = [
   { key: "virginia", label: "LUMEN" },
 ] as const;
 export type FeedbackBrand = (typeof feedbackBrands)[number]["key"];
-export type FeedbackProduct = { id: string; brand: string; name: string; flavor: string };
+export type FeedbackProduct = { id: string; brand: string; name: string; flavor: string; slug: string };
+export function feedbackPath(product: Pick<FeedbackProduct, "brand" | "slug">) {
+  const brand = product.brand === "virginia" ? "lumen" : product.brand;
+  return `/feedback/${brand}/${product.slug}`;
+}
 export type ProductComment = { id: number; body: string; createdAt: string };
 export const feedbackInput = z.object({
   product: z.uuid(),
