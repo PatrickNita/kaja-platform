@@ -10,7 +10,7 @@ export function FeedbackAdmin({ products, brand, origin }: { products: FeedbackP
   function close() { setSelected(null); requestAnimationFrame(() => opener.current?.focus()); }
   return <>
     <nav className="catalogue-submenu filter-nav brand-filter-nav" aria-label="Filtrează după brand">{feedbackBrands.map((b) => <Link key={b.key} href={`/feedback?brand=${b.key}`} className={brand === b.key ? "active" : undefined}>{b.label}</Link>)}</nav>
-    <section className="panel content-section"><div className="panel-head"><h1>Feedback</h1></div><div className="feedback-product-grid">{products.map((p) => <button key={p.id} type="button" className="item feedback-product" onClick={(event) => { opener.current = event.currentTarget; setSelected(p); }}>{p.name} - {p.flavor}</button>)}</div>{!products.length && <p className="feedback-secondary">Nu există produse în catalogul activ al acestui brand.</p>}</section>
+    <section className="panel content-section"><div className="panel-head"><h2>Feedback <span className="page-entry-count">({products.length})</span></h2></div><div className="items card-grid">{products.map((p) => <button key={p.id} type="button" className="card-wrap feedback-product" onClick={(event) => { opener.current = event.currentTarget; setSelected(p); }}><span className="item-title">{p.name} - {p.flavor}</span></button>)}</div>{!products.length && <p className="feedback-secondary">Nu există produse în catalogul activ al acestui brand.</p>}</section>
     {selected && <ProductFeedback key={selected.id} product={selected} origin={origin} close={close} />}
   </>;
 }
