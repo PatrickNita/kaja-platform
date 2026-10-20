@@ -28,3 +28,5 @@ node --env-file=.env.production.local scripts/feedback.integration.mjs
 The database integration test uses a random isolated schema and removes it in `finally`; no public-table fixtures are created.
 
 For browser QA, start a local production build, set `FEEDBACK_QA_DIR` to an output directory and optionally `PLAYWRIGHT_MODULE_PATH` to an installed Playwright module. Then run `node --env-file=.env.production.local scripts/feedback.browser.mjs`. Chrome is required. `FEEDBACK_TEST_BASE` defaults to `http://localhost:3120`; the production hostname is allowed for explicitly requested post-deployment checks. This test creates one clearly named temporary catalogue product, submits feedback only for that product, and removes its comments and product in `finally`. It never sends Telegram messages or writes test feedback to real products.
+
+If production secrets are protected and no authenticated member session is available, set `FEEDBACK_PUBLIC_ONLY=1` for the live public form smoke test; run the full four-role suite locally. Do not weaken authentication or add a test access endpoint for verification.

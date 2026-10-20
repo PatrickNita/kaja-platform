@@ -27,7 +27,7 @@ try {
  await publicPage.route('**/api/feedback',route=>route.fulfill({status:503,contentType:'application/json',body:'{"code":"unavailable"}'}));
  await publicPage.getByRole('button',{name:'Trimite feedback',exact:true}).click();await publicPage.locator('.b2b-error').waitFor();assert.equal(await publicPage.getByLabel('Comentariu anonim').inputValue(),'Pastrat la eroare');
  await publicPage.unroute('**/api/feedback');
- for(const slug of ['patrick','ionut','andrei','igor']) {
+ for(const slug of process.env.FEEDBACK_PUBLIC_ONLY === '1' ? [] : ['patrick','ionut','andrei','igor']) {
   const context=await browser.newContext({permissions:['clipboard-read','clipboard-write']});
   await context.addCookies([{name:'kaja_member',value:`${slug}.${createHmac('sha256',process.env.SESSION_SECRET).update(slug).digest('hex')}`,url:base}]);
   const p=await context.newPage();p.on('pageerror',e=>errors.push(e.message));
@@ -59,7 +59,7 @@ try {
   await p.getByRole('link',{name:'HEXENWERK',exact:true}).click();await p.getByText('Nu există produse în catalogul activ al acestui brand.').waitFor();assert(p.url().includes('brand=hexenwerk'));
   await context.close();
  }
- assert.deepEqual(errors,[]);console.log('Browser PASS: 4 roles, RO/RU, submission, private APIs, clipboard, SVG, Escape/focus, errors, filters, 320/390/768/1440.');
+ assert.deepEqual(errors,[]);console.log(process.env.FEEDBACK_PUBLIC_ONLY === '1' ? 'Public live browser PASS: RO/RU, submission, private API isolation, errors, 320/390/768/1440.' : 'Browser PASS: 4 roles, RO/RU, submission, private APIs, clipboard, SVG, Escape/focus, errors, filters, catalogue draft, 320/390/768/1440.');
 } finally {
  await browser.close();await db.transaction([db.query('delete from product_feedback where item_id=$1',[fixture.id]),db.query('delete from workspace_items where id=$1 and title=$2',[fixture.id,fixtureName])]);
  console.log('Fictive product and test comments removed.');
