@@ -34,7 +34,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
       setComments((old) => [...old, ...data.comments]); setMore(data.more);
     } catch { setError("Nu s-au putut încărca mesajele."); } finally { setLoading(false); }
   }
-  return <ConfirmDialog title={`${product.name} - ${product.flavor}`} busy={false} onClose={close} className="feedback-dialog">
+  return <ConfirmDialog title={`${product.name} - ${product.flavor}`} titleContent={<>{product.name} <span className="feedback-secondary">- {product.flavor}</span></>} busy={false} onClose={close} className="feedback-dialog">
     <div className="feedback-qr-panel">
       {/* A same-origin authenticated SVG route keeps QR generation on the server. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -21,7 +21,7 @@ export const products = [
   ["MANSSI", "Mango Lassi"],
   ["CIN&MON", "Lapte Scorțișoară"],
   ["MON BLANC", "Iced Wine (Muscat)"],
-  ["FOREST MASTER", "Vînăriță (Woodruff)"],
+  ["FOREST MASTER", "Vinariță (Woodruff)"],
   ["CHCK", "Cheesecake"],
   ["NILLA", "Vanilie"],
 ] as const;
