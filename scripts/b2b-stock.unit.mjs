@@ -10,6 +10,8 @@ const compile = (file) =>
       target: ts.ScriptTarget.ES2022,
     },
   }).outputText;
+const errors = {};
+new Function("exports", "require", compile("../src/lib/b2b/errors.ts"))(errors, require);
 const model = {};
 new Function("exports", "require", compile("../src/lib/b2b/model.ts"))(
   model,
@@ -33,7 +35,9 @@ new Function("exports", "require", compile("../src/app/api/b2b/route.ts"))(
       return { NextResponse: { json: (v, init) => Response.json(v, init) } };
     if (name === "next/cache") return { revalidatePath() {} };
     if (name.endsWith("/b2b/model")) return model;
+    if (name.endsWith("/b2b/errors")) return errors;
     if (name.endsWith("/b2b/crypto")) return {};
+    if (name.endsWith("/b2b/telegram")) return { enqueueOrderNotification: async () => {} };
     if (name.endsWith("/b2b/server"))
       return {
         internalMember: async () => ({
@@ -87,13 +91,18 @@ async function check({
       }),
     }),
   );
+  const responseBody = await response.json();
   assert.equal(
     response.status,
     status,
-    `${name} ${quantity} old=${old} admin=${admin}: ${JSON.stringify(await response.json())}`,
+    `${name} ${quantity} old=${old} admin=${admin}: ${JSON.stringify(responseBody)}`,
   );
-  if (status === 400)
+  if (status === 400) {
+    const body = responseBody;
+    assert.equal(body.errorCode, "stock");
+    assert(body.error.startsWith("STWY are"));
     assert.equal(calls, old === null ? 1 : 2, "Rejected stock must not mutate");
+  }
 }
 await check({ status: 200 });
 await check({ admin: true, status: 200 });

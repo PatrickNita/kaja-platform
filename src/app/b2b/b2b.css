@@ -1460,3 +1460,7 @@ body:has(.b2b-portal) {
     gap: 4px;
   }
 }
+.b2b-portal-header { display: grid; grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr); gap: 12px; align-items: center; }
+.b2b-portal-header > .logo { grid-column: 2; width: 150px; height: auto; }
+.b2b-portal-header > .feedback-languages { grid-column: 3; justify-self: end; }
+@media(max-width:420px) { .b2b-portal-header > .logo { width: clamp(64px, 25vw, 96px); } }

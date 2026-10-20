@@ -1,3 +1,4 @@
+import { b2bErrorCode } from "../../../lib/b2b/errors";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { sql } from "drizzle-orm";
@@ -47,10 +48,14 @@ const quantities = z
 const conflict =
   "Comanda sau datele au fost actualizate între timp. Reîncarcă pagina și verifică starea curentă.";
 
+function jsonResponse(data: { error?: string; [key: string]: unknown }, options?: { status: number }) {
+  return NextResponse.json(data.error ? { ...data, errorCode: b2bErrorCode(data.error, options?.status ?? 500) } : data, options);
+}
+
 export async function POST(request: Request) {
   const expectedOrigin = `${new URL(request.url).protocol}//${request.headers.get("host")}`;
   if (request.headers.get("origin") !== expectedOrigin)
-    return NextResponse.json(
+    return jsonResponse(
       { error: "Cerere neautorizată." },
       { status: 403 },
     );
@@ -67,7 +72,7 @@ export async function POST(request: Request) {
           )
         : null;
     if (mode === "portal" && !location)
-      return NextResponse.json(
+      return jsonResponse(
         { error: SUPPORT, expired: true },
         { status: 401 },
       );
@@ -76,12 +81,12 @@ export async function POST(request: Request) {
     let notificationId: number | undefined;
     if (operation === "createLocation" || operation === "editLocation") {
       if (!member)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Acces neautorizat." },
           { status: 403 },
         );
       if (operation === "editLocation" && !manager)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Doar Patrick și Ionut pot edita localuri." },
           { status: 403 },
         );
@@ -89,7 +94,7 @@ export async function POST(request: Request) {
         operation === "createLocation" &&
         (body.companyName !== undefined || body.idno !== undefined)
       )
-        return NextResponse.json(
+        return jsonResponse(
           {
             error:
               "Datele interne se completează doar la modificarea localului.",
@@ -123,18 +128,18 @@ export async function POST(request: Request) {
         ),
       );
       if (!updated)
-        return NextResponse.json({ error: conflict }, { status: 409 });
+        return jsonResponse({ error: conflict }, { status: 409 });
       result = updated;
     } else if (operation === "rotateLink") {
       if (!manager || !member)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Doar Patrick și Ionut pot regenera linkuri." },
           { status: 403 },
         );
       const locationId = id.parse(body.locationId),
         version = id.parse(body.version);
       if (body.confirmed !== true || body.invalidateSessions !== true)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Sunt necesare ambele confirmări." },
           { status: 400 },
         );
@@ -143,10 +148,10 @@ export async function POST(request: Request) {
         sql`update b2b_access_groups g set token_hash=${tokenHash(token)},token_cipher=${encryptToken(token)},version=g.version+1 where g.id=${id.parse(body.groupId)} and g.version=${version} and exists(select 1 from b2b_locations l where l.id=${locationId} and l.access_group_id=g.id) returning g.id`,
       );
       if (!updated)
-        return NextResponse.json({ error: conflict }, { status: 409 });
+        return jsonResponse({ error: conflict }, { status: 409 });
     } else if (operation === "saveOrder") {
       if (mode === "admin" && !manager)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Doar Patrick și Ionut pot plasa sau modifica comenzi." },
           { status: 403 },
         );
@@ -179,7 +184,7 @@ export async function POST(request: Request) {
               ),
           )
         )
-          return NextResponse.json(
+          return jsonResponse(
             {
               error:
                 "STWY are stoc epuizat. Nu poate fi adăugat sau mărit în comandă.",
@@ -192,7 +197,7 @@ export async function POST(request: Request) {
         0,
       );
       if (!Number.isSafeInteger(total) || total > 2147483647)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Cantitatea totală este prea mare." },
           { status: 400 },
         );
@@ -235,7 +240,7 @@ export async function POST(request: Request) {
           returning id,order_id
         ) select c.id,n.id as notification_id from changed c left join notified n on n.order_id=c.id`);
         if (!updated)
-          return NextResponse.json({ error: conflict }, { status: 409 });
+          return jsonResponse({ error: conflict }, { status: 409 });
         result = { id: orderId };
         notificationId = updated.notification_id ?? undefined;
       } else {
@@ -266,13 +271,13 @@ export async function POST(request: Request) {
             sql`with authorized as materialized (${authorized}) select o.id from b2b_orders o join authorized l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
           );
           if (!existing)
-            return NextResponse.json({ error: conflict }, { status: 409 });
+            return jsonResponse({ error: conflict }, { status: 409 });
           result = existing;
         }
       }
     } else if (operation === "status") {
       if (!manager || !member)
-        return NextResponse.json(
+        return jsonResponse(
           { error: "Doar Patrick și Ionut pot schimba starea comenzilor." },
           { status: 403 },
         );
@@ -292,15 +297,15 @@ export async function POST(request: Request) {
           select id,location_id,(total*0.05)::integer,${member.id} from paid returning order_id
         ) select order_id as id from credited`);
       if (!updated)
-        return NextResponse.json({ error: conflict }, { status: 409 });
+        return jsonResponse({ error: conflict }, { status: 409 });
     }
     if (notificationId) await enqueueOrderNotification(notificationId);
     revalidatePath("/b2b");
     revalidatePath("/comenzi");
-    return NextResponse.json({ ok: true, result });
+    return jsonResponse({ ok: true, result });
   } catch (error) {
     if (error instanceof z.ZodError)
-      return NextResponse.json(
+      return jsonResponse(
         {
           error:
             "Verifică datele introduse. Completează toate câmpurile și selectează cantități valide.",
@@ -308,8 +313,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     if (error instanceof Error && error.message === "Acces neautorizat.")
-      return NextResponse.json({ error: error.message }, { status: 403 });
-    return NextResponse.json(
+      return jsonResponse({ error: error.message }, { status: 403 });
+    return jsonResponse(
       {
         error:
           "Operația nu a reușit. Încearcă din nou; datele introduse au fost păstrate.",

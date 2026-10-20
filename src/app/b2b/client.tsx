@@ -1,5 +1,8 @@
 "use client";
 import "./b2b.css";
+import { PublicLanguageProvider, usePortalLanguage, LanguageSelector } from "../public-language";
+import { matchesProduct, type PublicLanguage } from "../../lib/public-language";
+import { requestError } from "../../lib/b2b/errors";
 import Image from "next/image";
 import { ConfirmDialog, Feedback, request } from "./ui";
 import { History } from "./order-history";
@@ -59,9 +62,9 @@ Pentru suport, contactați-ne pe Telegram: 076922600.`
 
 ${link}
 
-Выберите товары кнопками + / −, нажмите «Verifică comanda», затем «Plasează comanda». Можно искать по названию или вкусу.
+Выберите RU в правом верхнем углу. Выберите товары кнопками + / −, нажмите «Проверить заказ», затем «Оформить заказ». Можно искать по названию или вкусу.
 
-В разделе «Istoric comenzi» доступны ваши заказы и их статус. Заказ можно изменить до подтверждения. После оплаты начисляется кешбэк 5%, который отображается в вашем аккаунте.
+В разделе «История заказов» доступны ваши заказы и их статус. Заказ можно изменить до подтверждения. После оплаты начисляется кешбэк 5%, который отображается в вашем аккаунте.
 
 Сохраните ссылку: это личный доступ вашего заведения. Не передавайте её за пределы вашей команды.
 
@@ -119,10 +122,11 @@ function LocationDetails({
   location: Location;
   totalCashback?: number;
 }) {
+  const { t } = usePortalLanguage();
   return (
     <section
       className="card-wrap b2b-location-details"
-      aria-label="Datele localului"
+      aria-label={t("Datele localului")}
     >
       <h2 className="item-title b2b-location-name">{location.name}</h2>
       <p className="b2b-location-address">{location.address}</p>
@@ -134,7 +138,7 @@ function LocationDetails({
         {location.phone}
       </a>
       <p className="b2b-cashback">
-        {totalCashback === undefined ? "CASHBACK" : "CASHBACK TOTAL"}:{" "}
+        {totalCashback === undefined ? t("CASHBACK") : t("CASHBACK TOTAL")}:{" "}
         <strong>{money(totalCashback ?? location.cashback)}</strong>
       </p>
     </section>
@@ -303,6 +307,7 @@ export function OrderEditor({
   onDone: (id: number) => void;
   onCartChange?: (dirty: boolean) => void;
 }) {
+  const { language, t, flavor } = usePortalLanguage();
   const router = useRouter();
   const [counts, setCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(order?.items.map((i) => [i.id, i.quantity]) ?? []),
@@ -403,7 +408,7 @@ export function OrderEditor({
       router.refresh();
       onDone(response.result.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Trimiterea nu a reușit.");
+      setError(requestError(e, "Trimiterea nu a reușit."));
     } finally {
       setBusy(false);
       inFlight.current = false;
@@ -412,46 +417,44 @@ export function OrderEditor({
   return (
     <section
       className="b2b-editor"
-      aria-label={order ? "Modifică comanda" : "Comandă nouă"}
+      aria-label={order ? t("Modifică comanda") : t("Comandă nouă")}
     >
       {!hideHeading && (
-        <h2>{order ? `Modifică comanda #${order.id}` : "Comandă nouă"}</h2>
+        <h2>{order ? t(`Modifică comanda #${order.id}`) : t("Comandă nouă")}</h2>
       )}
       <input
         className="b2b-product-search"
         type="search"
-        aria-label="Caută după denumire sau gust"
-        placeholder="Caută după denumire sau gust…"
+        aria-label={t("Caută după denumire sau gust")}
+        placeholder={t("Caută după denumire sau gust…")}
         value={productSearch}
         onChange={(event) => setProductSearch(event.target.value)}
       />
       {!products.some((p) =>
-        searchKey(p.name + " " + p.flavor).includes(searchKey(productSearch)),
-      ) && <p role="status">Nu există produse care corespund căutării.</p>}
+        matchesProduct(p, productSearch),
+      ) && <p role="status">{t("Nu există produse care corespund căutării.")}</p>}
       <div className="b2b-products">
         {products
           .filter((p) =>
-            searchKey(p.name + " " + p.flavor).includes(
-              searchKey(productSearch),
-            ),
+            matchesProduct(p, productSearch),
           )
           .map((product) => (
             <article className="card-wrap b2b-product" key={product.id}>
               <div className="b2b-product-info">
                 <h3 className="item-title">{product.name}</h3>
                 <p className="b2b-product-meta">
-                  {product.flavor} · <span>{product.grams}g</span> ·{" "}
+                  {flavor(product.flavor)} · <span>{product.grams}{language === "ru" ? "г" : "g"}</span> ·{" "}
                   <span>{money(product.price)}</span>
                 </p>
               </div>
               <div className="b2b-product-controls">
                 <span className={`b2b-stock ${stockStatus(product.name)}`}>
-                  {stockLabel[stockStatus(product.name)]}
+                  {t(stockLabel[stockStatus(product.name)])}
                 </span>
                 <div className="b2b-quantity">
                   <button
                     type="button"
-                    aria-label={`Scade ${product.name}`}
+                    aria-label={t(`Scade ${product.name}`)}
                     disabled={!ready || busy || !(counts[product.id] > 0)}
                     onClick={() =>
                       setCounts((c) => ({
@@ -463,14 +466,14 @@ export function OrderEditor({
                     −
                   </button>
                   <output
-                    aria-label={`Cantitate ${product.name}`}
+                    aria-label={t(`Cantitate ${product.name}`)}
                     aria-live="polite"
                   >
                     {counts[product.id] ?? 0}
                   </output>
                   <button
                     type="button"
-                    aria-label={`Adaugă ${product.name}`}
+                    aria-label={t(`Adaugă ${product.name}`)}
                     disabled={
                       !ready ||
                       busy ||
@@ -498,7 +501,7 @@ export function OrderEditor({
       <div className="b2b-cart-bar">
         <div>
           <strong>
-            {units} buc. · {money(total)}
+            {units} {t("buc. · ")}{money(total)}
           </strong>
           <span>{location.name}</span>
         </div>
@@ -509,8 +512,7 @@ export function OrderEditor({
             setError("");
             setReview(true);
           }}
-        >
-          Verifică {order ? "modificările" : "comanda"}
+        >{t("Verifică")} {order ? t("modificările") : t("comanda")}
         </button>
       </div>
       <Feedback error={!review ? error : ""} />
@@ -527,21 +529,19 @@ export function OrderEditor({
               {order ? order.location_snapshot.address : location.address}
             </p>
           </div>
-          <h4 className="b2b-checkout-label b2b-checkout-products-title">
-            Produse selectate
-          </h4>
+          <h4 className="b2b-checkout-label b2b-checkout-products-title">{t("Produse selectate")}</h4>
           <ul
             className="b2b-review b2b-checkout-list"
-            aria-label="Produsele comenzii"
+            aria-label={t("Produsele comenzii")}
           >
             {selected.map((p) => (
               <li key={p.id}>
                 <span className="b2b-checkout-product">
                   <strong>{p.name}</strong>
-                  <span className="b2b-checkout-flavor"> · {p.flavor}</span>
+                  <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
                 </span>
                 <span className="b2b-checkout-amount">
-                  {counts[p.id]} buc. ·{" "}
+                  {counts[p.id]} {t("buc. ·")}{" "}
                   <strong>{money(p.price * counts[p.id])}</strong>
                 </span>
               </li>
@@ -549,18 +549,18 @@ export function OrderEditor({
           </ul>
           <div className="b2b-checkout-footer">
             <p className="b2b-checkout-total">
-              <span>Total</span>
+              <span>{t("Total")}</span>
               <span className="b2b-checkout-amount">
-                {units} buc. · <strong>{money(total)}</strong>
+                {units} {t("buc. · ")}<strong>{money(total)}</strong>
               </span>
             </p>
             <Feedback error={error} />
             <button className="button" disabled={busy} onClick={submit}>
               {busy
-                ? "Se trimite…"
+                ? t("Se trimite…")
                 : order
-                  ? "Salvează modificările"
-                  : "Plasează comanda"}
+                  ? t("Salvează modificările")
+                  : t("Plasează comanda")}
             </button>
           </div>
         </ConfirmDialog>
@@ -569,7 +569,11 @@ export function OrderEditor({
   );
 }
 
-export function B2BPortal({ data }: { data: B2BData }) {
+export function B2BPortal({ data, initialLanguage = "ro" }: { data: B2BData; initialLanguage?: PublicLanguage }) {
+  return <PublicLanguageProvider initialLanguage={initialLanguage}><PortalContent data={data} /></PublicLanguageProvider>;
+}
+function PortalContent({ data }: { data: B2BData }) {
+  const { language, setLanguage, t } = usePortalLanguage();
   const [view, setView] = useState<"order" | "history">("order");
   const [success, setSuccess] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -602,12 +606,10 @@ export function B2BPortal({ data }: { data: B2BData }) {
   }
   if (!location)
     return (
-      <p role="alert">
-        Accesul la local nu mai este disponibil. Redeschide linkul de acces.
-      </p>
+      <p role="alert">{t("Accesul la local nu mai este disponibil. Redeschide linkul de acces.")}</p>
     );
   return (
-    <main className="b2b-portal">
+    <main className="b2b-portal" lang={language}>
       <header className="b2b-portal-header">
         <Image
           className="logo"
@@ -617,12 +619,13 @@ export function B2BPortal({ data }: { data: B2BData }) {
           height={240}
           priority
         />
+        <LanguageSelector language={language} setLanguage={setLanguage} />
       </header>
       <div className="b2b-portal-overview">
         <LocationDetails location={location} totalCashback={totalCashback} />
         <nav
           className={`b2b-portal-navigation ${data.locations.length > 1 ? "b2b-multi-location" : ""}`}
-          aria-label="Navigare comenzi"
+          aria-label={t("Navigare comenzi")}
         >
           <button
             className={view === "order" ? "button" : "button ghost"}
@@ -631,9 +634,7 @@ export function B2BPortal({ data }: { data: B2BData }) {
               setView("order");
               setSuccess("");
             }}
-          >
-            Comandă nouă
-          </button>
+          >{t("Comandă nouă")}</button>
           <button
             className={view === "history" ? "button" : "button ghost"}
             aria-pressed={view === "history"}
@@ -641,22 +642,18 @@ export function B2BPortal({ data }: { data: B2BData }) {
               setView("history");
               setSuccess("");
             }}
-          >
-            Istoric comenzi
-          </button>
+          >{t("Istoric comenzi")}</button>
           {data.locations.length > 1 && (
             <button
               className="button ghost"
               onClick={() => setChoosingLocation(true)}
-            >
-              Schimbă locația
-            </button>
+            >{t("Schimbă locația")}</button>
           )}
         </nav>
       </div>
       {choosingLocation && (
         <ConfirmDialog
-          title="Schimbă locația"
+          title={t("Schimbă locația")}
           busy={false}
           onClose={() => setChoosingLocation(false)}
           className="b2b-location-picker"

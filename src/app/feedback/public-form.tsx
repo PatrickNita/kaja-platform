@@ -1,13 +1,15 @@
 "use client";
 import { useRef, useState, type FormEvent } from "react";
+import { usePublicLanguage, LanguageSelector } from "../public-language";
+import type { PublicLanguage } from "../../lib/public-language";
 import type { FeedbackProduct } from "../../lib/feedback-model";
 
 const messages = {
   ro: { label: "Comentariu anonim", hint: "Nu include nume, numere de telefon sau alte date personale.", send: "Trimite feedback", busy: "Se trimite…", success: "Mulțumim! Feedbackul tău a fost trimis.", error: "Mesajul nu a putut fi trimis. Încearcă din nou.", invalid: "Scrie între 1 și 2.000 de caractere și încearcă din nou. Dacă pagina a rămas deschisă mult timp, reîncarc-o.", limited: "Ai trimis prea multe mesaje. Încearcă din nou peste 10 minute." },
   ru: { label: "Анонимный комментарий", hint: "Не указывайте имена, номера телефонов и другие личные данные.", send: "Отправить отзыв", busy: "Отправка…", success: "Спасибо! Ваш отзыв отправлен.", error: "Не удалось отправить отзыв. Попробуйте ещё раз.", invalid: "Введите от 1 до 2 000 символов и повторите попытку. Если страница открыта давно, обновите её.", limited: "Слишком много сообщений. Попробуйте снова через 10 минут." },
 };
-export function PublicFeedbackForm({ product, challenge }: { product: FeedbackProduct; challenge: string }) {
-  const [language, setLanguage] = useState<"ro" | "ru">("ro");
+export function PublicFeedbackForm({ product, challenge, initialLanguage = "ro" }: { product: FeedbackProduct; challenge: string; initialLanguage?: PublicLanguage }) {
+  const { language, setLanguage, flavor } = usePublicLanguage(initialLanguage);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -29,8 +31,8 @@ export function PublicFeedbackForm({ product, challenge }: { product: FeedbackPr
   }
   return <section className="item feedback-public-card" lang={language}>
     <div className="feedback-public-header">
-      <h1 className="item-title">{product.name} <span className="feedback-secondary">- {product.flavor}</span></h1>
-      <div className="feedback-languages" role="group" aria-label="Limba / Язык">{(["ro", "ru"] as const).map((lang) => <button key={lang} type="button" className={`button ${language === lang ? "" : "ghost"}`} aria-pressed={language === lang} onClick={() => setLanguage(lang)}>{lang.toUpperCase()}</button>)}</div>
+      <h1 className="item-title">{product.name} <span className="feedback-secondary">- {flavor(product.flavor)}</span></h1>
+      <LanguageSelector language={language} setLanguage={setLanguage} />
     </div>
     {sent ? <p role="status" className="b2b-success">{t.success}</p> : <form onSubmit={submit} className="form">
       <label htmlFor="feedback-body">{t.label}</label><textarea id="feedback-body" value={body} onChange={(event) => setBody(event.target.value)} required minLength={1} maxLength={2000} rows={4} disabled={busy} aria-describedby="feedback-hint" />

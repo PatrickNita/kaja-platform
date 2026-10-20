@@ -1,18 +1,18 @@
 "use client";
 import { useEffect, useRef, useId, type ReactNode } from "react";
+import { B2BRequestError, translatedError } from "../../lib/b2b/errors";
+import { usePortalLanguage } from "../public-language";
 export async function request(body: Record<string, unknown>) {
   const response = await fetch("/api/b2b", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }).catch(() => {
-    throw new Error(
-      "Conexiunea a eșuat. Verifică internetul și încearcă din nou.",
-    );
+    throw new B2BRequestError("Conexiunea a eșuat. Verifică internetul și încearcă din nou.", "network");
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result)
-    throw new Error(result?.error ?? "Operația nu a reușit. Încearcă din nou.");
+    throw new B2BRequestError(result?.error ?? "Operația nu a reușit. Încearcă din nou.", result?.errorCode ?? "failed");
   return result;
 }
 export function Feedback({
@@ -22,16 +22,17 @@ export function Feedback({
   error?: string;
   success?: string;
 }) {
+  const { language, t } = usePortalLanguage();
   return (
     <>
       {error && (
         <p className="b2b-error" role="alert">
-          {error}
+          {t(translatedError(error, language))}
         </p>
       )}
       {success && (
         <p className="b2b-success" role="status">
-          {success}
+          {t(success)}
         </p>
       )}
     </>
@@ -54,6 +55,7 @@ export function ConfirmDialog({
   onClose: () => void;
   busy: boolean;
 }) {
+  const { t, language } = usePortalLanguage();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -74,6 +76,7 @@ export function ConfirmDialog({
     <dialog
       className={`entry-modal-surface b2b-dialog ${className}`}
       ref={ref}
+      lang={language}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
@@ -82,12 +85,12 @@ export function ConfirmDialog({
     >
       <div className="b2b-dialog-head">
         <h3 id={titleId} className="item-title" tabIndex={-1}>
-          {titleContent ?? title}
+          {titleContent ?? t(title)}
           {subtitle && <span className="b2b-dialog-date"> — {subtitle}</span>}
         </h3>
         <button
           type="button"
-          aria-label="Închide dialogul"
+          aria-label={t("Închide dialogul")}
           disabled={busy}
           onClick={onClose}
         >

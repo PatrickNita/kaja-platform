@@ -4,8 +4,8 @@ export const shortStatus: Record<Status, string> = {
   confirmed: "Confirmată",
   paid: "Achitată",
 };
-export const formatOrderDate = (date: string) =>
-  new Intl.DateTimeFormat("ro-RO", {
+export const formatOrderDate = (date: string, language: "ro" | "ru" = "ro") =>
+  new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "ro-RO", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Europe/Chisinau",
