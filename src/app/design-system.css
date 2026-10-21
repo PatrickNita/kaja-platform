@@ -337,7 +337,7 @@ body .feedback-history-row time, body .feedback-history-row .feedback-history-br
 body .feedback-product { position:relative; padding-right:36px; }
 body .feedback-product::after { content:"›"; position:absolute; right:16px; top:50%; transform:translateY(-50%); color:#777; font-size:20px; font-weight:400; }
 @media (min-width:1200px) {
-  body .member-dashboard { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+  body .member-dashboard { grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
   body .member-dashboard > .section-intro, body .member-dashboard > nav, body .member-dashboard > .dashboard-stats, body .member-dashboard > .read-state-error { grid-column:1/-1; }
   body .member-dashboard > .dashboard-stats { max-width:560px; }
   body .member-dashboard:has(.dashboard-stats) > section { grid-column:auto; }
@@ -410,7 +410,7 @@ body .feedback-product::after { content:"›"; position:absolute; right:16px; to
 body .b2b-dialog-date { font-family:inherit; }
 
 @media (max-width:800px) {
-  body .member-dashboard:has(.dashboard-stats) > section:first-of-type .premium-list { max-height:320px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+  body .member-dashboard:has(.dashboard-stats) > section .premium-list { max-height:320px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
   body .member-dashboard .premium-row { min-height:64px; padding:10px 12px; }
 }
 /* Keep close controls available while long dialog contents scroll. */
@@ -449,4 +449,9 @@ body .portal-location-contact a { justify-self:start; display:flex; align-items:
   body .portal-location-main > .icon-tile .navigation-icon { width:18px; height:18px; }
   body .portal-location-contact { font-size:12px; }
   body .portal-location-panel .location-switch { grid-column:1/-1; justify-self:end; margin:0; max-width:none; }
+}
+
+body .member-dashboard > section { min-width:0; }
+@media(min-width:801px) {
+  body .member-dashboard:has(.dashboard-stats) > section .premium-list { max-height:480px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
 }

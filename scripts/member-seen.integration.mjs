@@ -47,7 +47,10 @@ try {
   const counts = async (slug = "patrick", brand = "all") => (await dashboard.dashboardData(slug, brand, false)).counts;
   assert.deepEqual(await counts(), { orders: 3, feedback: 65 });
   assert.deepEqual(await counts("patrick", "hexenwerk"), { orders: 0, feedback: 0 });
-  assert.deepEqual((await dashboard.dashboardData("patrick", "all", false)).tasks.map(t => t.title), ["My task"]);
+  for (const [slug, expected] of [["patrick", ["My task"]], ["ionut", ["Other task"]], ["andrei", []], ["igor", []]]) {
+    assert.deepEqual((await dashboard.dashboardData(slug, "all", false)).tasks.map(t => t.title), expected);
+    assert.deepEqual((await dashboard.dashboardData(slug, "hexenwerk", false)).tasks, []);
+  }
   await seen.markOrderSeen("patrick", 1, 1); assert.equal((await counts()).orders, 2);
   assert.equal((await counts("ionut")).orders, 3);
   await q("update b2b_orders set version=2 where id=1");
