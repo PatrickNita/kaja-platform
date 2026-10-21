@@ -1,4 +1,6 @@
 import "server-only";
+import type { FeedbackHistoryBrand, FeedbackHistoryCursor, FeedbackHistoryRow } from "./feedback-history";
+import { feedbackHistoryQuery } from "./feedback-history";
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { currentMember } from "./auth";
@@ -28,4 +30,9 @@ export async function publicFeedbackProductBySlug(publicBrand: string, slug: str
   if (!["kaja", "hexenwerk", "lumen"].includes(publicBrand) || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 200) return null;
   const [row] = await feedbackQuery<FeedbackProduct>(sql`select feedback_id as id,brand,product_name as name,flavor,feedback_slug as slug from workspace_items where brand=${brand} and feedback_slug=${slug} and section='catalogue' and catalogue_group='live' and deleted_at is null and nullif(btrim(product_name),'') is not null and nullif(btrim(flavor),'') is not null`);
   return row ?? null;
+}
+
+export async function memberFeedbackHistory(brand: FeedbackHistoryBrand, before: FeedbackHistoryCursor | null) {
+  if (!await currentMember()) throw new Error("Unauthorized");
+  return feedbackQuery<FeedbackHistoryRow>(feedbackHistoryQuery(brand, before));
 }
