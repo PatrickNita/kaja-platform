@@ -417,10 +417,10 @@ body .b2b-dialog-date { font-family:inherit; }
 body .entry-modal-surface > .b2b-dialog-head, body .entry-modal-surface .entry-modal-header { position:sticky; top:0; z-index:4; background:var(--surface-raised); padding-block:8px; }
 /* Catalogue details: one compact heading, then media and actions. */
 body .entry-modal-surface .product-entry-editor > .entry-modal-header { margin:0 0 12px; padding:0 0 12px; align-items:flex-start; }
-body .product-entry-editor .entry-modal-title-group { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; }
+body .product-entry-editor .entry-modal-title-group { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; }
 body .product-entry-editor .entry-modal-title-group > .item-title { margin:0; font-size:18px; line-height:1.4; }
-body .product-entry-editor .entry-author-group { align-self:center; }
-body .product-entry-editor :is(.entry-product-flavor,.entry-product-usage) { grid-column:1/-1; margin:0; color:var(--muted); font-size:13px; font-weight:400; line-height:1.4; }
+body .product-entry-editor .entry-author-group { flex:0 0 auto; align-self:center; }
+body .product-entry-editor :is(.entry-product-flavor,.entry-product-usage) { flex-basis:100%; margin:0; color:var(--muted); font-size:13px; font-weight:400; line-height:1.4; }
 body .entry-product-usage > .meta { margin:0; font-size:12px; }
 body .entry-modal-surface .product-entry-editor > .entry-card-content { margin:0; padding:0; border:0; gap:12px; }
 body .entry-gallery-empty:empty { display:none; }
