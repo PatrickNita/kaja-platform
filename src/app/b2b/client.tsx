@@ -8,6 +8,7 @@ import { NavigationIcon } from "../navigation-icon";
 import { SearchField, ProductPlaceholder } from "../design-primitives";
 import { ConfirmDialog, Feedback, request } from "./ui";
 import { History } from "./order-history";
+import { StockAdmin } from "./stock-admin";
 import { FilterSelect } from "./filter-select";
 import { sortLocations, formatOrderDate } from "../../lib/b2b/presentation";
 import { contactKey } from "../../lib/b2b/contact";
@@ -352,7 +353,7 @@ export function OrderEditor({
                 ? Math.min(
                     stored.counts[p.id],
                     stockLimit(
-                      p.name,
+                      p,
                       order?.items.find((i) => i.id === p.id)?.quantity ?? 0,
                     ),
                   )
@@ -457,8 +458,8 @@ export function OrderEditor({
                   {flavor(product.flavor)} · <span>{product.grams}{language === "ru" ? "г" : "g"}</span> ·{" "}
                   <span>{money(product.price)}</span>
                 </p>
-                <span className={`b2b-stock ${stockStatus(product.name)}`}>
-                  {t(stockLabel[stockStatus(product.name)])}
+                <span className={`b2b-stock ${stockStatus(product)}`}>
+                  {t(stockLabel[stockStatus(product)])}
                 </span>
               </div>
               <div className="b2b-product-controls">
@@ -490,7 +491,7 @@ export function OrderEditor({
                       busy ||
                       (counts[product.id] ?? 0) >=
                         stockLimit(
-                          product.name,
+                          product,
                           order?.items.find((i) => i.id === product.id)
                             ?.quantity ?? 0,
                         )
@@ -1080,10 +1081,10 @@ export function B2BAdmin({
 }: {
   data: B2BData;
   memberSlug: string;
-  initialView?: "locations" | "history";
+  initialView?: "locations" | "history" | "stock";
 }) {
   const manager = canManageOrders(memberSlug);
-  const [view, setView] = useState(initialView);
+  const [view, setView] = useState(initialView === "stock" && !manager ? "locations" : initialView);
   const [locationSearch, setLocationSearch] = useState("");
   const [locationSort, setLocationSort] = useState("name");
   const [detailsLocation, setDetailsLocation] = useState<number | null>(null);
@@ -1091,15 +1092,14 @@ export function B2BAdmin({
   const [historyLocation, setHistoryLocation] = useState<number | null>(null);
   useEffect(() => {
     const sync = () =>
-      setView(
-        new URLSearchParams(window.location.search).get("tab") === "history"
-          ? "history"
-          : "locations",
-      );
+      setView(new URLSearchParams(window.location.search).get("tab") === "stock" && manager ? "stock" : new URLSearchParams(window.location.search).get("tab") === "history" ? "history" : "locations");
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
-  }, []);
-  function switchView(next: "locations" | "history") {
+  }, [manager]);
+  function switchView(next: "locations" | "history" | "stock") {
+    if (next === "stock" && !manager) return;
+    setDetailsLocation(null);
+    setLocationForm(null);
     setView(next);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
@@ -1118,7 +1118,7 @@ export function B2BAdmin({
   const detail = data.locations.find((l) => l.id === detailsLocation);
   return (
     <div className="workspace-content b2b-admin">
-      <div className="section-intro"><h1>{view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>
+      <div className="section-intro"><h1>{view === "stock" ? "Administrare stoc" : view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "stock" ? "Actualizează cantitățile disponibile pentru comenzi." : view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>
       <div className="b2b-section-navigation">
       <nav className="catalogue-submenu filter-nav" aria-label="B2B">
         <a
@@ -1141,6 +1141,7 @@ export function B2BAdmin({
         >
           Istoric Comenzi
         </a>
+        {manager && <a href="/b2b?tab=stock" className={view === "stock" ? "active" : undefined} onClick={event => {event.preventDefault();switchView("stock");}}>Administrare stoc</a>}
       </nav>
       {view === "locations" && <button className="button b2b-add-mobile" onClick={() => setLocationForm("new")}>Adaugă local</button>}
       </div>
@@ -1167,6 +1168,7 @@ export function B2BAdmin({
           </button>
         </div>
       )}
+      {view === "stock" && manager && <StockAdmin />}
       <Feedback error={error} success={success} />
       {view === "locations" && locationForm && (
         <LocationForm

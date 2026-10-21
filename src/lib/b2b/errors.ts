@@ -6,7 +6,7 @@ const errors = {
   invalid: ["Verifică datele introduse. Completează toate câmpurile și selectează cantități valide.", "Проверьте данные. Заполните все поля и укажите допустимое количество товаров."],
   quantity: ["Cantitatea totală este prea mare.", "Общее количество слишком велико."],
   unavailable: ["Produs indisponibil.", "Товар недоступен."],
-  stock: ["STWY are stoc epuizat. Nu poate fi adăugat sau mărit în comandă.", "STWY нет в наличии. Нельзя добавить товар или увеличить его количество."],
+  stock: ["Stoc insuficient pentru cantitatea solicitată. Reîncarcă stocul și verifică produsele.", "Недостаточно товара для указанного количества. Обновите остатки и проверьте товары."],
   network: ["Conexiunea a eșuat. Verifică internetul și încearcă din nou.", "Ошибка соединения. Проверьте интернет и попробуйте снова."],
   failed: ["Operația nu a reușit. Încearcă din nou; datele introduse au fost păstrate.", "Не удалось выполнить действие. Попробуйте снова; введённые данные сохранены."],
 } as const;
@@ -14,7 +14,7 @@ export function b2bErrorCode(message: string, status: number) {
   if (message.startsWith("Comanda sau datele")) return "conflict";
   if (message.startsWith("Verifică datele")) return "invalid";
   if (message.startsWith("Cantitatea totală")) return "quantity";
-  if (message.startsWith("STWY are")) return "stock";
+  if (message.startsWith("Stoc insuficient") || message.startsWith("STWY are")) return "stock";
   if (message === "Produs indisponibil.") return "unavailable";
   if (status === 401) return "expired";
   if (status === 403) return "unauthorized";
@@ -30,4 +30,13 @@ export function translatedError(message: string, language: PublicLanguage) {
   const code = message.startsWith("@b2b:") ? message.slice(5) : null;
   if (code && code in errors) return errors[code as keyof typeof errors][language === "ru" ? 1 : 0];
   return message;
+}
+
+export function isStockError(error: unknown): boolean {
+  let current = error;
+  for (let i=0;i<8 && current && typeof current === "object";i++) {
+    if ("message" in current && typeof current.message === "string" && current.message.includes("B2B_STOCK_INSUFFICIENT")) return true;
+    current = "cause" in current ? current.cause : null;
+  }
+  return false;
 }

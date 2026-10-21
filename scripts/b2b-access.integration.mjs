@@ -9,6 +9,7 @@ import ts from "typescript";
 import { neon } from "@neondatabase/serverless";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { migrateAccessGroups } from "./migrate-b2b-access.mjs";
+import { verifyInventory } from "./b2b-inventory-scenarios.mjs";
 import { contactKey } from "../src/lib/b2b/contact.ts";
 process.env.B2B_LINK_ENCRYPTION_KEY = randomBytes(32).toString("hex");
 const require = createRequire(import.meta.url);
@@ -71,7 +72,7 @@ function load(path) {
           get: () => (cookie ? { value: cookie } : undefined),
         }),
       };
-    if (path.endsWith("server.ts") && name === "../auth")
+    if (name.endsWith("/auth"))
       return { currentMember: async () => member };
     if (name === "../db" || name === "./db")
       return {
@@ -189,6 +190,10 @@ try {
       .split("--> statement-breakpoint")
       .map((q) => db.query(q)),
   );
+  const stockMigration = readFileSync("drizzle/0022_b2b_stock.sql","utf8").split("--> statement-breakpoint");
+  await db.transaction(stockMigration.map(q => db.query(q)));
+  assert.equal((await db.query("select count(*)::int as n from b2b_products where stock=100"))[0].n,25);
+  await db.query("update b2b_products set stock=100000");
   server = load("src/lib/b2b/server.ts");
   server.internalMember = async () => {
     const [m] = await db.query("select * from members where slug=$1", [
@@ -833,6 +838,8 @@ try {
   console.log(
     "PASS: B2B notification snapshots, no-op/conflict/status suppression, request idempotency, concurrent delivery, Telegram failure and retry.",
   );
+  member = {slug:"patrick",name:"Patrick"};
+  await verifyInventory({db, api, load, setMember:value => {member=value;}, base, stockMigration});
   console.log(
     "PASS: " +
       checks +

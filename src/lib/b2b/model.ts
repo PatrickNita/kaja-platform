@@ -47,6 +47,8 @@ export type Product = {
   flavor: string;
   grams: number;
   price: number;
+  stock?: number;
+  stockVersion?: number;
 };
 export type Location = {
   id: number;
@@ -87,13 +89,14 @@ export type B2BData = {
 };
 
 export type StockStatus = "available" | "limited" | "unavailable";
-export const stockOverrides: Partial<Record<string, StockStatus>> = {};
-export const stockStatus = (name: string): StockStatus =>
-  stockOverrides[name] ?? "available";
+export const stockStatus = (product: Pick<Product, "stock">): StockStatus => {
+  const quantity = product.stock ?? 10000;
+  return quantity === 0 ? "unavailable" : quantity <= 50 ? "limited" : "available";
+};
 export const stockLabel: Record<StockStatus, string> = {
   available: "În stoc",
   limited: "Stoc limitat",
   unavailable: "Stoc epuizat",
 };
-export const stockLimit = (name: string, existingQuantity = 0) =>
-  stockStatus(name) === "unavailable" ? existingQuantity : 10000;
+export const stockLimit = (product: Pick<Product, "stock">, existingQuantity = 0) =>
+  Math.min(10000, Math.max(0, (product.stock ?? 10000) + existingQuantity));

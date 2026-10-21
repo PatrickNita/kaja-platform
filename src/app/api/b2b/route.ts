@@ -1,5 +1,5 @@
 import { markOrderSeen } from "../../../lib/member-seen";
-import { b2bErrorCode } from "../../../lib/b2b/errors";
+import { b2bErrorCode, isStockError } from "../../../lib/b2b/errors";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { sql } from "drizzle-orm";
@@ -12,8 +12,6 @@ import {
 } from "../../../lib/b2b/server";
 import { encryptToken, newToken, tokenHash } from "../../../lib/b2b/crypto";
 import {
-  stockStatus,
-  stockLimit,
   canManageOrders,
   type Product,
 } from "../../../lib/b2b/model";
@@ -167,33 +165,7 @@ export async function POST(request: Request) {
         if (!product) throw new Error("Produs indisponibil.");
         return { ...product, quantity: item.quantity };
       });
-      const unavailable = lines.filter(
-        (line) => stockStatus(line.name) === "unavailable",
-      );
-      if (unavailable.length) {
-        const existing = body.orderId
-          ? await query<{ id: number; quantity: number }>(
-              sql`select i.product_id as id,i.quantity from b2b_order_items i join b2b_orders o on o.id=i.order_id where o.id=${id.parse(body.orderId)} and o.location_id=${locationId}`,
-            )
-          : [];
-        if (
-          unavailable.some(
-            (line) =>
-              line.quantity >
-              stockLimit(
-                line.name,
-                existing.find((i) => i.id === line.id)?.quantity ?? 0,
-              ),
-          )
-        )
-          return jsonResponse(
-            {
-              error:
-                "STWY are stoc epuizat. Nu poate fi adăugat sau mărit în comandă.",
-            },
-            { status: 400 },
-          );
-      }
+      lines.sort((a,b) => a.id-b.id);
       const total = lines.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0,
@@ -314,6 +286,7 @@ export async function POST(request: Request) {
     revalidatePath("/comenzi");
     return jsonResponse({ ok: true, result });
   } catch (error) {
+    if (isStockError(error)) return jsonResponse({ error: "Stoc insuficient pentru cantitatea solicitată. Reîncarcă stocul și verifică produsele." }, { status:409 });
     if (error instanceof z.ZodError)
       return jsonResponse(
         {

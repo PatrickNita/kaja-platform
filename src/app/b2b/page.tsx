@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { canManageOrders } from "../../lib/b2b/model";
 import type { Metadata } from "next";
 import { currentMember } from "../../lib/auth";
 import { loadData } from "../../lib/b2b/server";
@@ -23,6 +25,7 @@ export default async function B2BPage({
         <p>Folosește linkul personal de membru pentru acces.</p>
       </main>
     );
+  if (tab === "stock" && !canManageOrders(member.slug)) redirect("/b2b?tab=locations");
   return (
     <main className="workspace-shell">
       <WorkspaceHeader view="b2b" memberName={member.name} />
@@ -36,7 +39,7 @@ export default async function B2BPage({
       <B2BAdmin
         data={await loadData()}
         memberSlug={member.slug}
-        initialView={tab === "history" ? "history" : "locations"}
+        initialView={tab === "stock" ? "stock" : tab === "history" ? "history" : "locations"}
       />
     </main>
   );

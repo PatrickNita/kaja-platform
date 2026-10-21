@@ -245,7 +245,7 @@ function OrderDialog({
                     Math.min(
                       saved.counts[p.id],
                       stockLimit(
-                        p.name,
+                        p,
                         order.items.find((i) => i.id === p.id)?.quantity ?? 0,
                       ),
                     ),
@@ -275,7 +275,7 @@ function OrderDialog({
         Math.min(
           (c[product.id] ?? 0) + delta,
           stockLimit(
-            product.name,
+            product,
             order.items.find((i) => i.id === product.id)?.quantity ?? 0,
           ),
         ),
@@ -306,7 +306,7 @@ function OrderDialog({
               !editable ||
               (counts[p.id] ?? 0) >=
                 stockLimit(
-                  p.name,
+                  p,
                   order.items.find((i) => i.id === p.id)?.quantity ?? 0,
                 )
             }

@@ -18,6 +18,12 @@ let member,
 const exports = {};
 const real = (name) => require(name);
 new Function("exports", "require", code)(exports, (name) => {
+  if (name.endsWith("/member-seen")) return {markOrderSeen:async()=>{}};
+  if (name.endsWith("/b2b/errors")) {
+    const result={};
+    new Function("exports",ts.transpileModule(readFileSync("src/lib/b2b/errors.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(result);
+    return result;
+  }
   if (name.endsWith("/b2b/telegram")) return {enqueueOrderNotification: async () => {}};
   if (name === "next/server")
     return {

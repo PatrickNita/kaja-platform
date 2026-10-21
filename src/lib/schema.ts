@@ -207,6 +207,7 @@ export const b2bLocations = pgTable('b2b_locations', {
 export const b2bProducts = pgTable('b2b_products', {
  id: integer('id').primaryKey(),name: varchar('name',{length:160}).notNull(),flavor:varchar('flavor',{length:160}).notNull(),
  grams:integer('grams').notNull().default(200),price:integer('price').notNull().default(40000),position:integer('position').notNull(),
+ stock:integer('stock').notNull().default(100),stockVersion:integer('stock_version').notNull().default(1),
 });
 export const b2bOrders = pgTable('b2b_orders', {
  id:serial('id').primaryKey(),locationId:integer('location_id').notNull().references(()=>b2bLocations.id),
