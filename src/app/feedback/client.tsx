@@ -43,7 +43,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
       <input className="feedback-link" value={link} readOnly aria-label="Link public feedback" onFocus={(event) => event.currentTarget.select()} />
       {copied && <p role="status" className="b2b-success">Link copiat.</p>}
     </div>
-    <h4>Comentarii</h4>{error && <p className="b2b-error" role="alert">{error}</p>}
-    <div className="feedback-comments">{comments.map((c) => <article key={c.id} className="feedback-comment"><time className="feedback-secondary" dateTime={c.createdAt}>{new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Chisinau" }).format(new Date(c.createdAt))}</time><p>{c.body}</p></article>)}{!loading && !comments.length && !error && <p className="feedback-secondary">Nu există feedback pentru acest produs.</p>}{loading && <p role="status">Se încarcă…</p>}{more && <button type="button" className="button ghost" disabled={loading} onClick={next}>Mai multe comentarii</button>}</div>
+    <h4 className="feedback-comments-title">Comentarii</h4>{error && <p className="b2b-error" role="alert">{error}</p>}
+    <div className="feedback-comments">{comments.map((c) => <article key={c.id} className="feedback-comment"><p>{c.body}</p><time className="feedback-secondary" dateTime={c.createdAt}>{new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Chisinau" }).format(new Date(c.createdAt))}</time></article>)}{!loading && !comments.length && !error && <p className="feedback-secondary">Nu există feedback pentru acest produs.</p>}{loading && <p role="status">Se încarcă…</p>}{more && <button type="button" className="button ghost" disabled={loading} onClick={next}>Mai multe comentarii</button>}</div>
   </ConfirmDialog>;
 }

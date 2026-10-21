@@ -405,9 +405,11 @@ input[type=file] { max-width:100%; }
 .feedback-actions > * { min-height: 44px; white-space: normal; text-align: center; display: flex; justify-content: center; align-items: center; }
 .feedback-link { width: 100%; min-width: 0; }
 .feedback-comments { min-width: 0; }
-.feedback-comment { padding: 12px 0; border-bottom: 1px solid #3a3a3a; }
-.feedback-comment time { font-size: 12px; }
-.feedback-comment p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.feedback-dialog .feedback-comments-title { margin: 12px 0 4px; font-size: 14px; line-height: 1.4; }
+.feedback-dialog .feedback-comment { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.feedback-dialog .feedback-comment:last-of-type { border-bottom: 0; }
+.feedback-dialog .feedback-comment time { flex: 0 0 auto; font-size: 11px; font-weight: 400; color: var(--muted); line-height: 1.4; white-space: nowrap; }
+.feedback-dialog .feedback-comment p { flex: 1 1 auto; min-width: 0; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 13px; font-weight: 400; line-height: 1.4; }
 .public-feedback { width: min(580px, 100%); margin: 0 auto; padding: 32px 16px; }
 .public-feedback > .logo { display: block; width: 150px; height: auto; margin: 0 auto 24px; }
 .feedback-public-card { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
