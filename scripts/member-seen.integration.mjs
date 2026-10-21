@@ -30,7 +30,7 @@ try {
   await root.query(`create schema ${schema}`);
   for (const text of [
     "create table members(id serial primary key,slug text unique,name text)",
-    "create table workspace_items(id serial primary key,brand text,section text,product_name text,title text)",
+    "create table workspace_items(id serial primary key,brand text,section text,product_name text,title text,flavor text)",
     "create table product_feedback(id serial primary key,item_id integer references workspace_items(id),body text,created_at timestamptz default now())",
     "create table b2b_orders(id serial primary key,version integer default 1,location_snapshot jsonb,created_at timestamptz default now(),updated_at timestamptz default now())",
     "create table tasks(id serial primary key,title text,brand text,updated_at timestamptz default now(),deleted_at timestamptz)",
