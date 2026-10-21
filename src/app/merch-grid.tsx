@@ -1,8 +1,11 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useEntryModalState } from "./entry-modal-state";
+
+const EntryDrilldownContext = createContext<(open: boolean) => void>(() => {});
+export const useEntryDrilldown = () => useContext(EntryDrilldownContext);
 
 export function ModalEntryGrid({ children, entryIds, label, twoColumnMobile = false }: { children: ReactNode; entryIds: string[]; label: string; twoColumnMobile?: boolean }) {
   const { activeEntryId, closeEntry, openEntry, saving } = useEntryModalState();
@@ -59,11 +62,14 @@ export function ModalEntryGrid({ children, entryIds, label, twoColumnMobile = fa
 }
 
 export function ModalEntryCard({ children, entryId, label, preview }: { children: ReactNode; entryId: string; label: string; preview: ReactNode }) {
+  const [drilldown, setDrilldown] = useState(false);
   const trigger = useRef<HTMLDivElement>(null);
   const modal = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const { activeEntryId, closeEntry, openEntry, saving } = useEntryModalState();
   const active = activeEntryId === entryId;
+
+  useEffect(() => { if (!active) setDrilldown(false); }, [active]);
 
   useEffect(() => setMounted(true), []);
 
@@ -116,6 +122,7 @@ export function ModalEntryCard({ children, entryId, label, preview }: { children
     open();
   };
   const handleModalKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (drilldown) return;
     if (event.key === "Escape") {
       close();
       return;
@@ -158,10 +165,10 @@ export function ModalEntryCard({ children, entryId, label, preview }: { children
       {preview}
     </div>
     {mounted && active && createPortal(
-      <div className="entry-modal-layer">
+      <div className="entry-modal-layer" style={drilldown ? { visibility: "hidden" } : undefined} inert={drilldown} aria-hidden={drilldown || undefined}>
         <button className="entry-modal-backdrop" type="button" aria-label={`Închide ${label}`} onClick={close} disabled={saving} />
         <div ref={modal} className="entry-modal-surface" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} onKeyDown={handleModalKeyDown}>
-          {children}
+          <EntryDrilldownContext.Provider value={setDrilldown}>{children}</EntryDrilldownContext.Provider>
         </div>
       </div>,
       document.body,

@@ -304,7 +304,11 @@ export function OrderEditor({
   onDone,
   onCartChange,
   hideHeading = false,
+  modal = false,
+  onClose,
 }: {
+  modal?: boolean;
+  onClose?: () => void;
   hideHeading?: boolean;
   location: Location;
   products: Product[];
@@ -420,7 +424,7 @@ export function OrderEditor({
       inFlight.current = false;
     }
   }
-  return (
+  const editor = (
     <section
       className="b2b-editor"
       aria-label={order ? t("Modifică comanda") : t("Comandă nouă")}
@@ -523,6 +527,9 @@ export function OrderEditor({
         </button>
       </div>
       <Feedback error={!review ? error : ""} />
+    </section>
+  );
+  return <>{modal ? !review && <ConfirmDialog title="Comandă nouă" busy={busy} onClose={() => onClose?.()} className="b2b-location-order">{editor}</ConfirmDialog> : editor}
       {review && (
         <ConfirmDialog
           className="b2b-checkout"
@@ -572,8 +579,7 @@ export function OrderEditor({
           </div>
         </ConfirmDialog>
       )}
-    </section>
-  );
+  </>;
 }
 
 export function B2BPortal({ data, initialLanguage = "ro" }: { data: B2BData; initialLanguage?: PublicLanguage }) {
@@ -956,6 +962,117 @@ function LocationFilter({
   );
 }
 
+export type LocationPayload = { location: Location; products: Product[]; memberSlug: string };
+export function LocationFlow({ initial, onClose, onChanged }: { initial: LocationPayload; onClose: () => void; onChanged?: () => void }) {
+  const router = useRouter();
+  const [data, setData] = useState(initial);
+  const [screen, setScreen] = useState<"details" | "guide" | "link" | "edit" | "order">("details");
+  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [success, setSuccess] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [origin, setOrigin] = useState("");
+  const refreshController = useRef<AbortController | null>(null);
+  useEffect(() => { setOrigin(window.location.origin); return () => refreshController.current?.abort(); }, []);
+  const detail = data.location, manager = canManageOrders(data.memberSlug);
+  async function refresh() {
+    refreshController.current?.abort(); const pending = new AbortController(); refreshController.current = pending;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/b2b/locations/${detail.id}`, { cache: "no-store", signal: pending.signal });
+      const value = await response.json(); if (!response.ok) throw Error(value.error);
+      if (!pending.signal.aborted) { setData(value); router.refresh(); onChanged?.(); }
+    } catch (e) { if (!pending.signal.aborted) setError(e instanceof Error ? e.message : "Actualizarea nu a reușit."); }
+    finally { if (!pending.signal.aborted) setBusy(false); }
+  }
+  async function copy(local: Location) {
+    try { await navigator.clipboard.writeText(new URL(local.link!, window.location.origin).href); setSuccess(`Linkul pentru ${local.name} a fost copiat.`); }
+    catch { setError("Copierea nu a reușit. Verifică permisiunile clipboardului și încearcă din nou."); }
+  }
+  async function rotate(local: Location) {
+    if (!window.confirm(`Generezi un link nou pentru toate cele ${local.group_size ?? 1} localuri ale acestui contact?`) || !window.confirm("Linkul comun vechi și toate sesiunile deschise cu el vor expira imediat pentru toate localurile acestui contact. Confirmi definitiv regenerarea?")) return;
+    setBusy(true); setError("");
+    try { await request({ mode:"admin", operation:"rotateLink", groupId:local.access_group_id, locationId:local.id, version:local.version, confirmed:true, invalidateSessions:true }); await refresh(); setSuccess("Linkul a fost regenerat."); }
+    catch (e) { setError(e instanceof Error ? e.message : "Operația nu a reușit."); }
+    finally { setBusy(false); }
+  }
+  function locationActions(local: Location) {
+    const go = (next: typeof screen) => { setError(""); setSuccess(""); setScreen(next); };
+    return [
+      ...(manager ? [{label:"Comandă pentru acest local",run:()=>go("order")}] : []),
+      {label:"Vezi linkul",run:()=>go("link")}, {label:"Ghid localuri",run:()=>go("guide")},
+      ...(manager ? [{label:"Editează",run:()=>go("edit")},{label:"Generează link nou",run:()=>{void rotate(local);},disabled:busy}] : []),
+    ];
+  }
+  const back = () => { setScreen("details"); setDirty(false); void refresh(); };
+  return <>
+    {screen === "details" && (
+        <ConfirmDialog
+          title={detail.name}
+          className="b2b-location-info"
+          busy={busy}
+          onClose={onClose}
+        >
+          <div className="b2b-location-info-body">
+            <div className="b2b-location-info-group">
+              <span className="b2b-info-label">Local și adresă</span>
+              <strong>{detail.name}</strong>
+              <span>{detail.address}</span>
+            </div>
+            <div className="b2b-location-info-group">
+              <span className="b2b-info-label">Persoană de contact</span>
+              <strong>{detail.contact}</strong>
+              <a href={"tel:" + detail.phone.replace(/[^+\d]/g, "")}>
+                {detail.phone}
+              </a>
+            </div>
+            <div className="b2b-location-info-pair">
+              <div className="b2b-location-info-group">
+                <span className="b2b-info-label">Cashback</span>
+                <strong>{money(detail.cashback)}</strong>
+                <span className="b2b-info-label">Total comenzi: {detail.order_count ?? 0}</span>
+              </div>
+              <div className="b2b-location-info-group">
+                <span className="b2b-info-label">Ultima comandă</span>
+                <span>
+                  {detail.last_order_at
+                    ? formatOrderDate(detail.last_order_at)
+                    : "Fără comenzi"}
+                </span>
+              </div>
+            </div>
+            {manager && (
+              <div className="b2b-location-info-pair">
+                <div className="b2b-location-info-group">
+                  <span className="b2b-info-label">Denumire SRL</span>
+                  <span>{detail.company_name || "—"}</span>
+                </div>
+                <div className="b2b-location-info-group">
+                  <span className="b2b-info-label">IDNO</span>
+                  <span>{detail.idno || "—"}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="b2b-location-info-actions">
+            <button className="button ghost" onClick={() => copy(detail)}>
+              Copiază linkul
+            </button>
+            <LocationActions
+              name={detail.name}
+              actions={locationActions(detail)}
+            />
+          </div>
+          <Feedback error={error} success={success} />
+          {error && <button type="button" className="button ghost" disabled={busy} onClick={() => void refresh()}>Reîncarcă detaliile</button>}
+        </ConfirmDialog>
+
+    )}
+    {screen === "guide" && <LocationGuide location={detail} link={origin + detail.link} onClose={() => setScreen("details")} />}
+    {screen === "link" && <ConfirmDialog title={"Link de acces · " + detail.name} busy={busy} onClose={() => setScreen("details")}><label className="b2b-link-label">Link secret<input aria-label="Link secret complet" readOnly value={origin + detail.link} onFocus={e => e.currentTarget.select()} /></label><button className="button" onClick={() => copy(detail)}>Copiază linkul</button><Feedback error={error} success={success} /></ConfirmDialog>}
+    {screen === "edit" && manager && <LocationForm modal internalFields location={detail} onDone={back} />}
+    {screen === "order" && manager && <OrderEditor location={detail} products={data.products} mode="admin" modal onClose={() => { if (!dirty || window.confirm("Renunți la produsele selectate?")) setScreen("details"); }} onCartChange={setDirty} onDone={id => { setSuccess(`Comanda #${id} a fost salvată pentru ${detail.name}.`); back(); }} />}
+  </>;
+}
+
 export function B2BAdmin({
   data,
   memberSlug,
@@ -965,15 +1082,12 @@ export function B2BAdmin({
   memberSlug: string;
   initialView?: "locations" | "history";
 }) {
-  const router = useRouter();
   const manager = canManageOrders(memberSlug);
   const [view, setView] = useState(initialView);
   const [locationSearch, setLocationSearch] = useState("");
   const [locationSort, setLocationSort] = useState("name");
   const [detailsLocation, setDetailsLocation] = useState<number | null>(null);
   const detailsTrigger = useRef<HTMLButtonElement | null>(null);
-  const [guideLocation, setGuideLocation] = useState<Location | null>(null);
-  const [linkLocation, setLinkLocation] = useState<number | null>(null);
   const [historyLocation, setHistoryLocation] = useState<number | null>(null);
   useEffect(() => {
     const sync = () =>
@@ -992,18 +1106,9 @@ export function B2BAdmin({
     window.history.pushState(null, "", url);
   }
 
-  const [origin, setOrigin] = useState("");
-  useEffect(() => setOrigin(window.location.origin), []);
-  const [locationForm, setLocationForm] = useState<Location | "new" | null>(
-    null,
-  );
-  const [selected, setSelected] = useState<number | null>(null);
-  const [showOrder, setShowOrder] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [locationForm, setLocationForm] = useState<Location | "new" | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const location = data.locations.find((l) => l.id === selected);
   const matchingLocations = sortLocations(
     data.locations.filter((local) =>
       searchKey(local.name).includes(searchKey(locationSearch)),
@@ -1011,122 +1116,6 @@ export function B2BAdmin({
     locationSort,
   );
   const detail = data.locations.find((l) => l.id === detailsLocation);
-  const visibleLink = data.locations.find((l) => l.id === linkLocation);
-  async function rotate(local: Location) {
-    if (
-      !window.confirm(
-        `Generezi un link nou pentru toate cele ${local.group_size ?? 1} localuri ale acestui contact?`,
-      )
-    )
-      return;
-    if (
-      !window.confirm(
-        "Linkul comun vechi și toate sesiunile deschise cu el vor expira imediat pentru toate localurile acestui contact. Confirmi definitiv regenerarea?",
-      )
-    )
-      return;
-    setBusy(true);
-    setError("");
-    try {
-      await request({
-        mode: "admin",
-        operation: "rotateLink",
-        groupId: local.access_group_id,
-        locationId: local.id,
-        version: local.version,
-        confirmed: true,
-        invalidateSessions: true,
-      });
-      router.refresh();
-      setSuccess(
-        "Linkul a fost regenerat. Copiază noul link după actualizarea paginii.",
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Operația nu a reușit.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function copy(local: Location) {
-    try {
-      await navigator.clipboard.writeText(
-        new URL(local.link!, window.location.origin).href,
-      );
-      setSuccess(`Linkul pentru ${local.name} a fost copiat.`);
-    } catch {
-      setError(
-        "Copierea nu a reușit. Verifică permisiunile clipboardului și încearcă din nou.",
-      );
-    }
-  }
-  function changeLocation(value: number | null) {
-    if (
-      dirty &&
-      !window.confirm(
-        "Schimbi localul? Selecția curentă de produse va fi golită.",
-      )
-    )
-      return false;
-    if (location && dirty) {
-      try {
-        sessionStorage.removeItem(`kaja-b2b-cart:admin:${location.id}:new`);
-      } catch {}
-    }
-    setSelected(value);
-    setDirty(false);
-    setShowOrder(false);
-    setSuccess("");
-    return true;
-  }
-  function locationActions(local: Location) {
-    return [
-      ...(manager
-        ? [
-            {
-              label: "Comandă pentru acest local",
-              run: () => {
-                if (selected !== local.id && !changeLocation(local.id)) return;
-                setSelected(local.id);
-                setShowOrder(true);
-              },
-            },
-          ]
-        : []),
-      {
-        label: "Vezi linkul",
-        run: () => {
-          setError("");
-          setSuccess("");
-          setLinkLocation(local.id);
-        },
-      },
-      {
-        label: "Ghid localuri",
-        run: () => setGuideLocation(local),
-      },
-      ...(manager
-        ? [
-            {
-              label: "Editează",
-              run: () => setLocationForm(local),
-            },
-            {
-              label: "Generează link nou",
-              run: () => {
-                void rotate(local);
-              },
-              disabled: busy,
-            },
-          ]
-        : []),
-    ].map((action) => ({
-      ...action,
-      run: () => {
-        setDetailsLocation(null);
-        action.run();
-      },
-    }));
-  }
   return (
     <div className="workspace-content b2b-admin">
       <div className="section-intro"><h1>{view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>
@@ -1234,141 +1223,13 @@ export function B2BAdmin({
           )}
         </section>
       )}
-      {detail && (
-        <ConfirmDialog
-          title={detail.name}
-          className="b2b-location-info"
-          busy={busy}
-          onClose={() => {
-            setDetailsLocation(null);
-            requestAnimationFrame(() =>
-              detailsTrigger.current?.focus({ preventScroll: true }),
-            );
-          }}
-        >
-          <div className="b2b-location-info-body">
-            <div className="b2b-location-info-group">
-              <span className="b2b-info-label">Local și adresă</span>
-              <strong>{detail.name}</strong>
-              <span>{detail.address}</span>
-            </div>
-            <div className="b2b-location-info-group">
-              <span className="b2b-info-label">Persoană de contact</span>
-              <strong>{detail.contact}</strong>
-              <a href={"tel:" + detail.phone.replace(/[^+\d]/g, "")}>
-                {detail.phone}
-              </a>
-            </div>
-            <div className="b2b-location-info-pair">
-              <div className="b2b-location-info-group">
-                <span className="b2b-info-label">Cashback</span>
-                <strong>{money(detail.cashback)}</strong>
-                <span className="b2b-info-label">Total comenzi: {detail.order_count ?? data.orders.filter(o => o.location_id === detail.id).length}</span>
-              </div>
-              <div className="b2b-location-info-group">
-                <span className="b2b-info-label">Ultima comandă</span>
-                <span>
-                  {detail.last_order_at
-                    ? formatOrderDate(detail.last_order_at)
-                    : "Fără comenzi"}
-                </span>
-              </div>
-            </div>
-            {manager && (
-              <div className="b2b-location-info-pair">
-                <div className="b2b-location-info-group">
-                  <span className="b2b-info-label">Denumire SRL</span>
-                  <span>{detail.company_name || "—"}</span>
-                </div>
-                <div className="b2b-location-info-group">
-                  <span className="b2b-info-label">IDNO</span>
-                  <span>{detail.idno || "—"}</span>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="b2b-location-info-actions">
-            <button className="button ghost" onClick={() => copy(detail)}>
-              Copiază linkul
-            </button>
-            <LocationActions
-              name={detail.name}
-              actions={locationActions(detail)}
-            />
-          </div>
-          <Feedback error={error} success={success} />
-        </ConfirmDialog>
-      )}
-      {guideLocation && (
-        <LocationGuide
-          location={guideLocation}
-          link={origin + guideLocation.link}
-          onClose={() => setGuideLocation(null)}
-        />
-      )}
-      {visibleLink && (
-        <ConfirmDialog
-          title={"Link de acces · " + visibleLink.name}
-          busy={false}
-          onClose={() => setLinkLocation(null)}
-        >
-          <label className="b2b-link-label">
-            Link secret
-            <input
-              aria-label="Link secret complet"
-              readOnly
-              value={origin + visibleLink.link}
-              onFocus={(e) => e.currentTarget.select()}
-            />
-          </label>
-          <div className="b2b-actions">
-            <button className="button" onClick={() => copy(visibleLink)}>
-              Copiază linkul
-            </button>
-          </div>
-          <Feedback error={error} success={success} />
-        </ConfirmDialog>
-      )}
+      {detail && <LocationFlow key={detail.id} initial={{location:detail,products:data.products,memberSlug}} onClose={() => { setDetailsLocation(null); requestAnimationFrame(() => detailsTrigger.current?.focus({preventScroll:true})); }} />}
       {view === "history" && (
         <LocationFilter
           locations={data.locations}
           value={historyLocation}
           onChange={setHistoryLocation}
         />
-      )}
-      {manager && location && (
-        <>
-          {showOrder && (
-            <div className="b2b-actions">
-              {showOrder && (
-                <button
-                  className="button ghost"
-                  onClick={() => {
-                    setShowOrder(false);
-                  }}
-                >
-                  Închide formularul
-                </button>
-              )}
-            </div>
-          )}
-          {showOrder && (
-            <OrderEditor
-              key={location.id}
-              location={location}
-              products={data.products}
-              mode="admin"
-              onCartChange={setDirty}
-              onDone={(id) => {
-                setShowOrder(false);
-                setDirty(false);
-                setSuccess(
-                  `Comanda #${id} a fost salvată pentru ${location.name}.`,
-                );
-              }}
-            />
-          )}
-        </>
       )}
       {view === "history" && (
         <History

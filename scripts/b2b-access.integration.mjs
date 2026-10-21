@@ -606,6 +606,10 @@ try {
   for (const slug of ["patrick", "ionut", "andrei", "igor"]) {
     member = { slug, name: slug };
     const visible = await server.loadData();
+    const scoped = await server.loadData(undefined, 2);
+    assert.deepEqual(scoped.locations.map(l => l.id), [2]);
+    assert.deepEqual(scoped.orders, []); // Detail loading does not fetch order histories.
+    assert.deepEqual(scoped.locations[0], visible.locations.find(l => l.id === 2));
     const venue = visible.locations.find((l) => l.id === 2);
     if (["patrick", "ionut"].includes(slug)) {
       assert.equal(venue.company_name, "Exemplu SRL");

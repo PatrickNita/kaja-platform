@@ -43,7 +43,7 @@ export async function currentLocation(locationId?: number) {
   );
   return location ?? null;
 }
-export async function loadData(location?: Location): Promise<B2BData> {
+export async function loadData(location?: Location, memberLocationId?: number): Promise<B2BData> {
   const access = location ? await currentAccess() : null;
   const member = location ? null : await currentMember();
   if (!location && !member) throw Error("Acces neautorizat.");
@@ -51,7 +51,7 @@ export async function loadData(location?: Location): Promise<B2BData> {
   if (location && !access) throw Error("Acces neautorizat.");
   const scope = access
     ? sql`where g.id=${access.id} and g.version=${access.version}`
-    : sql``;
+    : memberLocationId ? sql`where l.id=${memberLocationId}` : sql``;
   const locations = await query<
     Location & { token_cipher?: string; preview_revision?: string }
   >(
@@ -61,7 +61,7 @@ export async function loadData(location?: Location): Promise<B2BData> {
     query<Product>(
       sql`select id,name,flavor,grams,price from b2b_products order by position,id`,
     ),
-    query<Order>(sql`select o.id,o.location_id,o.location_snapshot->>'name' as location_name,o.location_snapshot,o.author,o.status,o.version,o.total,o.created_at ${member ? sql`,coalesce((select seen_version from member_order_seen s join members m on m.id=s.member_id where s.order_id=o.id and m.slug=${member.slug}),0) as seen_version` : sql``},coalesce(c.amount,0) as cashback,
+    memberLocationId ? [] : query<Order>(sql`select o.id,o.location_id,o.location_snapshot->>'name' as location_name,o.location_snapshot,o.author,o.status,o.version,o.total,o.created_at ${member ? sql`,coalesce((select seen_version from member_order_seen s join members m on m.id=s.member_id where s.order_id=o.id and m.slug=${member.slug}),0) as seen_version` : sql``},coalesce(c.amount,0) as cashback,
  coalesce((select jsonb_agg(jsonb_build_object('id',i.product_id,'name',i.name,'flavor',i.flavor,'grams',i.grams,'price',i.price,'quantity',i.quantity) order by i.product_id) from b2b_order_items i where i.order_id=o.id),'[]'::jsonb) as items
  from b2b_orders o join b2b_locations l on l.id=o.location_id join b2b_access_groups g on g.id=l.access_group_id left join b2b_cashback c on c.order_id=o.id ${scope} order by o.created_at desc,o.id desc`),
   ]);

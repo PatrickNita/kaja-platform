@@ -12,6 +12,7 @@ type HiddenField = {
 
 type Props = {
   flavor?: string;
+  headerExtra?: ReactNode;
   entryId: string;
   title: string;
   body?: string;
@@ -29,7 +30,7 @@ function errorMessage(error: unknown) {
   return "Modificarea nu a putut fi salvată. Încearcă din nou.";
 }
 
-export function EntryInlineEditor({ entryId, title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl, flavor }: Props) {
+export function EntryInlineEditor({ entryId, title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl, flavor, headerExtra }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const generatedId = useId().replaceAll(":", "");
   const formId = `entry-edit-${generatedId}`;
@@ -69,19 +70,21 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
     }
   };
 
-  return <div ref={root} className={`entry-inline-editor${editing ? " is-editing" : ""}`} data-entry-inline-editor data-entry-saving={saving ? "true" : undefined}>
+  return <div ref={root} className={`entry-inline-editor${flavor !== undefined ? " product-entry-editor" : ""}${editing ? " is-editing" : ""}`} data-entry-inline-editor data-entry-saving={saving ? "true" : undefined}>
     <div className="entry-modal-header">
       <div className="entry-modal-title-group">
         {editing ? <AutoResizeTextarea form={formId} className="field-title entry-inline-title" name="title" value={draft.title} onChange={(event) => updateDraft("title", event.currentTarget.value)} required maxLength={160} aria-label="Titlu" /> : <h3 className="item-title">{title}</h3>}
         {authorControls}
+        {!editing && flavor && <p className="entry-product-flavor">{flavor}</p>}
+        {!editing && headerExtra && <div className="entry-product-usage">{headerExtra}</div>}
       </div>
-      <button type="button" className="entry-modal-close" data-entry-close aria-label={closeLabel} disabled={saving} onClick={() => { if (!saving) closeEntry(); }}>×</button>
+      <button type="button" className="entry-modal-close" data-entry-close aria-label={closeLabel} disabled={saving} onClick={() => { if (!saving) closeEntry(); }}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
     </div>
 
     <div className="entry-card-content">
       {detailsMedia}
       {editing && flavor !== undefined && <label>Gust<input form={formId} name="flavor" value={draft.flavor ?? ""} onChange={(event) => updateDraft("flavor", event.target.value)} required maxLength={200} /></label>}
-      {editing ? <AutoResizeTextarea form={formId} className="entry-inline-body" name="body" value={draft.body} onChange={(event) => updateDraft("body", event.currentTarget.value)} required maxLength={4000} aria-label="Descriere" /> : body ? <p>{body}</p> : null}
+      {editing ? <AutoResizeTextarea form={formId} className="entry-inline-body" name="body" value={draft.body} onChange={(event) => updateDraft("body", event.currentTarget.value)} required maxLength={4000} aria-label="Descriere" /> : body && body.trim() !== flavor?.trim() ? <p>{body}</p> : null}
       {children}
 
       {editAction && <>

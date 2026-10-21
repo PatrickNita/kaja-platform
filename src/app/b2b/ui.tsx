@@ -76,6 +76,7 @@ export function ConfirmDialog({
     <dialog
       className={`entry-modal-surface b2b-dialog ${className}`}
       ref={ref}
+      onKeyDown={event => event.stopPropagation()}
       lang={language}
       aria-labelledby={titleId}
       onCancel={(event) => {
@@ -94,7 +95,7 @@ export function ConfirmDialog({
           disabled={busy}
           onClick={onClose}
         >
-          ×
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
         </button>
       </div>
       {children}

@@ -126,7 +126,7 @@ body :is(.b2b-dialog, .feedback-dialog)::backdrop { background: #000b; backdrop-
 body .entry-modal-backdrop { background: #000b; backdrop-filter: blur(10px); }
 body :is(.b2b-dialog-head, .entry-modal-surface .entry-modal-header) { align-items: flex-start; gap: 12px; margin-bottom: 20px; }
 body .b2b-dialog-head > h3 { margin: 8px 0 0; font-size: 18px; line-height: 1.4; font-weight: 700; letter-spacing: -.025em; }
-body :is(.b2b-dialog-head button, .entry-modal-surface .entry-modal-close) { width: 44px; height: 44px; min-width: 44px; flex: 0 0 44px; border-radius: 50%; background: var(--surface-soft); border: 1px solid var(--line-strong); color: var(--ink); font-size: 24px; }
+body :is(.b2b-dialog-head > button, .entry-modal-surface .entry-modal-close) { display:grid; place-items:center; padding:0; line-height:1; width: 44px; height: 44px; min-width: 44px; flex: 0 0 44px; border-radius: 50%; background: var(--surface-soft); border: 1px solid var(--line-strong); color: var(--ink); font-size: 24px; }
 body .entry-modal-surface .entry-card-content { margin-top: 16px; padding-top: 16px; }
 body .entry-modal-surface :is(.card-actions, .entry-edit-actions) { position: sticky; bottom: -24px; background: var(--surface-raised); padding-block: 12px; z-index: 2; }
 
@@ -415,3 +415,22 @@ body .b2b-dialog-date { font-family:inherit; }
 }
 /* Keep close controls available while long dialog contents scroll. */
 body .entry-modal-surface > .b2b-dialog-head, body .entry-modal-surface .entry-modal-header { position:sticky; top:0; z-index:4; background:var(--surface-raised); padding-block:8px; }
+/* Catalogue details: one compact heading, then media and actions. */
+body .entry-modal-surface .product-entry-editor > .entry-modal-header { margin:0 0 12px; padding:0 0 12px; align-items:flex-start; }
+body .product-entry-editor .entry-modal-title-group { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; }
+body .product-entry-editor .entry-modal-title-group > .item-title { margin:0; font-size:18px; line-height:1.4; }
+body .product-entry-editor .entry-author-group { align-self:center; }
+body .product-entry-editor :is(.entry-product-flavor,.entry-product-usage) { grid-column:1/-1; margin:0; color:var(--muted); font-size:13px; font-weight:400; line-height:1.4; }
+body .entry-product-usage > .meta { margin:0; font-size:12px; }
+body .entry-modal-surface .product-entry-editor > .entry-card-content { margin:0; padding:0; border:0; gap:12px; }
+body .entry-gallery-empty:empty { display:none; }
+body .entry-gallery-empty .gallery-management { padding-top:0; border:0; grid-template-columns:minmax(0,1fr); }
+body .catalogue-missing-list { margin-top:8px; }
+body .catalogue-missing-list li { display:block; padding:0; }
+body .catalogue-missing-list li > button { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) 16px; align-items:center; gap:12px; min-height:44px; width:100%; padding:8px 12px; border:0; border-radius:0; background:transparent; text-align:left; color:var(--ink); cursor:pointer; }
+body .catalogue-missing-list li > button:hover { background:var(--surface-soft); }
+body .catalogue-missing-list li > button:focus-visible { outline:2px solid var(--ink); outline-offset:-2px; }
+body .catalogue-missing-list li :is(strong,span) { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body .catalogue-missing-list li .navigation-icon { width:16px; height:16px; color:var(--muted); }
+body .b2b-location-order .b2b-cart-bar { position:sticky; inset:auto; bottom:-24px; margin:12px -12px -12px; width:auto; border-radius:0; }
+body .b2b-location-order .b2b-editor > h2 { display:none; }
