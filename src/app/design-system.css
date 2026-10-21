@@ -434,3 +434,19 @@ body .catalogue-missing-list li :is(strong,span) { min-width:0; white-space:nowr
 body .catalogue-missing-list li .navigation-icon { width:16px; height:16px; color:var(--muted); }
 body .b2b-location-order .b2b-cart-bar { position:sticky; inset:auto; bottom:-24px; margin:12px -12px -12px; width:auto; border-radius:0; }
 body .b2b-location-order .b2b-editor > h2 { display:none; }
+
+/* The venue and its contact remain in two consistent columns. */
+body .portal-location-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; align-items:start; }
+body .portal-location-main { display:flex; align-items:flex-start; gap:12px; min-width:0; }
+body .portal-location-contact { display:grid; gap:4px; min-width:0; font-size:13px; line-height:1.45; overflow-wrap:anywhere; }
+body .portal-location-contact strong { font-weight:600; }
+body .portal-location-contact :is(a,span) { color:var(--muted); font-weight:400; text-decoration:none; }
+body .portal-location-contact a { justify-self:start; display:flex; align-items:center; min-height:44px; margin-block:-10px; }
+@media(max-width:800px) {
+  body .portal-location-panel { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body .portal-location-main { gap:8px; }
+  body .portal-location-main > .icon-tile { width:28px; height:28px; flex-basis:28px; border-radius:8px; }
+  body .portal-location-main > .icon-tile .navigation-icon { width:18px; height:18px; }
+  body .portal-location-contact { font-size:12px; }
+  body .portal-location-panel .location-switch { grid-column:1/-1; justify-self:end; margin:0; max-width:none; }
+}

@@ -635,8 +635,8 @@ function PortalContent({ data }: { data: B2BData }) {
         <LanguageSelector language={language} setLanguage={setLanguage} />
       </header>
       <section className="portal-location-panel" aria-label={location.name}>
-        <span className="icon-tile"><NavigationIcon name="b2b" /></span>
-        <div className="portal-location-copy"><h2>{location.name}</h2><p><NavigationIcon name="pin" />{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div>
+        <div className="portal-location-main"><span className="icon-tile"><NavigationIcon name="b2b" /></span><div className="portal-location-copy"><h2>{location.name}</h2><p><NavigationIcon name="pin" />{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div></div>
+        <div className="portal-location-contact"><strong>{location.contact || "—"}</strong>{location.phone ? <a href={"tel:" + location.phone.replace(/[^+\d]/g, "")}>{location.phone}</a> : <span>—</span>}</div>
         {data.locations.length > 1 && <button className="location-switch" onClick={() => setChoosingLocation(true)}>{t("Schimbă locația")}<NavigationIcon name="chevron" /></button>}
       </section>
       <nav className="portal-view-tabs" aria-label={t("Navigare comenzi")}>
