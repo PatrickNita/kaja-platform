@@ -455,3 +455,14 @@ body .member-dashboard > section { min-width:0; }
 @media(min-width:801px) {
   body .member-dashboard:has(.dashboard-stats) > section .premium-list { max-height:480px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
 }
+
+/* Keep contact and company fields directly available in the desktop B2B list. */
+body .b2b-summary-scroll { overflow-x:auto; scrollbar-width:thin; }
+body .b2b-summary-content { min-width:900px; }
+body .b2b-summary-manager .b2b-summary-content { min-width:1080px; }
+body .b2b-summary-table :is(.b2b-list-head,.b2b-summary-row) { grid-template-columns:minmax(132px,1.2fr) minmax(132px,1.3fr) minmax(90px,.8fr) 90px 120px 72px 92px 16px; gap:8px; }
+body .b2b-summary-manager :is(.b2b-list-head,.b2b-summary-row) { grid-template-columns:minmax(132px,1fr) minmax(132px,1fr) minmax(90px,.8fr) 90px 120px 64px 90px minmax(120px,1fr) 110px 16px; }
+@media(max-width:1100px) {
+  body .b2b-summary-scroll { overflow:visible; }
+  body .b2b-summary-table .b2b-summary-content { display:grid; gap:8px; min-width:0; }
+}
