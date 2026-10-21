@@ -10,9 +10,12 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const brand = params.get("brand") ?? "all", cursor = params.get("before");
   const before = cursor ? decodeHistoryCursor(cursor) : null;
+  const unread = params.get("unread"), selected = params.get("comment");
+  const commentId = selected === null ? undefined : Number(selected);
+  if ((unread !== null && unread !== "1") || (selected !== null && (!/^\d+$/.test(selected) || !Number.isInteger(commentId) || commentId! < 1 || commentId! > 2147483647 || cursor !== null))) return json({ error: "Cerere invalidă." }, 400);
   if (!["all", "kaja", "hexenwerk", "virginia"].includes(brand) || (cursor !== null && !before)) return json({ error: "Cerere invalidă." }, 400);
   try {
-    const rows = await memberFeedbackHistory(historyBrand(brand), before);
+    const rows = await memberFeedbackHistory(historyBrand(brand), before, unread === "1", commentId);
     const comments = rows.slice(0, 50);
     return json({ comments, nextCursor: rows.length > 50 ? encodeHistoryCursor(comments[49]) : null });
   } catch {

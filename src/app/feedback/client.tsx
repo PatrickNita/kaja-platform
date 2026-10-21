@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { markSeen } from "../member-seen";
 import { useEffect, useRef, useState } from "react";
 import { feedbackPath, feedbackBrands, type FeedbackBrand, type FeedbackProduct, type ProductComment } from "../../lib/feedback-model";
 import { ConfirmDialog } from "../b2b/ui";
@@ -17,6 +18,8 @@ export function FeedbackAdmin({ products, brand, origin }: { products: FeedbackP
 function ProductFeedback({ product, origin, close }: { product: FeedbackProduct; origin: string; close: () => void }) {
   const [comments, setComments] = useState<ProductComment[]>([]);
   const [more, setMore] = useState(false);
+  const [seenError, setSeenError] = useState(false), [seenRetry, setSeenRetry] = useState(0);
+  const acknowledged = useRef(new Set<number>());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -26,6 +29,23 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
     fetch(`/api/feedback/${product.id}`, { signal: controller.signal, cache: "no-store" }).then(async (r) => { const data = await r.json(); if (!r.ok) throw Error(data.error); setComments(data.comments); setMore(data.more); }).catch((e) => { if (!controller.signal.aborted) setError(e.message || "Nu s-au putut încărca mesajele."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [product.id]);
+  useEffect(() => {
+    const ids = comments.map(c => c.id).filter(id => !acknowledged.current.has(id));
+    if (!ids.length) return;
+    let cancelled = false;
+    void (async () => {
+      for (let start = 0; start < ids.length; start += 50) {
+        if (cancelled) return;
+        const batch = ids.slice(start, start + 50);
+        const ok = await markSeen({ type: "feedback", ids: batch });
+        if (ok) batch.forEach(id => acknowledged.current.add(id));
+        if (cancelled) return;
+        if (!ok) { setSeenError(true); return; }
+      }
+      setSeenError(false);
+    })();
+    return () => { cancelled = true; };
+  }, [comments, seenRetry]);
   async function next() {
     setLoading(true); setError("");
     try {
@@ -43,7 +63,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
       <input className="feedback-link" value={link} readOnly aria-label="Link public feedback" onFocus={(event) => event.currentTarget.select()} />
       {copied && <p role="status" className="b2b-success">Link copiat.</p>}
     </div>
-    <h4 className="feedback-comments-title">Comentarii</h4>{error && <p className="b2b-error" role="alert">{error}</p>}
+    <h4 className="feedback-comments-title">Comentarii</h4>{seenError && <div className="read-state-error" role="alert">Nu s-au putut marca mesajele drept văzute. <button className="text-button" onClick={() => setSeenRetry(n => n + 1)}>Reîncearcă</button></div>}{error && <p className="b2b-error" role="alert">{error}</p>}
     <div className="feedback-comments">{comments.map((c) => <article key={c.id} className="feedback-comment"><p>{c.body}</p><time className="feedback-secondary" dateTime={c.createdAt}>{new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Chisinau" }).format(new Date(c.createdAt))}</time></article>)}{!loading && !comments.length && !error && <p className="feedback-secondary">Nu există feedback pentru acest produs.</p>}{loading && <p role="status">Se încarcă…</p>}{more && <button type="button" className="button ghost" disabled={loading} onClick={next}>Mai multe comentarii</button>}</div>
   </ConfirmDialog>;
 }

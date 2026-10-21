@@ -12,7 +12,7 @@ import { FeedbackAdmin } from "./client";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "KAJA — Feedback", robots: { index: false, follow: false } };
-export default async function FeedbackPage({ searchParams }: { searchParams: Promise<{ brand?: string; tab?: string }> }) {
+export default async function FeedbackPage({ searchParams }: { searchParams: Promise<{ brand?: string; tab?: string; unread?: string; comment?: string }> }) {
   const member = await currentMember();
   if (!member) return <main className="landing"><p>Folosește linkul personal de membru pentru acces.</p></main>;
   const params = await searchParams;
@@ -27,7 +27,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Pro
         <Link href={`/feedback?tab=products&brand=${brand}`} className={!history ? "active" : undefined} aria-current={!history ? "page" : undefined}>Produse</Link>
         <Link href="/feedback?tab=history" className={history ? "active" : undefined} aria-current={history ? "page" : undefined}>Istoric feedback</Link>
       </nav>
-      {history ? <FeedbackHistory key={historyBrand(params.brand)} brand={historyBrand(params.brand)} /> : <FeedbackAdmin products={await memberFeedbackProducts(brand)} brand={brand} origin={feedbackOrigin()} />}
+      {history ? <FeedbackHistory key={`${historyBrand(params.brand)}:${params.unread}`} brand={historyBrand(params.brand)} onlyUnread={params.unread === "1"} commentId={Number(params.comment) || null} /> : <FeedbackAdmin products={await memberFeedbackProducts(brand)} brand={brand} origin={feedbackOrigin()} />}
     </div>
   </main>;
 }

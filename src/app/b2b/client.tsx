@@ -4,6 +4,8 @@ import { PublicLanguageProvider, usePortalLanguage, LanguageSelector } from "../
 import { matchesProduct, type PublicLanguage } from "../../lib/public-language";
 import { requestError } from "../../lib/b2b/errors";
 import Image from "next/image";
+import { NavigationIcon } from "../navigation-icon";
+import { SearchField, ProductPlaceholder } from "../design-primitives";
 import { ConfirmDialog, Feedback, request } from "./ui";
 import { History } from "./order-history";
 import { FilterSelect } from "./filter-select";
@@ -426,7 +428,7 @@ export function OrderEditor({
       {!hideHeading && (
         <h2>{order ? t(`Modifică comanda #${order.id}`) : t("Comandă nouă")}</h2>
       )}
-      <input
+      <SearchField
         className="b2b-product-search"
         type="search"
         aria-label={t("Caută după denumire sau gust")}
@@ -443,7 +445,8 @@ export function OrderEditor({
             matchesProduct(p, productSearch),
           )
           .map((product) => (
-            <article className="card-wrap b2b-product" key={product.id}>
+            <article className="b2b-product" key={product.id}>
+              <ProductPlaceholder />
               <div className="b2b-product-info">
                 <h3 className="item-title">{product.name}</h3>
                 <p className="b2b-product-meta">
@@ -625,36 +628,15 @@ function PortalContent({ data }: { data: B2BData }) {
         />
         <LanguageSelector language={language} setLanguage={setLanguage} />
       </header>
-      <div className="b2b-portal-overview">
-        <LocationDetails location={location} totalCashback={totalCashback} />
-        <nav
-          className={`b2b-portal-navigation ${data.locations.length > 1 ? "b2b-multi-location" : ""}`}
-          aria-label={t("Navigare comenzi")}
-        >
-          <button
-            className={view === "order" ? "button" : "button ghost"}
-            aria-pressed={view === "order"}
-            onClick={() => {
-              setView("order");
-              setSuccess("");
-            }}
-          >{t("Comandă nouă")}</button>
-          <button
-            className={view === "history" ? "button" : "button ghost"}
-            aria-pressed={view === "history"}
-            onClick={() => {
-              setView("history");
-              setSuccess("");
-            }}
-          >{t("Istoric comenzi")}</button>
-          {data.locations.length > 1 && (
-            <button
-              className="button ghost"
-              onClick={() => setChoosingLocation(true)}
-            >{t("Schimbă locația")}</button>
-          )}
-        </nav>
-      </div>
+      <section className="portal-location-panel" aria-label={location.name}>
+        <span className="icon-tile"><NavigationIcon name="b2b" /></span>
+        <div className="portal-location-copy"><h2>{location.name}</h2><p><NavigationIcon name="pin" />{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div>
+        {data.locations.length > 1 && <button className="location-switch" onClick={() => setChoosingLocation(true)}>{t("Schimbă locația")}<NavigationIcon name="chevron" /></button>}
+      </section>
+      <nav className="portal-view-tabs" aria-label={t("Navigare comenzi")}>
+        <button aria-pressed={view === "order"} className={view === "order" ? "active" : ""} onClick={() => { setView("order"); setSuccess(""); }}>{t("Comandă nouă")}</button>
+        <button aria-label={t("Istoric comenzi")} aria-pressed={view === "history"} className={view === "history" ? "active" : ""} onClick={() => { setView("history"); setSuccess(""); }}>{t("Istoric")}</button>
+      </nav>
       {choosingLocation && (
         <ConfirmDialog
           title={t("Schimbă locația")}
@@ -1147,6 +1129,7 @@ export function B2BAdmin({
   }
   return (
     <div className="workspace-content b2b-admin">
+      <div className="section-intro"><h1>{view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>
       <div className="b2b-section-navigation">
       <nav className="catalogue-submenu filter-nav" aria-label="B2B">
         <a
@@ -1174,7 +1157,7 @@ export function B2BAdmin({
       </div>
       {view === "locations" && (
         <div className="b2b-toolbar">
-          <input
+          <SearchField
             aria-label="Caută localuri"
             placeholder="Caută local…"
             value={locationSearch}
@@ -1207,25 +1190,10 @@ export function B2BAdmin({
       )}
       {view === "locations" && (
         <section
-          className={`b2b-location-list b2b-location-list-extended ${manager ? "b2b-location-list-manager" : ""}`}
+          className="b2b-location-list b2b-summary-table"
           aria-label="Lista localurilor"
         >
-          <div className="b2b-list-head" aria-hidden="true">
-            <span>Local</span>
-            <span>Adresă</span>
-            <span>Persoană contact</span>
-            <span>Nr. telefon</span>
-            <span>Cashback</span>
-            <span>Ultima comandă</span>
-            {manager && (
-              <>
-                <span>Denumire SRL</span>
-                <span>IDNO</span>
-              </>
-            )}
-            <span>Acțiuni</span>
-            <span />
-          </div>
+          <div className="b2b-list-head" aria-hidden="true"><span>Local</span><span>Adresă</span><span>Ultima comandă</span><span>Total comenzi</span><span>Cashback total</span><span /></div>
           {matchingLocations.map((local) => (
             <div key={local.id} className="b2b-location-entry">
               <button
@@ -1248,53 +1216,13 @@ export function B2BAdmin({
                     : "Fără comenzi"}
                 </span>
               </button>
-              <article className="b2b-location-row" aria-label={local.name}>
-                <div className="b2b-location-cell">
-                  <h3 className="item-title">{local.name}</h3>
-                </div>
-                <div className="b2b-location-cell">
-                  <p>{local.address}</p>
-                </div>
-                <div className="b2b-location-cell">{local.contact}</div>
-                <div className="b2b-location-cell">
-                  <a href={"tel:" + local.phone.replace(/[^+\d]/g, "")}>
-                    {local.phone}
-                  </a>
-                </div>
-                <div className="b2b-location-balance">
-                  <span className="b2b-mobile-label">Cashback</span>
-                  <strong>{money(local.cashback)}</strong>
-                </div>
-                <div className="b2b-location-last">
-                  <span className="b2b-mobile-label">Ultima comandă</span>
-                  <time dateTime={local.last_order_at ?? undefined}>
-                    {local.last_order_at
-                      ? formatOrderDate(local.last_order_at)
-                      : "—"}
-                  </time>
-                </div>
-                {manager && (
-                  <>
-                    <div className="b2b-location-company">
-                      <span className="b2b-mobile-label">Denumire SRL</span>
-                      {local.company_name || "—"}
-                    </div>
-                    <div className="b2b-location-idno">
-                      <span className="b2b-mobile-label">IDNO</span>
-                      {local.idno || "—"}
-                    </div>
-                  </>
-                )}
-                <div className="b2b-row-actions">
-                  <button className="button ghost" onClick={() => copy(local)}>
-                    Copiază linkul
-                  </button>
-                  <LocationActions
-                    name={local.name}
-                    actions={locationActions(local)}
-                  />
-                </div>
-              </article>
+              <button type="button" className="b2b-location-row b2b-summary-row" aria-label={"Detalii pentru " + local.name} aria-haspopup="dialog" onClick={event => { detailsTrigger.current = event.currentTarget; setError(""); setSuccess(""); setDetailsLocation(local.id); }}>
+                <span className="location-name-cell"><NavigationIcon name="b2b" /><strong>{local.name}</strong></span>
+                <span>{local.address}</span>
+                <time dateTime={local.last_order_at ?? undefined}>{local.last_order_at ? formatOrderDate(local.last_order_at) : "—"}</time>
+                <span>{local.order_count ?? data.orders.filter(o => o.location_id === local.id).length}</span>
+                <span>{money(local.cashback)}</span><NavigationIcon name="chevron" />
+              </button>
             </div>
           ))}
           {!data.locations.length ? (
@@ -1335,6 +1263,7 @@ export function B2BAdmin({
               <div className="b2b-location-info-group">
                 <span className="b2b-info-label">Cashback</span>
                 <strong>{money(detail.cashback)}</strong>
+                <span className="b2b-info-label">Total comenzi: {detail.order_count ?? data.orders.filter(o => o.location_id === detail.id).length}</span>
               </div>
               <div className="b2b-location-info-group">
                 <span className="b2b-info-label">Ultima comandă</span>

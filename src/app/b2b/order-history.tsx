@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePortalLanguage } from "../public-language";
 import { matchesProduct } from "../../lib/public-language";
 import { requestError } from "../../lib/b2b/errors";
-import { useRouter } from "next/navigation";
+import { markSeen } from "../member-seen";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   canEditOrder,
   money,
@@ -48,10 +49,25 @@ export function History({
   hideHeading?: boolean;
 }) {
   const { language, t } = usePortalLanguage();
+  const params = useSearchParams();
+  const opener = useRef<HTMLButtonElement | null>(null), history = useRef<HTMLElement | null>(null);
+  const router = useRouter();
+  const onlyUnread = mode === "admin" && params.get("unread") === "1";
+  const requested = mode === "admin" ? Number(params.get("order")) : 0;
+  const [readVersions, setReadVersions] = useState<Record<number, number>>({});
+  const acknowledge = useCallback((id: number, version: number) => setReadVersions(old => ({ ...old, [id]: Math.max(old[id] ?? 0, version) })), []);
+  const isUnread = (o: Order) => o.version > Math.max(o.seen_version ?? 0, readVersions[o.id] ?? 0);
+  function closeOrder() {
+    setActive(null);
+    requestAnimationFrame(() => { if (opener.current?.isConnected) opener.current.focus(); else history.current?.focus(); });
+    if (mode === "admin" && params.has("order")) { const url = new URL(window.location.href); url.searchParams.delete("order"); router.replace(url.pathname + url.search, { scroll: false }); }
+  }
+
   const [month, setMonth] = useState(""),
     [year, setYear] = useState(""),
-    [active, setActive] = useState<number | null>(null),
+    [active, setActive] = useState<number | null>(requested || null),
     [success, setSuccess] = useState("");
+  useEffect(() => { if (mode === "admin") setActive(requested || null); }, [mode, requested]);
   const years = [
     ...new Set([
       ...orders.map((o) => periodParts(o.created_at).year),
@@ -64,13 +80,14 @@ export function History({
       orders,
       mode === "admin" ? month : "",
       mode === "admin" ? year : "",
-    ),
+    ).filter(o => (!onlyUnread || isUnread(o)) && (mode !== "admin" || !params.get("brand") || ["all", "kaja"].includes(params.get("brand")!))),
     order = orders.find((o) => o.id === active);
   return (
-    <section className="b2b-history" aria-label={t("Istoricul comenzilor")}>
+    <section ref={history} tabIndex={-1} className="b2b-history" aria-label={t("Istoricul comenzilor")}>
       {!hideHeading && <h2>{t("Istoricul comenzilor")}</h2>}
       {mode === "admin" && (
         <div className="b2b-history-filters">
+          <button className={onlyUnread ? "button" : "button ghost"} aria-pressed={onlyUnread} onClick={() => { const url = new URL(window.location.href); if (onlyUnread) url.searchParams.delete("unread"); else url.searchParams.set("unread", "1"); router.replace(url.pathname + url.search, { scroll: false }); }}>Nevăzute</button>
           <FilterSelect
             label="Luna comenzilor"
             value={month}
@@ -113,7 +130,8 @@ export function History({
             key={o.id}
             id={"comanda-" + o.id}
             className={"card-wrap b2b-order-card " + o.status}
-            onClick={() => {
+            onClick={(event) => {
+              opener.current = event.currentTarget;
               setActive(o.id);
               setSuccess("");
             }}
@@ -128,7 +146,7 @@ export function History({
               t(shortStatus[o.status])
             }
           >
-            <strong>{mode === "portal" ? t(`Comanda #${o.id}`) : o.location_name}</strong>
+            <strong>{mode === "portal" ? t(`Comanda #${o.id}`) : o.location_name}{mode === "admin" && isUnread(o) && <span className="unread-dot" aria-label="Nevăzut" />}</strong>
             <time dateTime={o.created_at}>{formatOrderDate(o.created_at, language)}</time>
             <span className={"b2b-status " + o.status}>
               {t(shortStatus[o.status])}
@@ -144,10 +162,11 @@ export function History({
           mode={mode}
           manager={manager}
           allowEdit={allowEdit}
-          onClose={() => setActive(null)}
+          onClose={closeOrder}
+          onSeen={acknowledge}
           onSaved={(message) => {
             setSuccess(message);
-            setActive(null);
+            closeOrder();
           }}
         />
       )}
@@ -162,6 +181,7 @@ function OrderDialog({
   allowEdit,
   onClose,
   onSaved,
+  onSeen,
 }: {
   order: Order;
   products: Product[];
@@ -170,6 +190,7 @@ function OrderDialog({
   allowEdit: boolean;
   onClose: () => void;
   onSaved: (message: string) => void;
+  onSeen: (id: number, version: number) => void;
 }) {
   const { language, t, flavor } = usePortalLanguage();
   const router = useRouter();
@@ -180,6 +201,17 @@ function OrderDialog({
   const [step, setStep] = useState<"details" | "edit" | "review" | "status">(
     "details",
   );
+  const [seenError, setSeenError] = useState(false), [seenRetry, setSeenRetry] = useState(0);
+  useEffect(() => {
+    if (mode !== "admin" || step !== "details") return;
+    let cancelled = false;
+    setSeenError(false);
+    void markSeen({ type: "order", id: order.id, version: order.version }).then(ok => {
+      if (!cancelled) { setSeenError(!ok); if (ok) onSeen(order.id, order.version); }
+    });
+    return () => { cancelled = true; };
+  }, [mode, step, order.id, order.version, seenRetry, onSeen]);
+
   const [counts, setCounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(order.items.map((i) => [i.id, i.quantity])),
   );
@@ -373,6 +405,7 @@ function OrderDialog({
       onClose={onClose}
       className="b2b-checkout b2b-order-dialog"
     >
+      {seenError && <div className="read-state-error" role="alert">Nu s-a putut marca drept văzută. <button className="text-button" onClick={() => setSeenRetry(n => n + 1)}>Reîncearcă</button></div>}
       <div className="b2b-checkout-destination">
         <p className="b2b-checkout-location">
           <strong>{order.location_name}</strong> ·{" "}

@@ -19,7 +19,7 @@ export function matchesProduct(product: { name: string; flavor: string }, search
   return normalizeSearch(`${product.name} ${product.flavor} ${translatedFlavor(product.flavor, "ru")}`).includes(normalizeSearch(search));
 }
 export const russianText: Record<string, string> = {
-  "Comandă nouă": "Новый заказ", "Istoric comenzi": "История заказов", "Istoricul comenzilor": "История заказов",
+  "Istoric": "История", "Cashback:": "Кешбэк:", "Cashback total:": "Общий кешбэк:", "Comandă nouă": "Новый заказ", "Istoric comenzi": "История заказов", "Istoricul comenzilor": "История заказов",
   "Schimbă locația": "Сменить заведение", "Navigare comenzi": "Навигация заказов", "Datele localului": "Данные заведения",
   "CASHBACK": "КЕШБЭК", "CASHBACK TOTAL": "ОБЩИЙ КЕШБЭК", "Modifică comanda": "Изменить заказ",
   "Caută după denumire sau gust": "Поиск по названию или вкусу", "Caută după denumire sau gust…": "Поиск по названию или вкусу…",

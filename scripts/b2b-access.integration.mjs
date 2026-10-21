@@ -73,7 +73,7 @@ function load(path) {
       };
     if (path.endsWith("server.ts") && name === "../auth")
       return { currentMember: async () => member };
-    if (path.endsWith("server.ts") && name === "../db")
+    if (name === "../db" || name === "./db")
       return {
         db: {
           execute: async (statement) => {
@@ -147,6 +147,8 @@ try {
   await db.query(
     "insert into members(slug,name) values('patrick','Patrick'),('ionut','Ionut'),('igor','Igor'),('andrei','Andrei')",
   );
+  await db.query("create table product_feedback(id serial primary key)");
+  for (const statement of readFileSync("drizzle/0021_member_seen.sql", "utf8").split("--> statement-breakpoint")) await db.query(statement);
   crypto = load("src/lib/b2b/crypto.ts");
   const old = [];
   for (const [i, c, p] of [

@@ -238,3 +238,15 @@ export const b2bNotifications = pgTable("b2b_notifications", {
   uniqueIndex("b2b_notifications_order_version").on(table.orderId,table.orderVersion),
   index("b2b_notifications_pending_idx").on(table.id).where(sql`${table.sentAt} is null`),
 ]);
+
+export const memberOrderSeen = pgTable("member_order_seen", {
+  memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  orderId: integer("order_id").notNull().references(() => b2bOrders.id, { onDelete: "cascade" }),
+  seenVersion: integer("seen_version").notNull(),
+  seenAt: timestamp("seen_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [primaryKey({ columns: [table.memberId, table.orderId] })]);
+export const memberFeedbackSeen = pgTable("member_feedback_seen", {
+  memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  feedbackId: integer("feedback_id").notNull().references(() => productFeedback.id, { onDelete: "cascade" }),
+  seenAt: timestamp("seen_at", { withTimezone: true }).defaultNow().notNull(),
+}, table => [primaryKey({ columns: [table.memberId, table.feedbackId] })]);

@@ -1,3 +1,4 @@
+import { markOrderSeen } from "../../../lib/member-seen";
 import { b2bErrorCode } from "../../../lib/b2b/errors";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
     const manager = Boolean(member && canManageOrders(member.slug));
     let result: unknown;
     let notificationId: number | undefined;
+    let seenOrder: { id: number; version: number } | undefined;
     if (operation === "createLocation" || operation === "editLocation") {
       if (!member)
         return jsonResponse(
@@ -242,6 +244,7 @@ export async function POST(request: Request) {
         if (!updated)
           return jsonResponse({ error: conflict }, { status: 409 });
         result = { id: orderId };
+        seenOrder = { id: orderId, version: version + 1 };
         notificationId = updated.notification_id ?? undefined;
       } else {
         const requestKey = z.uuid().parse(body.requestKey);
@@ -265,6 +268,7 @@ export async function POST(request: Request) {
         ) select c.id,n.id as notification_id from created c join notified n on n.order_id=c.id`);
         if (created) {
           result = { id: created.id };
+          seenOrder = { id: created.id, version: 1 };
           notificationId = created.notification_id;
         } else {
           const [existing] = await query<{ id: number }>(
@@ -273,6 +277,7 @@ export async function POST(request: Request) {
           if (!existing)
             return jsonResponse({ error: conflict }, { status: 409 });
           result = existing;
+          seenOrder = { id: existing.id, version: 1 };
         }
       }
     } else if (operation === "status") {
@@ -298,6 +303,11 @@ export async function POST(request: Request) {
         ) select order_id as id from credited`);
       if (!updated)
         return jsonResponse({ error: conflict }, { status: 409 });
+    }
+    if (member && operation === "status") seenOrder = { id: id.parse(body.orderId), version: id.parse(body.version) + 1 };
+    if (member && seenOrder) {
+      try { await markOrderSeen(member.slug, seenOrder.id, seenOrder.version); }
+      catch { console.error("Could not acknowledge own order version"); }
     }
     if (notificationId) await enqueueOrderNotification(notificationId);
     revalidatePath("/b2b");

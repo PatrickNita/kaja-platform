@@ -32,7 +32,8 @@ export async function publicFeedbackProductBySlug(publicBrand: string, slug: str
   return row ?? null;
 }
 
-export async function memberFeedbackHistory(brand: FeedbackHistoryBrand, before: FeedbackHistoryCursor | null) {
-  if (!await currentMember()) throw new Error("Unauthorized");
-  return feedbackQuery<FeedbackHistoryRow>(feedbackHistoryQuery(brand, before));
+export async function memberFeedbackHistory(brand: FeedbackHistoryBrand, before: FeedbackHistoryCursor | null, unread = false, commentId?: number) {
+  const member = await currentMember();
+  if (!member) throw new Error("Unauthorized");
+  return feedbackQuery<FeedbackHistoryRow>(feedbackHistoryQuery(brand, before, member.slug, unread, commentId));
 }

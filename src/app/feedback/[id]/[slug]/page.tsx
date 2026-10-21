@@ -11,5 +11,5 @@ export default async function ProductFeedbackPage({ params }: { params: Promise<
   const { id: brand, slug } = await params;
   const language = await readPublicLanguage();
   const product = await publicFeedbackProductBySlug(brand, slug);
-  return <main className="public-feedback"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority />{product ? <PublicFeedbackForm initialLanguage={language} product={product} challenge={feedbackChallenge(product.id)} /> : <section className="item"><h1>Produs indisponibil / Товар недоступен</h1><p>Acest link nu mai acceptă feedback.<br />По этой ссылке больше нельзя оставить отзыв.</p></section>}</main>;
+  return <main className="public-feedback">{!product && <Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority />}{product ? <PublicFeedbackForm initialLanguage={language} product={product} challenge={feedbackChallenge(product.id)} /> : <section className="item"><h1>Produs indisponibil / Товар недоступен</h1><p>Acest link nu mai acceptă feedback.<br />По этой ссылке больше нельзя оставить отзыв.</p></section>}</main>;
 }

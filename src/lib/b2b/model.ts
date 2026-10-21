@@ -61,6 +61,7 @@ export type Location = {
   company_name?: string | null;
   idno?: string | null;
   last_order_at?: string | null;
+  order_count?: number;
   cashback: number;
   link?: string;
 };
@@ -73,6 +74,7 @@ export type Order = {
   author: string;
   status: Status;
   version: number;
+  seen_version?: number;
   total: number;
   cashback: number;
   created_at: string;

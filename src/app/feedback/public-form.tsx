@@ -1,5 +1,7 @@
 "use client";
 import { useRef, useState, type FormEvent } from "react";
+import Image from "next/image";
+import { NavigationIcon } from "../navigation-icon";
 import { usePublicLanguage, LanguageSelector } from "../public-language";
 import type { PublicLanguage } from "../../lib/public-language";
 import type { FeedbackProduct } from "../../lib/feedback-model";
@@ -29,17 +31,18 @@ export function PublicFeedbackForm({ product, challenge, initialLanguage = "ro" 
       setSent(true); setBody("");
     } catch { setError("error"); } finally { setBusy(false); }
   }
-  return <section className="item feedback-public-card" lang={language}>
+  return <section className="feedback-public-card" lang={language}>
+    <header className="public-product-header"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><LanguageSelector language={language} setLanguage={setLanguage} /></header>
     <div className="feedback-public-header">
       <h1 className="item-title">{product.name} <span className="feedback-secondary">- {flavor(product.flavor)}</span></h1>
-      <LanguageSelector language={language} setLanguage={setLanguage} />
     </div>
     {sent ? <p role="status" className="b2b-success">{t.success}</p> : <form onSubmit={submit} className="form">
-      <label htmlFor="feedback-body">{t.label}</label><textarea id="feedback-body" value={body} onChange={(event) => setBody(event.target.value)} required minLength={1} maxLength={2000} rows={4} disabled={busy} aria-describedby="feedback-hint" />
-      <small id="feedback-hint">{t.hint}</small>
+      <label htmlFor="feedback-body">{t.label}</label><div className="feedback-textarea-wrap"><textarea id="feedback-body" placeholder={language === "ro" ? "Cum ți s-a părut produsul?" : "Как вам продукт?"} value={body} onChange={(event) => setBody(event.target.value)} required minLength={1} maxLength={2000} rows={4} disabled={busy} aria-describedby="feedback-hint feedback-counter" /><span id="feedback-counter" className="feedback-counter">{body.length}/2.000</span></div>
+      <small id="feedback-hint">{language === "ro" ? "Nu include date personale." : "Не указывайте личные данные."}</small>
       <div className="feedback-trap" aria-hidden="true"><label>Website<input name="website" autoComplete="off" tabIndex={-1} /></label></div>
       {error && <p role="alert" className="b2b-error">{t[error]}</p>}
       <button className="button" disabled={busy || !body.trim()}>{busy ? t.busy : t.send}</button>
     </form>}
+    <p className="feedback-anonymous-note"><NavigationIcon name="lock" />{language === "ro" ? "Feedbackul este anonim." : "Отзыв анонимный."}</p>
   </section>;
 }
