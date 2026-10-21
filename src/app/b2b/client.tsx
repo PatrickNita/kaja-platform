@@ -1183,7 +1183,7 @@ export function B2BAdmin({
           aria-label="Lista localurilor"
         >
           <div className="b2b-summary-scroll"><div className="b2b-summary-content">
-          <div className="b2b-list-head" aria-hidden="true"><span>Local</span><span>Adresă</span><span>Persoană de contact</span><span>Nr. de telefon</span><span>Ultima comandă</span><span>Total comenzi</span><span>Cashback total</span>{manager && <><span>Denumire SRL</span><span>IDNO</span></>}<span /></div>
+          <div className="b2b-list-head" aria-hidden="true"><span>Local</span><span>Adresă</span><span>Pers. contact</span><span>Nr. de telefon</span>{manager && <><span>Denumire SRL</span><span>IDNO</span></>}<span>Ultima comandă</span><span>Total comenzi</span><span>Cashback total</span><span /></div>
           {matchingLocations.map((local) => (
             <div key={local.id} className="b2b-location-entry">
               <button
@@ -1211,9 +1211,10 @@ export function B2BAdmin({
                 <span>{local.address}</span>
                 <span>{local.contact || "—"}</span>
                 <span>{local.phone || "—"}</span>
+                {manager && <><span>{local.company_name || "—"}</span><span>{local.idno || "—"}</span></>}
                 <time dateTime={local.last_order_at ?? undefined}>{local.last_order_at ? formatOrderDate(local.last_order_at) : "—"}</time>
                 <span>{local.order_count ?? data.orders.filter(o => o.location_id === local.id).length}</span>
-                <span>{money(local.cashback)}</span>{manager && <><span>{local.company_name || "—"}</span><span>{local.idno || "—"}</span></>}<NavigationIcon name="chevron" />
+                <span>{money(local.cashback)}</span><NavigationIcon name="chevron" />
               </button>
             </div>
           ))}
