@@ -16,5 +16,5 @@ export function PublicLanguageProvider({ initialLanguage, children }: { initialL
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 export function LanguageSelector({ language, setLanguage }: { language: PublicLanguage; setLanguage: (value: PublicLanguage) => void }) {
-  return <div className="feedback-languages" role="group" aria-label="Limba / Язык">{(["ro", "ru"] as const).map((lang) => <button key={lang} type="button" className={`button ${language === lang ? "" : "ghost"}`} aria-pressed={language === lang} onClick={() => setLanguage(lang)}>{lang.toUpperCase()}</button>)}</div>;
+  return <div className="feedback-languages" data-language={language} role="group" aria-label="Limba / Язык">{(["ro", "ru"] as const).map((lang) => <button key={lang} type="button" className="button language-option" aria-pressed={language === lang} onClick={() => setLanguage(lang)}>{lang.toUpperCase()}</button>)}</div>;
 }
