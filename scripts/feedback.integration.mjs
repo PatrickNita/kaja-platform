@@ -53,11 +53,12 @@ try {
   assert.equal(await server.publicFeedbackProductBySlug("kaja", "../test"), null);
   await assert.rejects(server.memberProductComments(item.feedback_id));
   await assert.rejects(server.memberFeedbackProducts("kaja"));
-  for (const slug of ["patrick", "ionut", "igor", "andrei"]) { member = { slug }; assert.equal((await server.memberProductComments(item.feedback_id)).length, 6); assert.equal((await server.memberFeedbackProducts("kaja")).length, 1); }
+  for (const slug of ["patrick", "ionut", "igor", "andrei"]) { member = { slug }; assert.equal((await server.memberProductComments(item.feedback_id)).length, 6); const products = await server.memberFeedbackProducts("kaja"); assert.equal(products.length, 1); assert.equal(products[0].feedbackCount, 6); }
   assert.equal((await server.memberFeedbackProducts("hexenwerk")).length, 0);
   for (const brand of ["hexenwerk", "virginia"]) {
     await q("insert into workspace_items(brand,section,catalogue_group,title,body,product_name,flavor) values($1,'catalogue','live','TEST','PRIVATE','TEST BRAND','Gust')", [brand]);
     const rows = await server.memberFeedbackProducts(brand);
+    assert(rows.every(row => row.feedbackCount === 0));
     assert.equal(rows.length, 1); assert.equal(rows[0].brand, brand);
     assert.equal((await server.publicFeedbackProductBySlug(brand === "virginia" ? "lumen" : brand, rows[0].slug)).id, rows[0].id);
   }

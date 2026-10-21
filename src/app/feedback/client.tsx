@@ -2,16 +2,16 @@
 import Link from "next/link";
 import { markSeen } from "../member-seen";
 import { useEffect, useRef, useState } from "react";
-import { feedbackPath, feedbackBrands, type FeedbackBrand, type FeedbackProduct, type ProductComment } from "../../lib/feedback-model";
+import { feedbackPath, feedbackBrands, type FeedbackBrand, type FeedbackProduct, type MemberFeedbackProduct, type ProductComment } from "../../lib/feedback-model";
 import { ConfirmDialog } from "../b2b/ui";
 
-export function FeedbackAdmin({ products, brand, origin }: { products: FeedbackProduct[]; brand: FeedbackBrand; origin: string }) {
+export function FeedbackAdmin({ products, brand, origin }: { products: MemberFeedbackProduct[]; brand: FeedbackBrand; origin: string }) {
   const [selected, setSelected] = useState<FeedbackProduct | null>(null);
   const opener = useRef<HTMLButtonElement | null>(null);
   function close() { setSelected(null); requestAnimationFrame(() => opener.current?.focus()); }
   return <>
     <nav className="catalogue-submenu filter-nav brand-filter-nav" aria-label="Filtrează după brand">{feedbackBrands.map((b) => <Link key={b.key} href={`/feedback?brand=${b.key}`} className={brand === b.key ? "active" : undefined}>{b.label}</Link>)}</nav>
-    <section className="panel content-section"><div className="panel-head"><h2>Feedback <span className="page-entry-count">({products.length})</span></h2></div><div className="items card-grid">{products.map((p) => <button key={p.id} type="button" className="card-wrap feedback-product" onClick={(event) => { opener.current = event.currentTarget; setSelected(p); }}><span className="item-title">{p.name} <span className="feedback-secondary">- {p.flavor}</span></span></button>)}</div>{!products.length && <p className="feedback-secondary">Nu există produse în catalogul activ al acestui brand.</p>}</section>
+    <section className="panel content-section"><div className="panel-head"><h2>Feedback <span className="page-entry-count">({products.length})</span></h2></div><div className="items card-grid">{products.map((p) => <button key={p.id} type="button" className="card-wrap feedback-product" onClick={(event) => { opener.current = event.currentTarget; setSelected(p); }}><span className="item-title">{p.name} <span className="feedback-secondary">- {p.flavor} ({p.feedbackCount})</span></span></button>)}</div>{!products.length && <p className="feedback-secondary">Nu există produse în catalogul activ al acestui brand.</p>}</section>
     {selected && <ProductFeedback key={selected.id} product={selected} origin={origin} close={close} />}
   </>;
 }

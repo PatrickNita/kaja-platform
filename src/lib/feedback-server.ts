@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { currentMember } from "./auth";
 import { z } from "zod";
-import type { FeedbackBrand, FeedbackProduct, ProductComment } from "./feedback-model";
+import type { FeedbackBrand, FeedbackProduct, MemberFeedbackProduct, ProductComment } from "./feedback-model";
 
 export async function feedbackQuery<T>(statement: ReturnType<typeof sql>): Promise<T[]> {
   if (!db) throw new Error("Database unavailable");
@@ -18,7 +18,7 @@ export async function publicFeedbackProduct(id: string) {
 }
 export async function memberFeedbackProducts(brand: FeedbackBrand) {
   if (!await currentMember()) throw new Error("Unauthorized");
-  return feedbackQuery<FeedbackProduct>(sql`select feedback_id as id,brand,product_name as name,flavor,feedback_slug as slug from workspace_items where brand=${brand} and section='catalogue' and catalogue_group='live' and deleted_at is null and nullif(btrim(product_name),'') is not null and nullif(btrim(flavor),'') is not null and feedback_slug is not null order by lower(product_name),id`);
+  return feedbackQuery<MemberFeedbackProduct>(sql`select feedback_id as id,brand,product_name as name,flavor,feedback_slug as slug,(select count(*)::integer from product_feedback f where f.item_id=workspace_items.id) as "feedbackCount" from workspace_items where brand=${brand} and section='catalogue' and catalogue_group='live' and deleted_at is null and nullif(btrim(product_name),'') is not null and nullif(btrim(flavor),'') is not null and feedback_slug is not null order by lower(product_name),id`);
 }
 export async function memberProductComments(id: string, before?: number) {
   if (!await currentMember()) throw new Error("Unauthorized");
