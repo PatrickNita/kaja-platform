@@ -36,7 +36,7 @@ type BrandFilter = (typeof brandFilters)[number]["key"];
 type Data = NonNullable<Awaited<ReturnType<typeof workspaceData>>>;
 type TaskData = NonNullable<Awaited<ReturnType<typeof taskWorkspaceData>>>;
 type ActivityData = Awaited<ReturnType<typeof activityData>>;
-type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: string; authorSlug: string; locationCount?: number };
+type WorkspaceItemRow = { item: typeof workspaceItems.$inferSelect; author: string; authorSlug: string; locationCount?: number; totalLocationCount?: number };
 type CommentRow = Data["comments"][number];
 type ReactionRow = Data["reactions"][number];
 type EntryReactionRow = Data["entryReactions"][number];
@@ -222,9 +222,9 @@ function WorkspaceSection({ brandFilter, section, title, displayTitle, items, im
   const galleryEnabled = section === "merch" || section === "events" || (section === "catalogue" && catalogueGroup !== "ideas");
   const modalEnabled = section === "information" || section === "catalogue" || galleryEnabled;
   const composer = section === "merch" ? <MerchComposer initialBrand={initialBrand(brandFilter)} /> : galleryEnabled && (section === "events" || section === "catalogue") ? <GalleryComposer initialBrand={initialBrand(brandFilter)} section={section} catalogueGroup={catalogueGroup === "ideas" ? undefined : catalogueGroup} /> : <form action={createWorkspaceItemForm} className="form"><BrandFormPicker initialBrand={initialBrand(brandFilter)} /><input type="hidden" name="section" value={section} />{catalogueGroup && <input type="hidden" name="catalogueGroup" value={catalogueGroup} />}<AutoResizeTextarea className="field-title" name="title" required maxLength={160} placeholder={`Titlu ${label}`} /><AutoResizeTextarea name="body" required maxLength={4000} placeholder={`Descrie ${label}.`} /><button className="button">Adaugă</button></form>;
-  const cards = items.map(({ item, author, authorSlug, locationCount }) => {
+  const cards = items.map(({ item, author, authorSlug, locationCount, totalLocationCount }) => {
     const usageOnly = item.brand === "kaja" && section === "catalogue" && item.catalogueGroup === "live";
-    const usage = usageOnly ? <p className="meta">{productUsageLabel(locationCount ?? 0)}</p> : undefined;
+    const usage = usageOnly ? <p className="meta">{productUsageLabel(locationCount ?? 0, totalLocationCount ?? 0)}</p> : undefined;
     const itemBrand = item.brand as Brand;
     const itemImages = images.filter((image) => image.itemId === item.id);
     const firstImage = itemImages[0];

@@ -1,6 +1,6 @@
 "use server";
 
-import { catalogueUsageQuery, productLocationCount, type ProductUsage } from "../lib/catalogue-usage";
+import { catalogueLocationTotalQuery, catalogueUsageQuery, productLocationCount, type ProductUsage } from "../lib/catalogue-usage";
 import { del } from "@vercel/blob";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -512,7 +512,7 @@ export async function workspaceData(brandName: "all" | "kaja" | "hexenwerk" | "v
   const attentionVisibility = brandName === "all"
     ? eq(activity.action, "attention_requested")
     : and(eq(activity.brand, brandName), eq(activity.action, "attention_requested"));
-  const [allMembers, allUpdates, allTasks, allTaskAssignees, allWorkspaceItems, allImages, allAttachments, allComments, allReactions, allEntryReactions, allAttention, productUsage] = await Promise.all([
+  const [allMembers, allUpdates, allTasks, allTaskAssignees, allWorkspaceItems, allImages, allAttachments, allComments, allReactions, allEntryReactions, allAttention, productUsage, locationTotal] = await Promise.all([
     db.select({ id: members.id, name: members.name, slug: members.slug }).from(members).orderBy(members.id),
     db.select({ update: updates, author: members.name, authorSlug: members.slug }).from(updates).innerJoin(members, eq(updates.createdBy, members.id)).where(updateVisibility).orderBy(desc(updates.updatedAt)),
     db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(taskVisibility).orderBy(desc(tasks.updatedAt)),
@@ -525,6 +525,7 @@ export async function workspaceData(brandName: "all" | "kaja" | "hexenwerk" | "v
     db.select({ reaction: entryReactions, memberName: members.name, memberSlug: members.slug }).from(entryReactions).innerJoin(members, eq(entryReactions.memberId, members.id)).where(entryReactionVisibility).orderBy(entryReactions.createdAt),
     db.select({ event: activity }).from(activity).where(attentionVisibility).orderBy(activity.createdAt, activity.id),
     brandName === "all" || brandName === "kaja" ? db.execute(catalogueUsageQuery) : Promise.resolve({ rows: [] }),
+    brandName === "all" || brandName === "kaja" ? db.execute(catalogueLocationTotalQuery) : Promise.resolve({ rows: [] }),
   ]);
-  return { members: allMembers, updates: allUpdates, tasks: allTasks, taskAssignees: allTaskAssignees, workspaceItems: allWorkspaceItems.map((row) => ({ ...row, locationCount: row.item.brand === "kaja" && row.item.section === "catalogue" && row.item.catalogueGroup === "live" ? productLocationCount(row.item.productName ?? row.item.title, productUsage.rows as ProductUsage[]) : undefined })), images: allImages, attachments: allAttachments, comments: allComments, reactions: allReactions, entryReactions: allEntryReactions, attention: allAttention };
+  return { members: allMembers, updates: allUpdates, tasks: allTasks, taskAssignees: allTaskAssignees, workspaceItems: allWorkspaceItems.map((row) => ({ ...row, totalLocationCount: Number(locationTotal.rows[0]?.total ?? 0), locationCount: row.item.brand === "kaja" && row.item.section === "catalogue" && row.item.catalogueGroup === "live" ? productLocationCount(row.item.productName ?? row.item.title, productUsage.rows as ProductUsage[]) : undefined })), images: allImages, attachments: allAttachments, comments: allComments, reactions: allReactions, entryReactions: allEntryReactions, attention: allAttention };
 }

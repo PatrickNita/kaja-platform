@@ -12,7 +12,8 @@ export const productNameKey = (name: string) => name.normalize("NFD").replace(/[
 export function productLocationCount(name: string, usage: ProductUsage[]) {
   return usage.find((row) => productNameKey(row.name) === productNameKey(name))?.locations ?? 0;
 }
-export const productUsageLabel = (count: number) => `Folosit în ${count} ${count === 1 ? "local" : "localuri"}`;
+export const catalogueLocationTotalQuery = sql`select count(*)::integer as total from b2b_locations`;
+export const productUsageLabel = (count: number, total: number) => `Folosit în ${count} ${count === 1 ? "local" : "localuri"} din ${total}`;
 
 export type MissingLocation = { id: number; name: string; address: string };
 export const missingLocationsQuery = (productId: number, ordered = false) => sql`

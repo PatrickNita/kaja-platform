@@ -6,13 +6,25 @@ import { neon } from '@neondatabase/serverless';
 import { PgDialect } from 'drizzle-orm/pg-core';
 const require=createRequire(import.meta.url), exports={};
 new Function('exports','require',ts.transpileModule(readFileSync(new URL('../src/lib/catalogue-usage.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(exports,require);
-const {catalogueUsageQuery,productLocationCount,productUsageLabel,missingLocationsQuery}=exports;
+const {catalogueUsageQuery,productLocationCount,productUsageLabel,missingLocationsQuery,catalogueLocationTotalQuery}=exports;
 assert.equal(productLocationCount('  brain   FREEZE ',[{id:1,name:'BRAIN FREEZE',locations:3}]),3);
 assert.equal(productLocationCount('Gheata',[{id:1,name:'Gheață',locations:1}]),1);
 assert.equal(productLocationCount('Unknown',[]),0);
-for(const count of [0,1,3]) assert.equal(productUsageLabel(count),`Folosit în ${count} ${count===1?'local':'localuri'}`);
+for(const count of [0,1,3]) assert.equal(productUsageLabel(count,25),`Folosit în ${count} ${count===1?'local':'localuri'} din 25`);
+assert.equal(productUsageLabel(0,0),'Folosit în 0 localuri din 0');
 if(process.env.DATABASE_URL){
  const db=neon(process.env.DATABASE_URL), query=new PgDialect().sqlToQuery(catalogueUsageQuery);
+ const totalQuery = new PgDialect().sqlToQuery(catalogueLocationTotalQuery);
+ const totals = await db.transaction([
+ db.query('create temporary table b2b_locations(id integer,name text,contact text) on commit drop'),
+ db.query(totalQuery.sql,totalQuery.params),
+ db.query("insert into pg_temp.b2b_locations values (1,'KAMORA 1','Andrei'),(2,'KAMORA 2','Andrei'),(3,'IMPERATOR','Andrei')"),
+ db.query(totalQuery.sql,totalQuery.params),
+ db.query("insert into pg_temp.b2b_locations values (4,'Local fără comenzi','Other')"),
+ db.query(totalQuery.sql,totalQuery.params),
+ ]);
+ assert.equal(totals[1][0].total,0);assert.equal(totals[3][0].total,3);assert.equal(totals[5][0].total,4);
+ console.log('PASS: total counts all venues separately, includes venues without orders, updates after insertion and handles zero venues.');
  // Transaction-local temporary tables shadow public tables; no real catalogue or order data changes.
  const results=await db.transaction([
  db.query('create temporary table b2b_products(id integer primary key,name text) on commit drop'),
