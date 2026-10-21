@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./design-system.css";
 import { EntryModalStateProvider } from "./entry-modal-state";
 import { currentMember } from "../lib/auth";
 

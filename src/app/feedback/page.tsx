@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { currentMember } from "../../lib/auth";
 import { feedbackBrand } from "../../lib/feedback-model";
 import { memberFeedbackProducts } from "../../lib/feedback-server";
 import { feedbackOrigin } from "../../lib/feedback-security";
+import { WorkspaceHeader } from "../workspace-header";
 import { MobileMenu } from "../mobile-menu";
 import { FeedbackHistory } from "./history";
 import { historyBrand } from "../../lib/feedback-history";
@@ -18,11 +18,9 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Pro
   const params = await searchParams;
   const brand = feedbackBrand(params.brand);
   const history = params.tab === "history";
-  const links = [["activity", "ACTIVITATE"], ["tasks", "Sarcini"], ["events", "Evenimente"], ["catalogue", "Catalog"], ["merch", "Merch"], ["information", "Informații"], ["uploads", "Încărcări"]];
+
   return <main className="workspace-shell">
-    <header className="workspace-header"><div className="workspace-brand"><Link href="/" className="workspace-logo-link"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /></Link><div className="identity"><span className="dot" /> {member.name}</div></div>
-      <nav className="workspace-nav" aria-label="Secțiuni de lucru">{links.map(([view, label]) => <Link key={view} href={`/?view=${view}`}>{label}</Link>)}<Link href="/feedback" className="active">Feedback</Link><Link href="/b2b">B2B</Link></nav>
-    </header>
+    <WorkspaceHeader view="feedback" memberName={member.name} />
     <MobileMenu brand={brand} view="feedback" catalogue="live" tasks="all" memberSlug={member.slug} />
     <div className="workspace-content">
       <nav className="catalogue-submenu filter-nav" aria-label="Vizualizare feedback">

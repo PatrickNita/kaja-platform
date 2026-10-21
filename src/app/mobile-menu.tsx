@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { NavigationIcon } from "./navigation-icon";
 
 type Section =
   | "b2b"
@@ -80,7 +81,7 @@ export function MobileMenu({
   useEffect(() => {
     setMemberName(
       document
-        .querySelector(".workspace-brand .identity")
+        .querySelector(".workspace-brand .identity > span:last-child")
         ?.textContent?.trim() || "Membru",
     );
   }, []);
@@ -96,15 +97,23 @@ export function MobileMenu({
 
   return (
     <div className="mobile-menu">
+      <nav className="mobile-bottom-nav" aria-label="Navigare principală">
+        {([
+          { key: "activity", label: "Activitate", href: link("activity") },
+          { key: "catalogue", label: "Catalog", href: link("catalogue") },
+          { key: "b2b", label: "B2B", href: "/b2b" },
+          { key: "feedback", label: "Feedback", href: "/feedback" },
+        ] as const).map(({ key, label, href }) => <a key={key} href={href} className={view === key ? "active" : undefined} aria-current={view === key ? "page" : undefined}><NavigationIcon name={key} /><span>{label}</span></a>)}
       <button
         ref={trigger}
-        className="mobile-menu-button"
+        className={`mobile-menu-button${open || !["activity", "catalogue", "b2b", "feedback"].includes(view) ? " active" : ""}`}
         aria-expanded={open}
         aria-controls="mobile-navigation"
         onClick={() => setOpen(true)}
       >
-        Meniu
+        <NavigationIcon name="menu" /><span>Meniu</span>
       </button>
+      </nav>
       {open && (
         <>
           <button

@@ -450,11 +450,11 @@ export function OrderEditor({
                   {flavor(product.flavor)} · <span>{product.grams}{language === "ru" ? "г" : "g"}</span> ·{" "}
                   <span>{money(product.price)}</span>
                 </p>
-              </div>
-              <div className="b2b-product-controls">
                 <span className={`b2b-stock ${stockStatus(product.name)}`}>
                   {t(stockLabel[stockStatus(product.name)])}
                 </span>
+              </div>
+              <div className="b2b-product-controls">
                 <div className="b2b-quantity">
                   <button
                     type="button"

@@ -1,7 +1,7 @@
 import { handleCallback } from "@vercel/queue";
 import { processOrderNotification } from "../../../../lib/b2b/telegram";
 export const runtime = "nodejs";
-export const POST = handleCallback<{ eventId: number }>(
+const queueHandler = handleCallback<{ eventId: number }>(
   processOrderNotification,
   {
     visibilityTimeoutSeconds: 300,
@@ -13,3 +13,7 @@ export const POST = handleCallback<{ eventId: number }>(
     }),
   },
 );
+
+export async function POST(request: Request) {
+  return queueHandler(request);
+}
