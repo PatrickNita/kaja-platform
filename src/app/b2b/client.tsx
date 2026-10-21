@@ -128,8 +128,11 @@ function LocationDetails({
       className="card-wrap b2b-location-details"
       aria-label={t("Datele localului")}
     >
-      <h2 className="item-title b2b-location-name">{location.name}</h2>
-      <p className="b2b-location-address">{location.address}</p>
+      <div className="b2b-location-identity">
+        <h2 className="item-title b2b-location-name">{location.name}</h2>
+        <p className="b2b-location-address">{location.address}</p>
+      </div>
+      <div className="b2b-location-contact">
       <p className="b2b-location-person">{location.contact}</p>
       <a
         className="b2b-location-phone"
@@ -137,6 +140,7 @@ function LocationDetails({
       >
         {location.phone}
       </a>
+      </div>
       <p className="b2b-cashback">
         {totalCashback === undefined ? t("CASHBACK") : t("CASHBACK TOTAL")}:{" "}
         <strong>{money(totalCashback ?? location.cashback)}</strong>
@@ -541,8 +545,8 @@ export function OrderEditor({
                   <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
                 </span>
                 <span className="b2b-checkout-amount">
-                  {counts[p.id]} {t("buc. ·")}{" "}
-                  <strong>{money(p.price * counts[p.id])}</strong>
+                  <span className="b2b-line-units">{counts[p.id]} {t("buc.")}</span>
+                  <strong className="b2b-line-price">{money(p.price * counts[p.id])}</strong>
                 </span>
               </li>
             ))}
@@ -1143,6 +1147,7 @@ export function B2BAdmin({
   }
   return (
     <div className="workspace-content b2b-admin">
+      <div className="b2b-section-navigation">
       <nav className="catalogue-submenu filter-nav" aria-label="B2B">
         <a
           href="/b2b?tab=locations"
@@ -1165,6 +1170,8 @@ export function B2BAdmin({
           Istoric Comenzi
         </a>
       </nav>
+      {view === "locations" && <button className="button b2b-add-mobile" onClick={() => setLocationForm("new")}>Adaugă local</button>}
+      </div>
       {view === "locations" && (
         <div className="b2b-toolbar">
           <input
@@ -1179,10 +1186,11 @@ export function B2BAdmin({
             options={[
               { value: "name", label: "Denumire A–Z" },
               { value: "latest", label: "Ultima comandă — cele mai recente" },
+              { value: "oldest", label: "Ultima comandă — cele mai vechi" },
             ]}
             onChange={setLocationSort}
           />
-          <button className="button" onClick={() => setLocationForm("new")}>
+          <button className="button b2b-add-desktop" onClick={() => setLocationForm("new")}>
             Adaugă local
           </button>
         </div>

@@ -283,7 +283,7 @@ function OrderDialog({
             +
           </button>
         </div>
-        <strong>{money((counts[p.id] ?? 0) * p.price)}</strong>
+        <strong className="b2b-line-price">{money((counts[p.id] ?? 0) * p.price)}</strong>
       </div>
     );
   }
@@ -457,7 +457,7 @@ function OrderDialog({
                 )
               : shownLines
             ).map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className={step === "edit" ? "b2b-edit-row" : undefined}>
                 <span className="b2b-checkout-product">
                   <strong>{p.name}</strong>
                   <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
@@ -466,8 +466,8 @@ function OrderDialog({
                   quantities(p)
                 ) : (
                   <span className="b2b-checkout-amount">
-                    {"quantity" in p ? Number(p.quantity) : counts[p.id]} {t("buc. ·")}{" "}
-                    <strong>
+                    <span className="b2b-line-units">{"quantity" in p ? Number(p.quantity) : counts[p.id]} {t("buc.")}</span>
+                    <strong className="b2b-line-price">
                       {money(
                         p.price *
                           ("quantity" in p ? Number(p.quantity) : counts[p.id]),

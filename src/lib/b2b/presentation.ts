@@ -33,13 +33,15 @@ export function historyOrders(orders: Order[], month: string, year: string) {
     );
 }
 export function sortLocations(locations: Location[], sort: string) {
-  return locations.toSorted(
-    (a, b) =>
-      (sort === "latest"
-        ? (Date.parse(b.last_order_at ?? "") || 0) -
-          (Date.parse(a.last_order_at ?? "") || 0)
-        : 0) ||
-      a.name.localeCompare(b.name, "ro") ||
-      a.id - b.id,
-  );
+  return locations.toSorted((a, b) => {
+    if (sort === "latest" || sort === "oldest") {
+      const left = Date.parse(a.last_order_at ?? "") || 0;
+      const right = Date.parse(b.last_order_at ?? "") || 0;
+      if (!left && right) return 1;
+      if (left && !right) return -1;
+      const byDate = sort === "latest" ? right - left : left - right;
+      if (byDate) return byDate;
+    }
+    return a.name.localeCompare(b.name, "ro") || a.id - b.id;
+  });
 }

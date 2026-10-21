@@ -50,3 +50,8 @@ assert.deepEqual(
 console.log(
   "PASS: history periods in Europe/Chisinau, year/month boundaries, descending order and venue sorting.",
 );
+assert.deepEqual(sortLocations(venues, 'oldest').map(l=>l.id),[2,3,1]);
+const tiedVenues=[...venues,{id:4,name:'Aardvark',last_order_at:null},{id:5,name:'Alfa 2',last_order_at:'2026-01-01'}];
+assert.deepEqual(sortLocations(tiedVenues,'oldest').map(l=>l.id),[2,5,3,4,1]);
+assert.deepEqual(sortLocations(tiedVenues,'latest').map(l=>l.id),[3,2,5,4,1]);
+console.log('PASS: oldest/recent latest-order sorting, alphabetical ties and venues without orders last.');
