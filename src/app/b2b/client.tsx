@@ -458,10 +458,10 @@ export function OrderEditor({
                   {flavor(product.flavor)} · <span>{product.grams}{language === "ru" ? "г" : "g"}</span> ·{" "}
                   <span>{money(product.price)}</span>
                 </p>
-                <span className={`b2b-stock ${stockStatus(product)}`}>
-                  {t(stockLabel[stockStatus(product)])}
-                </span>
               </div>
+              <span className={`b2b-stock ${stockStatus(product)}`}>
+                {t(stockLabel[stockStatus(product)])}
+              </span>
               <div className="b2b-product-controls">
                 <div className="b2b-quantity">
                   <button
@@ -475,7 +475,7 @@ export function OrderEditor({
                       }))
                     }
                   >
-                    −
+                    <span className="b2b-quantity-glyph">−</span>
                   </button>
                   <output
                     aria-label={t(`Cantitate ${product.name}`)}
@@ -503,7 +503,7 @@ export function OrderEditor({
                       }))
                     }
                   >
-                    +
+                    <span className="b2b-quantity-glyph">+</span>
                   </button>
                 </div>
               </div>
