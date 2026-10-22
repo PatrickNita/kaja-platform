@@ -101,7 +101,7 @@ function InlineBrand({ brand, separated = true }: { brand: Brand; separated?: bo
   return <>{separated && <span className="entry-author-divider" aria-hidden="true">|</span>}<span className="entry-brand-inline">{selectedBrandLabel(brand)}</span></>;
 }
 
-function BrandFilterNav({ selected, view, catalogue, tasks, activity = false }: { selected: BrandFilter; view: Section; catalogue?: CatalogueGroup; tasks?: TaskView; activity?: boolean | "external" | "internal" }) {
+function BrandFilterNav({ selected, view, catalogue, tasks, activity = false }: { selected: BrandFilter; view: Section; catalogue?: CatalogueGroup; tasks?: TaskView; activity?: boolean | "external" | "internal" | "deleted" }) {
   return <nav className="catalogue-submenu filter-nav brand-filter-nav" aria-label="Filtrează după brand">{brandFilters.map((entry) => {
     const query = new URLSearchParams({ brand: entry.key, view });
     if (view === "catalogue") query.set("catalogue", catalogue ?? "live");
@@ -350,16 +350,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const requestedTaskView: TaskView = taskViews.some((entry) => entry.key === params.tasks) ? params.tasks as TaskView : "all";
   if (view === "tasks" && requestedTaskView === "history" && member.slug !== "patrick") redirect("/?brand=all&view=tasks&tasks=all");
   const taskView: TaskView = requestedTaskView === "history" && member.slug !== "patrick" ? "all" : requestedTaskView;
-  const [data, globalTasks, globalActivity] = await Promise.all([
+  if (params.activity === "deleted" && member.slug !== "patrick") redirect("/?view=activity&brand="+brandFilter);
+  const [data, globalTasks, globalActivity, deletedActivity] = await Promise.all([
     workspaceData(brandFilter),
     view === "tasks" ? taskWorkspaceData() : Promise.resolve(null),
     view === "activity" ? activityData(brandFilter) : Promise.resolve([] as ActivityData),
+    view === "activity" && member.slug === "patrick" ? activityData(brandFilter,"deleted") : Promise.resolve([] as ActivityData),
   ]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
   if (view === "tasks" && !globalTasks) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
-  const activitySource = params.activity === "external" || params.activity === "internal" ? params.activity : undefined;
+  const activitySource = params.activity === "external" || params.activity === "internal" || params.activity === "deleted" ? params.activity : undefined;
   const activityFull = params.activity === "all" || activitySource !== undefined;
-  const content = view === "activity" ? <><MemberDashboard slug={member.slug} brand={brandFilter} activity={globalActivity} full={activityFull} source={activitySource} filters={<BrandFilterNav selected={brandFilter} view="activity" activity={activitySource ?? activityFull} />} />{params.activity === "all" && <LegacyProposalDetails data={data} memberSlug={member.slug} />}</> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  const content = view === "activity" ? <><MemberDashboard slug={member.slug} brand={brandFilter} activity={globalActivity} deletedActivity={deletedActivity} full={activityFull} source={activitySource} filters={<BrandFilterNav selected={brandFilter} view="activity" activity={activitySource ?? activityFull} />} />{params.activity === "all" && <LegacyProposalDetails data={data} memberSlug={member.slug} />}</> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
   return <><main className="workspace-shell"><WorkspaceHeader view={view} memberName={member.name} brand={brandFilter} catalogue={group} tasks={taskView} /><MobileMenu brand={brandFilter} view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
 }

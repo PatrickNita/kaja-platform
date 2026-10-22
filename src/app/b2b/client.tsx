@@ -1118,7 +1118,7 @@ export function B2BAdmin({
   const detail = data.locations.find((l) => l.id === detailsLocation);
   return (
     <div className="workspace-content b2b-admin">
-      <div className="section-intro"><h1>{view === "stock" ? "Administrare stoc" : view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "stock" ? "Actualizează cantitățile disponibile pentru comenzi." : view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>
+      {view !== "history" && <div className="section-intro"><h1>{view === "stock" ? "Administrare stoc" : view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "stock" ? "Actualizează cantitățile disponibile pentru comenzi." : view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>}
       <div className="b2b-section-navigation">
       <nav className="catalogue-submenu filter-nav" aria-label="B2B">
         <a
@@ -1247,6 +1247,7 @@ export function B2BAdmin({
           manager={manager}
           allowEdit={manager}
           mode="admin"
+          hideHeading
         />
       )}
     </div>

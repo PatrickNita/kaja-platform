@@ -6,6 +6,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { currentMember } from "../lib/auth";
+import { activityVisibility } from "../lib/activity-visibility";
 import { recordActivity } from "../lib/activity";
 import { db, memberSeed } from "../lib/db";
 import { activity, attachments, commentReactions, comments, entryReactions, members, taskAssignees, tasks, updates, workspaceItemImages, workspaceItems } from "../lib/schema";
@@ -48,7 +49,6 @@ function assertCanManage(member: { id: number; slug: string }, ownerId: number) 
 }
 type Brand = z.infer<typeof brand>;
 type EntryEntity = z.infer<typeof entryEntity>;
-const privateDeletionActions = ["deleted", "comment_deleted", "image_deleted"] as const;
 
 function synchronizeActivityTitle(input: { brand: Brand; entityType: EntryEntity; entityId: number; title: string }) {
   return db!.update(activity).set({
@@ -392,41 +392,15 @@ export async function toggleEntryAttention(formData: FormData) {
   refresh();
 }
 
-export async function activityData(filter: "all" | Brand) {
+export async function activityData(filter: "all" | Brand, source: "internal" | "deleted" = "internal") {
   const session = await currentMember();
   if (!db || !session) return [];
+  const selectedSource = z.enum(["internal","deleted"]).parse(source);
+  if (selectedSource === "deleted" && session.slug !== "patrick") return [];
   const selected = z.enum(["all", "kaja", "hexenwerk", "virginia"]).parse(filter);
   const base = db.select({ event: activity, actor: members.name }).from(activity).innerJoin(members, eq(activity.actorId, members.id));
-  const visibility = memberSlug.safeParse(session.slug).success && session.slug === "patrick"
-    ? undefined
-    : and(
-      sql`${activity.action} not in (${sql.join(privateDeletionActions.map((action) => sql`${action}`), sql`, `)})`,
-      // Filter before LIMIT so deleted entries do not crowd out visible activity.
-      // Patrick keeps the complete history, including deleted targets.
-      sql`(
-        (${activity.entityType} = 'update' and exists (
-          select 1 from ${updates} where ${updates.id} = ${activity.entityId}
-          and ${updates.brand} = ${activity.brand} and ${updates.deletedAt} is null
-        )) or
-        (${activity.entityType} = 'task' and exists (
-          select 1 from ${tasks} where ${tasks.id} = ${activity.entityId}
-          and ${tasks.brand} = ${activity.brand} and ${tasks.deletedAt} is null
-        )) or
-        (${activity.entityType} = 'attachment' and exists (
-          select 1 from ${attachments} where ${attachments.id} = ${activity.entityId}
-          and ${attachments.brand} = ${activity.brand} and ${attachments.deletedAt} is null
-        )) or exists (
-          select 1 from ${workspaceItems} where ${workspaceItems.id} = ${activity.entityId}
-          and ${workspaceItems.brand} = ${activity.brand}
-          and ${workspaceItems.section} = ${activity.entityType} and ${workspaceItems.deletedAt} is null
-        )
-      )`,
-    );
-  const rows = selected === "all"
-    ? visibility
-      ? await base.where(visibility).orderBy(desc(activity.createdAt), desc(activity.id)).limit(200)
-      : await base.orderBy(desc(activity.createdAt), desc(activity.id)).limit(200)
-    : await base.where(visibility ? and(eq(activity.brand, selected), visibility) : eq(activity.brand, selected)).orderBy(desc(activity.createdAt), desc(activity.id)).limit(200);
+  const visibility = activityVisibility(session.slug,selectedSource);
+  const rows = await base.where(selected === "all" ? visibility : and(eq(activity.brand,selected),visibility)).orderBy(desc(activity.createdAt),desc(activity.id)).limit(200);
 
   const updateIds = rows.filter(({ event }) => event.entityType === "update").map(({ event }) => event.entityId);
   const taskIds = rows.filter(({ event }) => event.entityType === "task").map(({ event }) => event.entityId);

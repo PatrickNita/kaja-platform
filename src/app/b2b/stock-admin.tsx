@@ -1,11 +1,17 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { stockStatus, stockLabel, type Product } from "../../lib/b2b/model";
+import { stockStatus, stockLabel, type StockProduct } from "../../lib/b2b/model";
+import { useSearchParams } from "next/navigation";
+import { FilterSelect } from "./filter-select";
 import { SearchField } from "../design-primitives";
 import { matchesProduct } from "../../lib/public-language";
 
 export function StockAdmin() {
-  const [products, setProducts] = useState<Product[]>([]), [search, setSearch] = useState("");
+  const params = useSearchParams();
+  const selectedBrand = ["kaja","hexenwerk","virginia"].includes(params.get("stockBrand") ?? "") ? params.get("stockBrand")! : "all";
+  const matches = (p:StockProduct) => (selectedBrand === "all" || p.brand === selectedBrand) && matchesProduct(p,search);
+  function changeBrand(value:string) { const url=new URL(window.location.href); if(value==="all")url.searchParams.delete("stockBrand");else url.searchParams.set("stockBrand",value);window.history.pushState(null,"",url); }
+  const [products, setProducts] = useState<StockProduct[]>([]), [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true), [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
   const load = useCallback(async () => {
@@ -17,18 +23,18 @@ export function StockAdmin() {
   }, []);
   useEffect(() => { void load(); return () => controller.current?.abort(); }, [load]);
   return <section className="stock-admin" aria-label="Administrare stoc">
-    <div className="stock-toolbar"><SearchField aria-label="Caută în stoc" placeholder="Caută produs sau gust…" value={search} onChange={e => setSearch(e.target.value)} /><button className="button ghost" disabled={loading} onClick={() => void load()}>Reîncarcă stocul</button></div>
+    <div className="stock-toolbar"><FilterSelect label="Brandul produselor" value={selectedBrand} onChange={changeBrand} options={[{value:"all",label:"Toate brandurile"},{value:"kaja",label:"KAJA"},{value:"hexenwerk",label:"HEXENWERK"},{value:"virginia",label:"LUMEN"}]} /><SearchField aria-label="Caută în stoc" placeholder="Caută produs sau gust…" value={search} onChange={e => setSearch(e.target.value)} /><button className="button ghost" disabled={loading} onClick={() => void load()}>Reîncarcă stocul</button></div>
     <p className="meta stock-legend">În stoc: peste 50 buc. · Stoc limitat: 1–50 buc. · Stoc epuizat: 0 buc. Cantitățile scad automat la plasarea comenzilor.</p>
     {loading && <p role="status" className="meta">Se încarcă stocul…</p>}
     {error && <p role="alert" className="b2b-error">{error}</p>}
-    <div className="premium-list">{products.filter(p => matchesProduct(p,search)).map(product => <StockRow key={product.id} product={product} onSaved={value => setProducts(old => old.map(p => p.id === value.id ? value : p))} />)}</div>
-    {!loading && !error && !products.filter(p => matchesProduct(p,search)).length && <p className="empty-state">Nu există produse potrivite.</p>}
+    <div className="stock-grid">{products.map(product => <StockRow key={product.id} hidden={!matches(product)} product={product} onSaved={value => setProducts(old => old.map(p => p.id === value.id ? value : p))} />)}</div>
+    {!loading && !error && !products.some(matches) && <p className="empty-state">Nu există produse potrivite.</p>}
   </section>;
 }
-function StockRow({ product, onSaved }: { product: Product; onSaved: (product:Product) => void }) {
+function StockRow({ product, onSaved, hidden }: { product: StockProduct; hidden:boolean; onSaved: (product:StockProduct) => void }) {
   const [base,setBase] = useState(product), [quantity,setQuantity] = useState(String(product.stock ?? 0));
   const [busy,setBusy] = useState(false), [error,setError] = useState(""), [saved,setSaved] = useState(false);
-  const [conflict,setConflict] = useState<Product | null>(null);
+  const [conflict,setConflict] = useState<StockProduct | null>(null);
   const dirty = quantity !== String(base.stock ?? 0);
   useEffect(() => { if (!dirty && !busy) { setBase(product); setQuantity(String(product.stock ?? 0)); } }, [product,dirty,busy]);
   const valid = /^\d+$/.test(quantity) && Number(quantity)<=1000000;
@@ -43,7 +49,7 @@ function StockRow({ product, onSaved }: { product: Product; onSaved: (product:Pr
     finally { setBusy(false); }
   }
   const status = stockStatus(product);
-  return <form className="stock-row" onSubmit={save} aria-label={"Stoc " + product.name}>
+  return <form hidden={hidden} className="stock-row" onSubmit={save} aria-label={"Stoc " + product.name}>
     <div className="stock-product"><strong>{product.name}</strong><span>{product.flavor}</span></div>
     <span className={`stock-status ${status}`}>{stockLabel[status]}</span>
     <label className="stock-quantity">Bucăți<input type="number" min="0" max="1000000" step="1" inputMode="numeric" value={quantity} disabled={busy} onChange={e => {setQuantity(e.target.value);setSaved(false);}} aria-label={"Stoc pentru " + product.name} /></label>

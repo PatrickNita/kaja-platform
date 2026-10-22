@@ -15,14 +15,15 @@ export function FeedbackMessageDialog({ message, onClose, children }: {
   children?: ReactNode;
 }) {
   const brand = feedbackBrands.find(b => b.key === message.brand)?.label ?? message.brand;
-  return <ConfirmDialog title="Feedback primit" titleContent={<span className="feedback-message-heading"><NavigationIcon name="feedback" />Feedback primit</span>} busy={false} onClose={onClose} className="feedback-message-dialog">
+  const received = dateFormat.format(new Date(message.createdAt));
+  return <ConfirmDialog title={`Feedback primit la ${received}`} titleContent={<span className="feedback-message-heading">Feedback primit la <time dateTime={message.createdAt}>{received}</time></span>} busy={false} onClose={onClose} className="feedback-message-dialog">
     <div className="feedback-message-product">
-      <h4>{message.product}<span className="feedback-message-brand">{brand}</span></h4>
-      {message.flavor && <p>{message.flavor}</p>}
+      <h4>{message.product}</h4>
+      {message.flavor && <span className="feedback-message-flavor">{message.flavor}</span>}
+      <span className="feedback-message-brand">{brand}</span>
     </div>
-    <dl className="feedback-message-received"><dt>Primit la</dt><dd><time dateTime={message.createdAt}>{dateFormat.format(new Date(message.createdAt))}</time></dd></dl>
     <section className="feedback-message-body" aria-label="Comentariu anonim">
-      <h4>Comentariu anonim</h4>
+      <NavigationIcon name="feedback" />
       <p>{message.body}</p>
     </section>
     {children}

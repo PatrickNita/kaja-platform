@@ -39,7 +39,7 @@ export async function verifyInventory({db,api,load,setMember,base,stockMigration
   await db.transaction(stockMigration.map(q => db.query(q))); assert.equal((await stock(1)).stock,20);
   const stockRoute=load("src/app/api/b2b/stock/route.ts");
   const post = body => stockRoute.POST(new Request(base+"/api/b2b/stock",{method:"POST",headers:{origin:base,"content-type":"application/json"},body:JSON.stringify(body)}));
-  for(const slug of ["patrick","ionut"]) {setMember({slug,name:slug});assert.equal((await stockRoute.GET()).status,200);}
+  for(const slug of ["patrick","ionut"]) {setMember({slug,name:slug});const res=await stockRoute.GET();assert.equal(res.status,200);assert((await res.json()).products.every(p=>p.brand==="kaja"));}
   for(const slug of ["igor","andrei"]) {setMember({slug,name:slug});assert.equal((await stockRoute.GET()).status,403);assert.equal((await post({id:1,quantity:10,version:1})).status,403);}
   setMember(null);assert.equal((await stockRoute.GET()).status,401);assert.equal((await post({id:1,quantity:10,version:1})).status,401);
   setMember({slug:"patrick",name:"Patrick"});

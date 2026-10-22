@@ -50,6 +50,7 @@ export type Product = {
   stock?: number;
   stockVersion?: number;
 };
+export type StockProduct = Product & { brand: "kaja" | "hexenwerk" | "virginia" };
 export type Location = {
   id: number;
   name: string;
