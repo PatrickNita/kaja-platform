@@ -113,7 +113,7 @@ function BrandFilterNav({ selected, view, catalogue, tasks, activity = false }: 
 }
 
 function Composer({ label, children }: { label: string; children: ReactNode }) {
-  return <details className={"composer-toggle" + (label === "Adaugă produs din catalog" ? " catalogue-composer" : "")}><summary>{label}</summary><div className="composer-content">{children}</div></details>;
+  return <details className={"composer-toggle" + (label === "Adaugă produs nou" ? " catalogue-composer" : "")}><summary>{label}</summary><div className="composer-content">{children}</div></details>;
 }
 
 function Comments({ brand, entityType, entityId, comments, reactions, memberSlug }: { brand: Brand; entityType: CommentEntity; entityId: number; comments: CommentRow[]; reactions: ReactionRow[]; memberSlug: string }) {
@@ -219,7 +219,7 @@ function workspaceEditConfig({ brand, section, item, memberSlug, authorSlug }: {
 
 function WorkspaceSection({ brandFilter, section, title, displayTitle, items, images, comments, reactions, entryReactions, attention, memberSlug, catalogueGroup, showBrandFilter = true }: { brandFilter: BrandFilter; section: "events" | "catalogue" | "merch" | "information"; title: string; displayTitle: string; items: WorkspaceItemRow[]; images: Data["images"]; comments: CommentRow[]; reactions: ReactionRow[]; entryReactions: EntryReactionRow[]; attention: AttentionRow[]; memberSlug: string; catalogueGroup?: CatalogueGroup; showBrandFilter?: boolean }) {
   const label = section === "catalogue" ? "produs din catalog" : title.toLowerCase();
-  const toggleLabel = section === "merch" ? "Adaugă produs merch" : section === "information" ? "Adaugă informație" : `Adaugă ${label}`;
+  const toggleLabel = section === "merch" ? "Adaugă produs merch" : section === "information" ? "Adaugă informație" : section === "catalogue" ? "Adaugă produs nou" : `Adaugă ${label}`;
   const canCreate = memberSlug === "patrick" || (section === "catalogue" && catalogueGroup === "ideas");
   const galleryEnabled = section === "merch" || section === "events" || (section === "catalogue" && catalogueGroup !== "ideas");
   const modalEnabled = section === "information" || section === "catalogue" || galleryEnabled;
