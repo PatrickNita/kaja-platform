@@ -358,7 +358,7 @@ body .feedback-product::after { content:"›"; position:absolute; right:16px; to
   body .workspace-content { gap:16px; }
   body .member-dashboard .section-intro h1 { font-size:26px; }
   body .member-dashboard .section-intro p { text-transform:capitalize; }
-  body .brand-filter-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; overflow:visible; gap:2px; padding:3px; border-radius:10px; }
+  body .brand-filter-nav { display:grid; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); width:100%; overflow:visible; gap:2px; padding:3px; border-radius:10px; }
   body .brand-filter-nav :is(a,button) { width:auto; min-width:0; min-height:44px; padding:8px 3px; font-size:10px; border-radius:7px; }
   body .dashboard-stat { padding:12px; gap:10px; }
   body .dashboard-stat span span { font-size:11px; }
@@ -696,8 +696,8 @@ body .b2b-order-dialog > :is(.search-field,.b2b-order-section-heading) { flex-sh
   body .workspace-shell .item-title { font-size:13px; }
   body .workspace-shell :is(.meta,.feedback-secondary,.event,.attachment small) { font-size:11px; }
   body .workspace-shell .button { min-height:44px; padding:8px 12px; font-size:12px; }
-  body .workspace-shell :is(.workspace-filter-nav,.filter-nav,.catalogue-submenu) { padding:3px; gap:2px; border-radius:10px; }
-  body .workspace-shell :is(.workspace-filter-nav,.filter-nav,.catalogue-submenu) :is(a,button) { min-height:44px; min-width:0; padding:8px 10px; font-size:11px; }
+  body .workspace-shell :is(.workspace-filter-nav,.filter-nav,.catalogue-submenu) { display:grid; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); width:100%; padding:3px; gap:2px; border-radius:10px; }
+  body .workspace-shell :is(.workspace-filter-nav,.filter-nav,.catalogue-submenu) :is(a,button) { display:flex; align-items:center; justify-content:center; width:auto; min-height:44px; min-width:0; padding:8px 3px; font-size:11px; white-space:normal; text-align:center; }
   body .workspace-shell :is(input,textarea,select) { font-size:16px; padding:8px 10px; }
   body .workspace-shell :is(input,textarea)::placeholder { font-size:12px; }
   body .workspace-shell .search-field > input { height:44px; min-height:44px; padding-left:34px; }
@@ -727,7 +727,7 @@ body .b2b-order-dialog > :is(.search-field,.b2b-order-section-heading) { flex-sh
   body .b2b-admin .b2b-section-navigation > nav.filter-nav { display:grid; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); flex:3 1 0; width:auto; min-width:0; height:44px; padding:0; gap:2px; border:0; margin:0; overflow:visible; }
   body .b2b-admin .b2b-section-navigation > nav.filter-nav > a { display:flex; align-items:center; justify-content:center; min-width:0; min-height:44px; height:44px; padding:4px 3px; font-size:10px; line-height:1.2; white-space:normal; text-align:center; }
   body .b2b-admin .b2b-section-navigation .b2b-add-mobile { display:block; flex:1 1 0; min-width:0; min-height:44px; height:44px; padding:4px 3px; font-size:10px; line-height:1.2; white-space:normal; }
-  body .mobile-drawer { width:max(30vw,180px); max-width:100vw; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); }
+  body .mobile-drawer { width:max(40vw,180px); max-width:100vw; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); }
   body .mobile-drawer-head { gap:8px; margin-bottom:12px; font-size:16px; }
   body .mobile-close { width:44px; height:44px; min-width:44px; min-height:44px; flex:0 0 44px; font-size:24px; }
   body .mobile-member-identity { padding-bottom:12px; margin-bottom:4px; gap:6px; font-size:10px; letter-spacing:0; }
