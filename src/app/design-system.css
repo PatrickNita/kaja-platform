@@ -664,3 +664,29 @@ body .b2b-order-details .b2b-checkout-total { margin:0 0 12px; }
   body .b2b-order-details .b2b-checkout-product strong { font-size:12px; }
   body .b2b-order-details .b2b-checkout-flavor { font-size:11px; }
 }
+
+/* Mobile ordering uses a compact, consistent 44px control rhythm. */
+@media(max-width:800px) {
+  body main.b2b-portal { padding-top:16px; padding-bottom:calc(88px + env(safe-area-inset-bottom)); gap:12px; }
+  body .b2b-portal :is(.portal-view-tabs,.portal-location-panel) { margin-block:0; }
+  body :is(.b2b-portal,.b2b-checkout) .search-field > input { height:44px; min-height:44px; padding:8px 10px 8px 34px; font-size:16px; line-height:1.25; }
+  body :is(.b2b-portal,.b2b-checkout) .search-field > input::placeholder { font-size:12px; }
+  body :is(.b2b-portal,.b2b-checkout) .search-field > .navigation-icon { left:10px; width:16px; height:16px; }
+  body .b2b-checkout[open] { padding:16px; gap:6px; }
+  body .b2b-checkout > .b2b-dialog-head { margin-bottom:0; align-items:center; }
+  body .b2b-checkout > .b2b-dialog-head > h3 { margin:0; font-size:16px; }
+  body .b2b-checkout .b2b-dialog-date { font-size:11px; font-weight:400; }
+  body .b2b-checkout > .b2b-checkout-destination { margin:0; padding:8px 12px; gap:2px; }
+  body .b2b-checkout .b2b-checkout-location, body .b2b-checkout .b2b-order-contact { font-size:12px; line-height:1.4; margin:0; }
+  body .b2b-checkout .b2b-checkout-label { font-size:10px; }
+  body .b2b-checkout .b2b-checkout-list li { padding-block:6px; gap:6px; }
+  body .b2b-checkout .b2b-checkout-product { line-height:1.35; }
+  body .b2b-checkout .b2b-checkout-product strong { font-size:12px; }
+  body .b2b-checkout .b2b-checkout-flavor { font-size:11px; }
+  body .b2b-checkout .b2b-checkout-footer { gap:8px; padding-top:8px; }
+  body .b2b-checkout .b2b-checkout-total { font-size:12px; gap:8px; margin:0; line-height:1.4; }
+  body .b2b-checkout .b2b-checkout-footer > .button { height:auto; min-height:44px; padding:10px 12px; font-size:12px; line-height:1.3; border-radius:10px; }
+  body .b2b-portal .b2b-cart-bar { padding:8px 16px calc(8px + env(safe-area-inset-bottom)); gap:8px; }
+  body .b2b-portal .b2b-cart-bar .button { min-height:44px; padding:10px 12px; font-size:12px; }
+  body .b2b-portal .b2b-cart-bar strong { font-size:13px; }
+}
