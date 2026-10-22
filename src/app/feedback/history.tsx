@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { feedbackBrands } from "../../lib/feedback-model";
 import type { FeedbackHistoryBrand, FeedbackHistoryRow } from "../../lib/feedback-history";
-import { ConfirmDialog } from "../b2b/ui";
+import { FeedbackMessageDialog } from "./message-dialog";
 import { markSeen } from "../member-seen";
 import { NavigationIcon } from "../navigation-icon";
 const dateFormat = new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Chisinau" });
@@ -64,6 +64,6 @@ export function FeedbackHistory({ brand, onlyUnread = false, commentId = null }:
       {error && <div><p className="entry-edit-error" role="alert">{error}</p><button className="button ghost" type="button" onClick={() => void load(next)}>Reîncearcă</button></div>}
       {next && !error && <button className="button ghost" type="button" disabled={loading} onClick={() => void load(next)}>Încarcă mai multe</button>}
     </section>
-    {selected && <ConfirmDialog title={selected.product} busy={false} onClose={close} className="feedback-message-dialog"><p className="feedback-secondary">{feedbackBrands.find(b => b.key === selected.brand)?.label} · {dateFormat.format(new Date(selected.createdAt))}</p><p className="feedback-full-comment">{selected.body}</p>{seenError && <div role="alert" className="read-state-error">Nu s-a putut marca drept văzut. <button className="button ghost" onClick={() => setSeenRetry(n => n + 1)}>Reîncearcă</button></div>}</ConfirmDialog>}
+    {selected && <FeedbackMessageDialog message={selected} onClose={close}>{seenError && <div role="alert" className="read-state-error">Nu s-a putut marca drept văzut. <button className="button ghost" onClick={() => setSeenRetry(n => n + 1)}>Reîncearcă</button></div>}</FeedbackMessageDialog>}
   </>;
 }

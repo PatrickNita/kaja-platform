@@ -4,6 +4,8 @@ import { markSeen } from "../member-seen";
 import { useEffect, useRef, useState } from "react";
 import { feedbackPath, feedbackBrands, type FeedbackBrand, type FeedbackProduct, type MemberFeedbackProduct, type ProductComment } from "../../lib/feedback-model";
 import { ConfirmDialog } from "../b2b/ui";
+import { FeedbackMessageDialog } from "./message-dialog";
+import { NavigationIcon } from "../navigation-icon";
 
 export function FeedbackAdmin({ products, brand, origin }: { products: MemberFeedbackProduct[]; brand: FeedbackBrand; origin: string }) {
   const [selected, setSelected] = useState<FeedbackProduct | null>(null);
@@ -16,6 +18,20 @@ export function FeedbackAdmin({ products, brand, origin }: { products: MemberFee
   </>;
 }
 function ProductFeedback({ product, origin, close }: { product: FeedbackProduct; origin: string; close: () => void }) {
+  const [selectedComment, setSelectedComment] = useState<ProductComment | null>(null);
+  const commentsRef = useRef<HTMLDivElement>(null);
+  const returnPosition = useRef<{id:number; scrollTop:number} | null>(null);
+  useEffect(() => {
+    if (selectedComment || !returnPosition.current) return;
+    const position = returnPosition.current;
+    const frame = requestAnimationFrame(() => {
+      const list = commentsRef.current;
+      list?.querySelector<HTMLButtonElement>(`[data-feedback-id="${position.id}"]`)?.focus({preventScroll:true});
+      const dialog = list?.closest("dialog");
+      if (dialog) dialog.scrollTop = position.scrollTop;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedComment]);
   const [comments, setComments] = useState<ProductComment[]>([]);
   const [more, setMore] = useState(false);
   const [seenError, setSeenError] = useState(false), [seenRetry, setSeenRetry] = useState(0);
@@ -30,6 +46,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
     return () => controller.abort();
   }, [product.id]);
   useEffect(() => {
+    if (selectedComment) return;
     const ids = comments.map(c => c.id).filter(id => !acknowledged.current.has(id));
     if (!ids.length) return;
     let cancelled = false;
@@ -45,7 +62,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
       setSeenError(false);
     })();
     return () => { cancelled = true; };
-  }, [comments, seenRetry]);
+  }, [comments, seenRetry, selectedComment]);
   async function next() {
     setLoading(true); setError("");
     try {
@@ -54,6 +71,7 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
       setComments((old) => [...old, ...data.comments]); setMore(data.more);
     } catch { setError("Nu s-au putut încărca mesajele."); } finally { setLoading(false); }
   }
+  if (selectedComment) return <FeedbackMessageDialog message={{...selectedComment, product:product.name, brand:product.brand, flavor:product.flavor}} onClose={() => setSelectedComment(null)} />;
   return <ConfirmDialog title={`${product.name} - ${product.flavor}`} titleContent={<>{product.name} <span className="feedback-secondary">- {product.flavor}</span></>} busy={false} onClose={close} className="feedback-dialog">
     <div className="feedback-qr-panel">
       {/* A same-origin authenticated SVG route keeps QR generation on the server. */}
@@ -64,6 +82,6 @@ function ProductFeedback({ product, origin, close }: { product: FeedbackProduct;
       {copied && <p role="status" className="b2b-success">Link copiat.</p>}
     </div>
     <h4 className="feedback-comments-title">Comentarii</h4>{seenError && <div className="read-state-error" role="alert">Nu s-au putut marca mesajele drept văzute. <button className="text-button" onClick={() => setSeenRetry(n => n + 1)}>Reîncearcă</button></div>}{error && <p className="b2b-error" role="alert">{error}</p>}
-    <div className="feedback-comments">{comments.map((c) => <article key={c.id} className="feedback-comment"><p>{c.body}</p><time className="feedback-secondary" dateTime={c.createdAt}>{new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Chisinau" }).format(new Date(c.createdAt))}</time></article>)}{!loading && !comments.length && !error && <p className="feedback-secondary">Nu există feedback pentru acest produs.</p>}{loading && <p role="status">Se încarcă…</p>}{more && <button type="button" className="button ghost" disabled={loading} onClick={next}>Mai multe comentarii</button>}</div>
+    <div className="feedback-comments" ref={commentsRef}>{comments.map((c) => <button key={c.id} type="button" className="feedback-comment" data-feedback-id={c.id} aria-haspopup="dialog" onClick={event => {returnPosition.current={id:c.id,scrollTop:event.currentTarget.closest("dialog")?.scrollTop ?? 0};setSelectedComment(c);}}><NavigationIcon name="feedback" /><span className="feedback-comment-text">{c.body}</span><time className="feedback-secondary" dateTime={c.createdAt}>{new Intl.DateTimeFormat("ro-RO", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Chisinau" }).format(new Date(c.createdAt))}</time><NavigationIcon name="chevron" /></button>)}{!loading && !comments.length && !error && <p className="feedback-secondary">Nu există feedback pentru acest produs.</p>}{loading && <p role="status">Se încarcă…</p>}{more && <button type="button" className="button ghost" disabled={loading} onClick={next}>Mai multe comentarii</button>}</div>
   </ConfirmDialog>;
 }
