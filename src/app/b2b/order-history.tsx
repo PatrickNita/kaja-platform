@@ -23,7 +23,7 @@ import {
 } from "../../lib/b2b/presentation";
 import { ConfirmDialog, Feedback, request } from "./ui";
 import { ProductRow } from "./product-row";
-import { SearchField } from "../design-primitives";
+import { SearchField, ProductPlaceholder } from "../design-primitives";
 import { FilterSelect } from "./filter-select";
 const monthOptions = [
   { value: "", label: "Toate lunile" },
@@ -479,10 +479,10 @@ function OrderDialog({
           >
             {shownLines.map((p) => (
               <li key={p.id} >
-                <span className="b2b-checkout-product">
+                <span className="b2b-checkout-product"><ProductPlaceholder /><span className="b2b-checkout-product-copy">
                   <strong>{p.name}</strong>
                   <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
-                </span>
+                </span></span>
                 {(
                   <span className="b2b-checkout-amount">
                     <span className="b2b-line-units">{Number(p.quantity)} {t("buc.")}</span>

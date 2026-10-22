@@ -6,7 +6,7 @@ import { requestError } from "../../lib/b2b/errors";
 import Image from "next/image";
 import { NavigationIcon } from "../navigation-icon";
 import { ProductRow } from "./product-row";
-import { SearchField } from "../design-primitives";
+import { SearchField, ProductPlaceholder } from "../design-primitives";
 import { ConfirmDialog, Feedback, request } from "./ui";
 import { History } from "./order-history";
 import { StockAdmin } from "./stock-admin";
@@ -537,10 +537,10 @@ export function OrderEditor({
           >
             {selected.map((p) => (
               <li key={p.id}>
-                <span className="b2b-checkout-product">
+                <span className="b2b-checkout-product"><ProductPlaceholder /><span className="b2b-checkout-product-copy">
                   <strong>{p.name}</strong>
                   <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
-                </span>
+                </span></span>
                 <span className="b2b-checkout-amount">
                   <span className="b2b-line-units">{counts[p.id]} {t("buc.")}</span>
                   <strong className="b2b-line-price">{money(p.price * counts[p.id])}</strong>
