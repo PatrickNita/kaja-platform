@@ -766,3 +766,15 @@ body .portal-location-row > .location-switch:hover { background:var(--surface-so
   body .portal-location-row > .portal-location-panel { grid-template-columns:minmax(0,1fr); gap:8px; }
   body .portal-location-row .portal-location-contact { padding-left:36px; }
 }
+
+/* Confirmation boxes share one text edge with the heading, label and total. */
+body .b2b-confirmation[open] { gap:4px; }
+body .b2b-confirmation > .b2b-dialog-head { margin:0; padding:0; align-items:center; }
+body .b2b-confirmation > .b2b-dialog-head > h3 { margin:0; }
+body .b2b-confirmation > :is(.b2b-checkout-destination,.b2b-checkout-list) {
+  margin:0 -8px; padding:8px; width:calc(100% + 16px); box-sizing:border-box;
+  border:0; border-radius:10px; box-shadow:inset 0 0 0 1px var(--line);
+  background:rgba(0,0,0,.18);
+}
+body .b2b-confirmation > .b2b-checkout-list { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+body .b2b-confirmation > .b2b-checkout-products-title { flex-shrink:0; }

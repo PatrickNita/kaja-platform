@@ -519,7 +519,7 @@ export function OrderEditor({
   return <>{modal ? !review && <ConfirmDialog title="Comandă nouă" busy={busy} onClose={() => onClose?.()} className="b2b-location-order">{editor}</ConfirmDialog> : editor}
       {review && (
         <ConfirmDialog
-          className="b2b-checkout"
+          className="b2b-checkout b2b-confirmation"
           busy={busy}
           onClose={() => setReview(false)}
         >
