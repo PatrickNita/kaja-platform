@@ -22,6 +22,8 @@ import {
   shortStatus,
 } from "../../lib/b2b/presentation";
 import { ConfirmDialog, Feedback, request } from "./ui";
+import { ProductRow } from "./product-row";
+import { SearchField } from "../design-primitives";
 import { FilterSelect } from "./filter-select";
 const monthOptions = [
   { value: "", label: "Toate lunile" },
@@ -284,7 +286,7 @@ function OrderDialog({
   }
   function quantities(p: Product) {
     return (
-      <div className="b2b-edit-quantity">
+      <>
         <div className="b2b-quantity">
           <button
             type="button"
@@ -292,7 +294,7 @@ function OrderDialog({
             disabled={busy || !ready || !editable || !(counts[p.id] > 0)}
             onClick={() => change(p, -1)}
           >
-            −
+            <span className="b2b-quantity-glyph">−</span>
           </button>
           <output aria-label={t("Cantitate " + p.name)} aria-live="polite">
             {counts[p.id] ?? 0}
@@ -312,11 +314,10 @@ function OrderDialog({
             }
             onClick={() => change(p, 1)}
           >
-            +
+            <span className="b2b-quantity-glyph">+</span>
           </button>
         </div>
-        <strong className="b2b-line-price">{money((counts[p.id] ?? 0) * p.price)}</strong>
-      </div>
+      </>
     );
   }
   async function save() {
@@ -458,42 +459,35 @@ function OrderDialog({
             </h4>
           </div>
           {step === "edit" && (
-            <input
-              type="search"
+            <SearchField
               aria-label={t("Caută produse pentru comandă")}
               placeholder={t("Caută după denumire sau gust…")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           )}
+          {step === "edit" ? (
+            <div className="b2b-products b2b-edit-catalog" aria-label={t("Catalog pentru modificare")}>
+              {products.filter(p => matchesProduct(p, search)).map(p => <ProductRow key={p.id} product={p}>{quantities(p)}</ProductRow>)}
+            </div>
+          ) : (
           <ul
             className="b2b-review b2b-checkout-list"
-            aria-label={
-              step === "edit"
-                ? t("Catalog pentru modificare")
-                : t("Produsele comenzii")
-            }
+            aria-label={t("Produsele comenzii")}
           >
-            {(step === "edit"
-              ? products.filter((p) =>
-                  matchesProduct(p, search),
-                )
-              : shownLines
-            ).map((p) => (
-              <li key={p.id} className={step === "edit" ? "b2b-edit-row" : undefined}>
+            {shownLines.map((p) => (
+              <li key={p.id} >
                 <span className="b2b-checkout-product">
                   <strong>{p.name}</strong>
                   <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
                 </span>
-                {step === "edit" ? (
-                  quantities(p)
-                ) : (
+                {(
                   <span className="b2b-checkout-amount">
-                    <span className="b2b-line-units">{"quantity" in p ? Number(p.quantity) : counts[p.id]} {t("buc.")}</span>
+                    <span className="b2b-line-units">{Number(p.quantity)} {t("buc.")}</span>
                     <strong className="b2b-line-price">
                       {money(
                         p.price *
-                          ("quantity" in p ? Number(p.quantity) : counts[p.id]),
+                          (Number(p.quantity)),
                       )}
                     </strong>
                   </span>
@@ -501,6 +495,7 @@ function OrderDialog({
               </li>
             ))}
           </ul>
+          )}
           {step === "edit" &&
             !products.some((p) =>
               matchesProduct(p, search),

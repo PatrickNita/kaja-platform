@@ -5,7 +5,8 @@ import { matchesProduct, type PublicLanguage } from "../../lib/public-language";
 import { requestError } from "../../lib/b2b/errors";
 import Image from "next/image";
 import { NavigationIcon } from "../navigation-icon";
-import { SearchField, ProductPlaceholder } from "../design-primitives";
+import { ProductRow } from "./product-row";
+import { SearchField } from "../design-primitives";
 import { ConfirmDialog, Feedback, request } from "./ui";
 import { History } from "./order-history";
 import { StockAdmin } from "./stock-admin";
@@ -17,8 +18,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
-  stockStatus,
-  stockLabel,
   stockLimit,
   canManageOrders,
   money,
@@ -450,19 +449,7 @@ export function OrderEditor({
             matchesProduct(p, productSearch),
           )
           .map((product) => (
-            <article className="b2b-product" key={product.id}>
-              <ProductPlaceholder />
-              <div className="b2b-product-info">
-                <h3 className="item-title">{product.name}</h3>
-                <p className="b2b-product-meta">
-                  {flavor(product.flavor)} · <span>{product.grams}{language === "ru" ? "г" : "g"}</span> ·{" "}
-                  <span>{money(product.price)}</span>
-                </p>
-              </div>
-              <span className={`b2b-stock ${stockStatus(product)}`}>
-                {t(stockLabel[stockStatus(product)])}
-              </span>
-              <div className="b2b-product-controls">
+            <ProductRow product={product} key={product.id}>
                 <div className="b2b-quantity">
                   <button
                     type="button"
@@ -506,8 +493,7 @@ export function OrderEditor({
                     <span className="b2b-quantity-glyph">+</span>
                   </button>
                 </div>
-              </div>
-            </article>
+            </ProductRow>
           ))}
       </div>
       <div className="b2b-cart-bar">
