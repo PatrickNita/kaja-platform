@@ -510,18 +510,6 @@ body .stock-toolbar .b2b-select { width:200px; }
 @media(max-width:1399px) { body .stock-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:700px) { body .stock-grid { grid-template-columns:minmax(0,1fr); } }
 body .b2b-admin .b2b-section-navigation .filter-nav { flex-wrap:wrap; }
-body .b2b-portal .b2b-product { grid-template-columns:44px minmax(0,1fr) 96px auto; }
-@media (min-width:601px) and (max-width:800px) {
-  body .b2b-portal .b2b-product { grid-template-columns:40px minmax(0,1fr) 88px auto; }
-}
-/* Keep availability readable beside compact quantity controls on narrow phones. */
-@media (max-width:600px) {
-  body .b2b-portal .b2b-product { grid-template-columns:32px minmax(0,1fr) auto; gap:4px 8px; }
-  body .b2b-portal .b2b-product .product-placeholder { grid-column:1; grid-row:1/4; width:32px; height:32px; }
-  body .b2b-portal .b2b-product-info .b2b-stock { grid-column:2; grid-row:3; justify-self:start; min-height:24px; padding:4px 7px; font-size:10px; white-space:nowrap; }
-  body .b2b-portal .b2b-product-controls { grid-column:3; grid-row:1/4; }
-}
-
 /* One readable feedback detail, shared by history and product comments. */
 body dialog.feedback-message-dialog {
   position:fixed; inset:0; margin:auto; width:min(560px,calc(100vw - 32px)); padding:24px; overflow-y:auto;
@@ -581,10 +569,24 @@ body .dashboard-feed-summary .row-excerpt { font-size:12px; line-height:19px; co
 /* Availability labels match the quantity buttons without taking a wide column. */
 body .b2b-portal .b2b-product { grid-template-columns:44px minmax(0,1fr) 80px auto; }
 body .b2b-portal .b2b-product .b2b-stock { width:80px; min-width:80px; height:44px; min-height:44px; padding:4px 6px; white-space:normal; line-height:1.25; font-size:10px; }
-@media(min-width:601px) and (max-width:800px) { body .b2b-portal .b2b-product { grid-template-columns:40px minmax(0,1fr) 80px auto; } }
-@media(max-width:600px) { body .b2b-portal .b2b-product { grid-template-columns:32px minmax(0,1fr) auto; } }
-body .member-dashboard:has(.dashboard-stats) > .dashboard-deleted-section { grid-column:1/-1; }
-body .member-dashboard:has(.dashboard-stats) > section.dashboard-deleted-section .dashboard-feed-summary { height:auto; min-height:0; max-height:530px; }
+body .b2b-portal .b2b-product-info .b2b-product-meta { overflow-wrap:anywhere; }
+body .b2b-portal .b2b-product-info .b2b-stock { grid-column:3; grid-row:1/3; }
+body .b2b-portal .b2b-product-controls { grid-column:4; grid-row:1/3; }
+@media(max-width:800px) {
+  body .b2b-portal .b2b-product { grid-template-columns:40px minmax(0,1fr) 80px auto; padding-block:8px; }
+}
+@media(max-width:600px) {
+  body .b2b-portal .b2b-product { grid-template-columns:32px minmax(0,1fr) 80px auto; gap:4px 6px; }
+  body .b2b-portal .b2b-product .product-placeholder { grid-column:1; grid-row:1/3; width:32px; height:32px; }
+}
+@media(max-width:359px) {
+  body .b2b-portal .b2b-product { grid-template-columns:32px minmax(0,1fr) auto; }
+  body .b2b-portal .b2b-product-info h3 { grid-column:2/4; grid-row:1; }
+  body .b2b-portal .b2b-product-info .b2b-product-meta { grid-column:2/4; grid-row:2; }
+  body .b2b-portal .b2b-product-info .b2b-stock { grid-column:2; grid-row:3; justify-self:end; }
+  body .b2b-portal .b2b-product-controls { grid-column:3; grid-row:3; }
+}
+body .member-dashboard:has(.dashboard-stats) > .dashboard-deleted-section { grid-column:1; }
 body .dashboard-deleted-section .premium-row:hover { background:linear-gradient(110deg,#171717,#101010); }
 body .feedback-message-heading { display:block; line-height:1.5; overflow-wrap:anywhere; }
 body .feedback-message-heading time { color:#ccc; font-weight:400; }
