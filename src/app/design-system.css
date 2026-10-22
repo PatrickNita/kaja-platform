@@ -617,3 +617,24 @@ body .b2b-order-title { display:flex; align-items:center; flex-wrap:wrap; gap:4p
 body .b2b-order-title-date { color:var(--muted); font-size:12px; font-weight:400; letter-spacing:0; }
 body .b2b-order-title .b2b-status { margin:0; flex-shrink:0; }
 body .b2b-order-dialog > .b2b-checkout-destination { margin:0; padding:8px 12px; }
+
+/* Venue history is a compact full-width list, with a quiet status accent. */
+body .b2b-portal-history-list { grid-template-columns:minmax(0,1fr); gap:8px; }
+body .b2b-portal-history-list .b2b-order-card { --order-accent:#b9994c; --order-tint:185,153,76; flex-direction:row; align-items:center; justify-content:space-between; min-height:56px; width:100%; padding:10px 12px; gap:8px; border:1px solid #333; border-left:2px solid var(--order-accent); border-radius:12px; background:linear-gradient(90deg,rgba(var(--order-tint),.055),transparent 65%),var(--surface); }
+body .b2b-portal-history-list .b2b-order-card.confirmed { --order-accent:#6497d0; --order-tint:100,151,208; }
+body .b2b-portal-history-list .b2b-order-card.paid { --order-accent:#67a581; --order-tint:103,165,129; }
+body .b2b-portal-history-list .b2b-history-line { white-space:nowrap; min-width:0; font-size:13px; line-height:1.4; }
+body .b2b-portal-history-list .b2b-history-line :is(strong,time) { font-size:inherit; }
+body .b2b-portal-history-list .b2b-history-date { color:var(--muted); font-weight:400; }
+body .b2b-portal-history-list .b2b-status { flex-shrink:0; margin:0; white-space:nowrap; font-size:10px; }
+body .b2b-portal-history-list .b2b-order-card:hover { border-color:var(--line-strong); border-left-color:var(--order-accent); }
+body .b2b-portal-history-list .b2b-order-card:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+@media(max-width:800px) {
+  body .b2b-portal-history-list .b2b-history-line { font-size:11px; letter-spacing:-.15px; }
+  body .b2b-portal-history-list .b2b-order-card { gap:6px; }
+  body .b2b-portal-history-list .b2b-status { padding:4px 6px; }
+}
+@media(max-width:359px) {
+  body .b2b-portal-history-list .b2b-history-line { font-size:10px; letter-spacing:-.25px; }
+  body .b2b-portal-history-list .b2b-status { padding:4px; }
+}
