@@ -745,8 +745,13 @@ body .portal-location-row > .location-switch:hover { background:var(--surface-so
   body .portal-location-row > .location-switch { width:88px; padding:8px; font-size:11px; }
 }
 @media(max-width:479px) {
-  body .portal-location-row > .portal-location-panel { grid-template-columns:minmax(0,1fr); gap:8px; }
-  body .portal-location-row .portal-location-contact { padding-left:36px; }
+  body .portal-location-row > .portal-location-panel { grid-template-columns:minmax(0,1fr) minmax(68px,.65fr); gap:8px; }
+  body .portal-location-row .portal-location-contact { padding-left:0; font-size:11px; }
+  body .portal-location-row .portal-location-main { gap:6px; }
+  body .portal-location-row .portal-location-main > .icon-tile { width:20px; height:20px; flex-basis:20px; }
+  body .portal-location-row .portal-location-copy h2 { font-size:12px; }
+  body .portal-location-row .portal-cashback { flex-wrap:wrap; }
+  body .portal-location-row .portal-cashback strong { white-space:nowrap; }
 }
 
 /* Confirmation boxes share one text edge with the heading, label and total. */
