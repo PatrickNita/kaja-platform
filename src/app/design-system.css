@@ -638,3 +638,11 @@ body .b2b-portal-history-list .b2b-order-card:focus-visible { outline:2px solid 
   body .b2b-portal-history-list .b2b-history-line { font-size:10px; letter-spacing:-.25px; }
   body .b2b-portal-history-list .b2b-status { padding:4px; }
 }
+
+/* The edit catalogue owns the scroll area inside the fixed-height checkout dialog. */
+body .b2b-order-dialog .b2b-edit-catalog {
+  flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; align-content:start;
+  overscroll-behavior-y:contain; touch-action:pan-y; scrollbar-width:thin;
+  scrollbar-color:var(--line-strong) transparent; margin:0; padding-right:4px;
+}
+body .b2b-order-dialog > :is(.search-field,.b2b-order-section-heading) { flex-shrink:0; }

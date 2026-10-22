@@ -469,7 +469,7 @@ function OrderDialog({
             />
           )}
           {step === "edit" ? (
-            <div className="b2b-products b2b-edit-catalog" aria-label={t("Catalog pentru modificare")}>
+            <div className="b2b-products b2b-edit-catalog" role="region" tabIndex={0} aria-label={t("Catalog pentru modificare")}>
               {products.filter(p => matchesProduct(p, search)).map(p => <ProductRow key={p.id} product={p}>{quantities(p)}</ProductRow>)}
             </div>
           ) : (
