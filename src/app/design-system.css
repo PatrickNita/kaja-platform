@@ -776,5 +776,9 @@ body .b2b-confirmation > :is(.b2b-checkout-destination,.b2b-checkout-list) {
   border:0; border-radius:10px; box-shadow:inset 0 0 0 1px var(--line);
   background:rgba(0,0,0,.18);
 }
-body .b2b-confirmation > .b2b-checkout-list { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
-body .b2b-confirmation > .b2b-checkout-products-title { flex-shrink:0; }
+body .b2b-confirmation > .b2b-checkout-list { min-height:0; overflow-y:auto; overscroll-behavior:contain; grid-auto-rows:max-content; align-content:start; }
+body .b2b-confirmation > .b2b-checkout-products-title { flex-shrink:0; padding-top:12px; }
+body .b2b-confirmation .b2b-checkout-list li { min-height:40px; align-items:center; padding-block:8px; }
+body .b2b-confirmation .b2b-checkout-list :is(.b2b-checkout-product,.b2b-line-units,.b2b-line-price) { align-self:center; margin:0; line-height:1.4; }
+body .b2b-confirmation .b2b-checkout-product { display:flex; align-items:center; flex-wrap:wrap; column-gap:4px; }
+body .b2b-confirmation .b2b-checkout-product > :is(strong,span) { display:block; line-height:1.4; }
