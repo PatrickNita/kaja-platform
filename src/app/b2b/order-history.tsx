@@ -403,7 +403,7 @@ function OrderDialog({
       subtitle={step !== "details" ? <time dateTime={order.created_at}>{formatOrderDate(order.created_at, language)}</time> : undefined}
       busy={busy}
       onClose={onClose}
-      className={"b2b-checkout b2b-order-dialog" + (step === "details" ? " b2b-order-details" : "")}
+      className={"b2b-checkout b2b-order-dialog" + (step === "details" ? " b2b-confirmation" : "")}
     >
       {seenError && <div className="read-state-error" role="alert">Nu s-a putut marca drept văzută. <button className="text-button" onClick={() => setSeenRetry(n => n + 1)}>Reîncearcă</button></div>}
       <div className="b2b-checkout-destination">
@@ -451,10 +451,10 @@ function OrderDialog({
         </div>
       ) : (
         <>
-          <div className="b2b-order-section-heading">
+          <div className={"b2b-order-section-heading" + (step === "details" ? " b2b-checkout-products-title" : "")}>
             <h4 className="b2b-checkout-label">
               {step === "details"
-                ? t("Produse și detalii")
+                ? t("Produse selectate")
                 : step === "edit"
                   ? t("Catalog")
                   : t("Produse selectate")}
@@ -481,7 +481,7 @@ function OrderDialog({
               <li key={p.id} >
                 <span className="b2b-checkout-product">
                   <strong>{p.name}</strong>
-                  <span className="b2b-checkout-flavor">{step === "details" ? "" : " · "}{flavor(p.flavor)}</span>
+                  <span className="b2b-checkout-flavor"> · {flavor(p.flavor)}</span>
                 </span>
                 {(
                   <span className="b2b-checkout-amount">

@@ -647,24 +647,6 @@ body .b2b-order-dialog .b2b-edit-catalog {
 }
 body .b2b-order-dialog > :is(.search-field,.b2b-order-section-heading) { flex-shrink:0; }
 
-/* Order details share one text inset from heading through location, lines and total. */
-body .b2b-order-details > .b2b-dialog-head { padding-inline:12px; }
-body .b2b-order-details > .b2b-checkout-destination { padding:12px; gap:4px; box-shadow:inset 0 0 0 1px #343434; background:#00000012; border-radius:12px; }
-body .b2b-order-details > :is(.b2b-order-section-heading,.b2b-order-metadata,.b2b-checkout-footer) { padding-inline:12px; }
-body .b2b-order-details > .b2b-order-section-heading { padding-top:8px; }
-body .b2b-order-details > .b2b-checkout-list { padding-inline:12px; }
-body .b2b-order-details .b2b-checkout-product { display:grid; gap:2px; min-width:0; line-height:1.4; }
-body .b2b-order-details .b2b-checkout-product strong { font-size:13px; }
-body .b2b-order-details .b2b-checkout-flavor { font-size:12px; }
-body .b2b-order-details .b2b-checkout-list li { padding-block:12px; border-bottom:1px solid #353535; }
-body .b2b-order-details .b2b-checkout-list li:last-child { border-bottom:0; }
-body .b2b-order-details .b2b-checkout-footer { padding-top:12px; border-top:1px solid #353535; }
-body .b2b-order-details .b2b-checkout-total { margin:0 0 12px; }
-@media(max-width:600px) {
-  body .b2b-order-details .b2b-checkout-product strong { font-size:12px; }
-  body .b2b-order-details .b2b-checkout-flavor { font-size:11px; }
-}
-
 /* Mobile ordering uses a compact, consistent 44px control rhythm. */
 @media(max-width:800px) {
   body main.b2b-portal { padding-top:16px; padding-bottom:calc(88px + env(safe-area-inset-bottom)); gap:12px; }
@@ -782,3 +764,5 @@ body .b2b-confirmation .b2b-checkout-list li { min-height:40px; align-items:cent
 body .b2b-confirmation .b2b-checkout-list :is(.b2b-checkout-product,.b2b-line-units,.b2b-line-price) { align-self:center; margin:0; line-height:1.4; }
 body .b2b-confirmation .b2b-checkout-product { display:flex; align-items:center; flex-wrap:wrap; column-gap:4px; }
 body .b2b-confirmation .b2b-checkout-product > :is(strong,span) { display:block; line-height:1.4; }
+
+body .b2b-confirmation .b2b-order-section-heading > .b2b-checkout-label { color:inherit; }
