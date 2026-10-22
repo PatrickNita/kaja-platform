@@ -578,6 +578,11 @@ function PortalContent({ data }: { data: B2BData }) {
   const [success, setSuccess] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [choosingLocation, setChoosingLocation] = useState(false);
+  const locationSwitchTrigger = useRef<HTMLButtonElement>(null);
+  function closeLocationPicker() {
+    setChoosingLocation(false);
+    requestAnimationFrame(() => locationSwitchTrigger.current?.focus());
+  }
   const storageKey =
     "kaja-b2b-location:" +
     (data.locations[0]?.access_group_id ?? data.locations[0]?.id ?? "none");
@@ -602,7 +607,7 @@ function PortalContent({ data }: { data: B2BData }) {
         localStorage.setItem(storageKey, String(next.id));
       } catch {}
     }
-    setChoosingLocation(false);
+    closeLocationPicker();
   }
   if (!location)
     return (
@@ -621,11 +626,13 @@ function PortalContent({ data }: { data: B2BData }) {
         />
         <LanguageSelector language={language} setLanguage={setLanguage} />
       </header>
+      <div className={"portal-location-row" + (data.locations.length > 1 ? " has-switch" : "")} >
       <section className="portal-location-panel" aria-label={location.name}>
         <div className="portal-location-main"><span className="icon-tile"><NavigationIcon name="b2b" /></span><div className="portal-location-copy"><h2>{location.name}</h2><p><NavigationIcon name="pin" />{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div></div>
         <div className="portal-location-contact"><strong>{location.contact || "—"}</strong>{location.phone ? <a href={"tel:" + location.phone.replace(/[^+\d]/g, "")}>{location.phone}</a> : <span>—</span>}</div>
-        {data.locations.length > 1 && <button className="location-switch" onClick={() => setChoosingLocation(true)}>{t("Schimbă locația")}<NavigationIcon name="chevron" /></button>}
       </section>
+        {data.locations.length > 1 && <button ref={locationSwitchTrigger} type="button" className="location-switch" aria-haspopup="dialog" onClick={() => setChoosingLocation(true)}><span>{t("Schimbă locația")}</span><NavigationIcon name="chevron" /></button>}
+      </div>
       <nav className="portal-view-tabs" aria-label={t("Navigare comenzi")}>
         <button aria-pressed={view === "order"} className={view === "order" ? "active" : ""} onClick={() => { setView("order"); setSuccess(""); }}>{t("Comandă nouă")}</button>
         <button aria-label={t("Istoric comenzi")} aria-pressed={view === "history"} className={view === "history" ? "active" : ""} onClick={() => { setView("history"); setSuccess(""); }}>{t("Istoric")}</button>
@@ -634,7 +641,7 @@ function PortalContent({ data }: { data: B2BData }) {
         <ConfirmDialog
           title={t("Schimbă locația")}
           busy={false}
-          onClose={() => setChoosingLocation(false)}
+          onClose={closeLocationPicker}
           className="b2b-location-picker"
         >
           <div className="b2b-location-options">

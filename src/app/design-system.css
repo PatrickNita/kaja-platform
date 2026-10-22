@@ -436,7 +436,7 @@ body .b2b-location-order .b2b-cart-bar { position:sticky; inset:auto; bottom:-24
 body .b2b-location-order .b2b-editor > h2 { display:none; }
 
 /* The venue and its contact remain in two consistent columns. */
-body .portal-location-panel { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; align-items:start; }
+body .portal-location-panel { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
 body .portal-location-main { display:flex; align-items:flex-start; gap:12px; min-width:0; }
 body .portal-location-contact { display:grid; gap:4px; min-width:0; font-size:13px; line-height:1.45; overflow-wrap:anywhere; }
 body .portal-location-contact strong { font-weight:600; }
@@ -751,4 +751,18 @@ body .b2b-order-details .b2b-checkout-total { margin:0 0 12px; }
   body .mobile-member-identity { padding-bottom:12px; margin-bottom:4px; gap:6px; font-size:10px; letter-spacing:0; }
   body .mobile-section-list :is(a,button) { min-height:44px; padding:8px 0; font-size:12px; line-height:1.35; letter-spacing:0; }
   body .mobile-submenu-list { padding:0 0 8px 8px; }
+}
+
+/* Location information and its separate switch action stretch to the same height. */
+body .portal-location-row { display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:8px; min-width:0; }
+body .portal-location-row.has-switch { grid-template-columns:minmax(0,1fr) 120px; }
+body .portal-location-row > .location-switch { display:flex; flex-direction:column; align-items:center; justify-content:center; align-self:stretch; width:120px; max-width:none; min-height:44px; margin:0; padding:12px; border:1px solid var(--line-strong); border-radius:12px; background:linear-gradient(120deg,#1b1b1b,#101010); color:var(--ink); text-align:center; font-size:12px; line-height:1.4; gap:8px; }
+body .portal-location-row > .location-switch:hover { background:var(--surface-soft); border-color:#666; }
+@media(max-width:800px) {
+  body .portal-location-row.has-switch { grid-template-columns:minmax(0,1fr) 88px; }
+  body .portal-location-row > .location-switch { width:88px; padding:8px; font-size:11px; }
+}
+@media(max-width:479px) {
+  body .portal-location-row > .portal-location-panel { grid-template-columns:minmax(0,1fr); gap:8px; }
+  body .portal-location-row .portal-location-contact { padding-left:36px; }
 }
