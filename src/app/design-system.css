@@ -550,12 +550,12 @@ body .feedback-dialog button.feedback-comment time { font-size:11px; line-height
   body .feedback-comment > .navigation-icon:last-child { grid-column:3; grid-row:1; }
 }
 
-/* Summary feeds reserve the same three text lines even without a feedback excerpt. */
+/* Summary feeds keep equal row heights while centering the available text. */
 body .member-dashboard > section .dashboard-feed-summary {
   height:530px; min-height:530px; max-height:530px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin;
 }
 body .member-dashboard .dashboard-feed-summary .premium-row { height:88px; min-height:88px; max-height:88px; padding:10px 12px; box-sizing:border-box; }
-body .dashboard-feed-summary .premium-row-content { grid-template-rows:19px 16px 19px; gap:3px; }
+body .dashboard-feed-summary .premium-row-content { grid-template-rows:none; gap:3px; }
 body .dashboard-feed-summary .premium-row-content > :is(strong,small,.row-excerpt) {
   display:block; margin:0; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
 }
@@ -729,7 +729,7 @@ body .b2b-order-details .b2b-checkout-total { margin:0 0 12px; }
   body .b2b-summary-table .b2b-mobile-location :is(.b2b-mobile-address,.b2b-mobile-last) { font-size:11px; line-height:1.4; }
   body .member-dashboard > section .dashboard-feed-summary { height:258px; min-height:258px; max-height:258px; }
   body .member-dashboard .dashboard-feed-summary .premium-row { height:64px; min-height:64px; max-height:64px; padding:6px 10px; gap:8px; }
-  body .dashboard-feed-summary .premium-row-content { grid-template-rows:16px 13px 15px; gap:2px; }
+  body .dashboard-feed-summary .premium-row-content { gap:2px; }
   body .dashboard-feed-summary .premium-row-content > strong { font-size:12px; line-height:16px; }
   body .dashboard-feed-summary .premium-row-content > small { font-size:10px; line-height:13px; }
   body .dashboard-feed-summary .row-excerpt { font-size:11px; line-height:15px; }
