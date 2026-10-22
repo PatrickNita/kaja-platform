@@ -126,7 +126,7 @@ export function History({
             : t("Nu există comenzi încă.")}
         </p>
       )}
-      <div className={"b2b-order-grid" + (mode === "portal" ? " b2b-portal-history-list" : "")}>
+      <div className={"b2b-order-grid b2b-portal-history-list" + (mode === "admin" ? " b2b-admin-history-list" : "")}>
         {visible.map((o) => (
           <button
             key={o.id}
@@ -148,10 +148,10 @@ export function History({
               t(shortStatus[o.status])
             }
           >
-            {mode === "portal" ? <span className="b2b-history-line"><strong>{t(`Comanda #${o.id}`)}</strong><span className="b2b-history-date">{language === "ru" ? ", от " : ", din "}<time dateTime={o.created_at}>{new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "ro-RO", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Chisinau" }).format(new Date(o.created_at)).replace(/ г\./, "")}</time></span></span> : <>
+            {mode === "portal" ? <span className="b2b-history-line"><strong>{t(`Comanda #${o.id}`)}</strong><span className="b2b-history-date">{language === "ru" ? ", от " : ", din "}<time dateTime={o.created_at}>{new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "ro-RO", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Chisinau" }).format(new Date(o.created_at)).replace(/ г\./, "")}</time></span></span> : <span className="b2b-admin-history-line">
               <strong>{o.location_name}{isUnread(o) && <span className="unread-dot" aria-label="Nevăzut" />}</strong>
-              <time dateTime={o.created_at}>{formatOrderDate(o.created_at, language)}</time>
-            </>}
+              <span className="b2b-history-date">{t(`Comanda #${o.id}`)}, din <time dateTime={o.created_at}>{new Intl.DateTimeFormat("ro-RO", {dateStyle:"short",timeStyle:"short",timeZone:"Europe/Chisinau"}).format(new Date(o.created_at))}</time></span>
+            </span>}
             <span className={"b2b-status " + o.status}>
               {t(shortStatus[o.status])}
             </span>

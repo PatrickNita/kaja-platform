@@ -1111,7 +1111,6 @@ export function B2BAdmin({
   const detail = data.locations.find((l) => l.id === detailsLocation);
   return (
     <div className="workspace-content b2b-admin">
-      {view !== "history" && <div className="section-intro"><h1>{view === "stock" ? "Administrare stoc" : view === "locations" ? "Localuri" : "Istoric comenzi"}</h1><p>{view === "stock" ? "Actualizează cantitățile disponibile pentru comenzi." : view === "locations" ? "Gestionează localurile partenere." : "Urmărește și gestionează comenzile."}</p></div>}
       <div className="b2b-section-navigation">
       <nav className="catalogue-submenu filter-nav" aria-label="B2B">
         <a
@@ -1195,11 +1194,7 @@ export function B2BAdmin({
               >
                 <strong>{local.name}</strong>
                 <span className="b2b-mobile-address">{local.address}</span>
-                <span className="b2b-mobile-last">
-                  {local.last_order_at
-                    ? "Ultima comandă: " + formatOrderDate(local.last_order_at)
-                    : "Fără comenzi"}
-                </span>
+                <time className="b2b-mobile-last" dateTime={local.last_order_at ?? undefined} aria-label={local.last_order_at ? "Ultima comandă: " + formatOrderDate(local.last_order_at) : "Fără comenzi"}>{local.last_order_at ? new Intl.DateTimeFormat("ro-RO", {dateStyle:"short",timeStyle:"short",timeZone:"Europe/Chisinau"}).format(new Date(local.last_order_at)) : "Fără comenzi"}</time>
               </button>
               <button type="button" className="b2b-location-row b2b-summary-row" aria-label={"Detalii pentru " + local.name} aria-haspopup="dialog" onClick={event => { detailsTrigger.current = event.currentTarget; setError(""); setSuccess(""); setDetailsLocation(local.id); }}>
                 <span className="location-name-cell"><NavigationIcon name="b2b" /><strong>{local.name}</strong></span>

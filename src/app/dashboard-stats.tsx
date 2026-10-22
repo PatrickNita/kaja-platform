@@ -26,6 +26,6 @@ export function DashboardStats({ initial, brand }: { initial: { orders: number; 
   }, [brand, retry, initial.orders, initial.feedback, router]);
   return <><div className="dashboard-stats">
     <Link className="dashboard-stat" href={`/b2b?tab=history&unread=1&brand=${brand}`}><span className="icon-tile"><NavigationIcon name="cart" /></span><span><span>Comenzi noi</span><strong>{counts.orders}</strong></span></Link>
-    <Link className="dashboard-stat" href={`/feedback?tab=history&brand=${brand}&unread=1`}><span className="icon-tile"><NavigationIcon name="feedback" /></span><span><span>Feedback nou</span><strong>{counts.feedback}</strong></span></Link>
+    <Link className="dashboard-stat" href={`/feedback?tab=history&brand=${brand}`}><span className="icon-tile"><NavigationIcon name="feedback" /></span><span><span>Feedback nou</span><strong>{counts.feedback}</strong></span></Link>
   </div>{error && <div className="read-state-error" role="status">Contoarele nu au putut fi actualizate. <button className="text-button" onClick={() => setRetry(n => n + 1)}>Reîncearcă</button></div>}</>;
 }

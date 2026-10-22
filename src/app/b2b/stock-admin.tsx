@@ -52,7 +52,7 @@ function StockRow({ product, onSaved, hidden }: { product: StockProduct; hidden:
   return <form hidden={hidden} className="stock-row" onSubmit={save} aria-label={"Stoc " + product.name}>
     <div className="stock-product"><strong>{product.name}</strong><span>{product.flavor}</span></div>
     <span className={`stock-status ${status}`}>{stockLabel[status]}</span>
-    <label className="stock-quantity">Bucăți<input type="number" min="0" max="1000000" step="1" inputMode="numeric" value={quantity} disabled={busy} onChange={e => {setQuantity(e.target.value);setSaved(false);}} aria-label={"Stoc pentru " + product.name} /></label>
+    <label className="stock-quantity"><span className="stock-quantity-label">Bucăți</span><input type="number" min="0" max="1000000" step="1" inputMode="numeric" value={quantity} disabled={busy} onChange={e => {setQuantity(e.target.value);setSaved(false);}} aria-label={"Stoc pentru " + product.name} /></label>
     <button className="button" disabled={busy || !dirty || !valid || !base.stockVersion}>{busy ? "Se salvează…" : "Salvează"}</button>
     {error && <div className="stock-row-message"><p className="b2b-error" role="alert">{error}</p>{conflict && <button type="button" className="button ghost" onClick={() => {setBase(conflict);setQuantity(String(conflict.stock));onSaved(conflict);setConflict(null);setError("");}}>Preia stocul actual ({conflict.stock} buc.)</button>}</div>}
     {saved && <p className="stock-row-message b2b-success" role="status">Stoc salvat.</p>}

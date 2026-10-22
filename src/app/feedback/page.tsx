@@ -27,7 +27,7 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Pro
         <Link href={`/feedback?tab=products&brand=${brand}`} className={!history ? "active" : undefined} aria-current={!history ? "page" : undefined}>Produse</Link>
         <Link href="/feedback?tab=history" className={history ? "active" : undefined} aria-current={history ? "page" : undefined}>Istoric feedback</Link>
       </nav>
-      {history ? <FeedbackHistory key={`${historyBrand(params.brand)}:${params.unread}`} brand={historyBrand(params.brand)} onlyUnread={params.unread === "1"} commentId={Number(params.comment) || null} /> : <FeedbackAdmin products={await memberFeedbackProducts(brand)} brand={brand} origin={feedbackOrigin()} />}
+      {history ? <FeedbackHistory key={historyBrand(params.brand)} brand={historyBrand(params.brand)} commentId={Number(params.comment) || null} /> : <FeedbackAdmin products={await memberFeedbackProducts(brand)} brand={brand} origin={feedbackOrigin()} />}
     </div>
   </main>;
 }
