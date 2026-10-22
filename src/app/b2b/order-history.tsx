@@ -396,11 +396,8 @@ function OrderDialog({
   return (
     <ConfirmDialog
       title={title}
-      subtitle={
-        <time dateTime={order.created_at}>
-          {formatOrderDate(order.created_at, language)}
-        </time>
-      }
+      titleContent={step === "details" ? <span className="b2b-order-title"><span>{title}</span><span className="b2b-order-title-date">— <time dateTime={order.created_at}>{formatOrderDate(order.created_at, language)}</time></span><span className={"b2b-status " + order.status}>{t(shortStatus[order.status])}</span></span> : undefined}
+      subtitle={step !== "details" ? <time dateTime={order.created_at}>{formatOrderDate(order.created_at, language)}</time> : undefined}
       busy={busy}
       onClose={onClose}
       className="b2b-checkout b2b-order-dialog"
@@ -415,14 +412,7 @@ function OrderDialog({
           {order.location_snapshot.contact} · {order.location_snapshot.phone}
         </p>
       </div>
-      {step === "details" && (
-        <div className="b2b-order-metadata">
-          {order.author !== "Local" && <span>{t("Plasată de ")}{order.author}</span>}
-          <span className={"b2b-status " + order.status}>
-            {t(shortStatus[order.status])}
-          </span>
-        </div>
-      )}
+      {step === "details" && order.author !== "Local" && <div className="b2b-order-metadata"><span>{t("Plasată de ")}{order.author}</span></div>}
       {step === "status" ? (
         <div className="b2b-status-confirm">
           <p>

@@ -608,3 +608,12 @@ body .feedback-message-body > .navigation-icon { width:18px; height:18px; margin
   body .stock-toolbar .b2b-select { grid-column:1/-1; width:100%; }
   body .stock-toolbar .search-field { min-width:0; width:auto; }
 }
+
+/* Order details place the current status in the heading and keep the location close. */
+body .b2b-order-dialog[open] { gap:6px; }
+body .b2b-order-dialog > .b2b-dialog-head { margin:0; padding:0; align-items:center; }
+body .b2b-order-dialog > .b2b-dialog-head > h3 { margin:0; min-width:0; }
+body .b2b-order-title { display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; }
+body .b2b-order-title-date { color:var(--muted); font-size:12px; font-weight:400; letter-spacing:0; }
+body .b2b-order-title .b2b-status { margin:0; flex-shrink:0; }
+body .b2b-order-dialog > .b2b-checkout-destination { margin:0; padding:8px 12px; }
