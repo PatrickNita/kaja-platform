@@ -511,6 +511,7 @@ body .stock-toolbar .b2b-select { width:200px; }
 @media(max-width:700px) { body .stock-grid { grid-template-columns:minmax(0,1fr); } }
 body .b2b-admin .b2b-section-navigation .filter-nav { flex-wrap:wrap; }
 body .b2b-admin :is(.b2b-add-desktop,.b2b-add-mobile) { min-height:44px; height:44px; border:0 none #fff; border-radius:10px; background:#ececec; color:#101010; padding:10px 16px; font-size:11px; font-weight:600; letter-spacing:0; }
+body .b2b-add-mobile-frame { display:none; }
 /* One readable feedback detail, shared by history and product comments. */
 body dialog.feedback-message-dialog {
   position:fixed; inset:0; margin:auto; width:min(560px,calc(100vw - 32px)); padding:24px; overflow-y:auto;
@@ -726,7 +727,8 @@ body .b2b-order-dialog > :is(.search-field,.b2b-order-section-heading) { flex-sh
   body .entry-modal-surface :is(input,textarea)::placeholder { font-size:12px; }
   body .b2b-admin .b2b-section-navigation { display:flex; align-items:center; gap:8px; margin-bottom:12px; min-width:0; }
   body .b2b-admin .b2b-section-navigation > nav.filter-nav { flex:0 0 auto; min-width:0; margin:0; overflow:visible; }
-  body .b2b-admin .b2b-section-navigation .b2b-add-mobile { display:block; flex:0 1 var(--mobile-filter-tab-width); width:var(--mobile-filter-tab-width); min-width:0; min-height:44px; height:44px; border-radius:7px; padding:4px 3px; font-size:10px; line-height:1.2; white-space:normal; }
+  body .b2b-admin .b2b-section-navigation .b2b-add-mobile-frame { display:block; flex:0 1 var(--mobile-filter-tab-width); min-width:0; padding:3px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+  body .b2b-admin .b2b-section-navigation .b2b-add-mobile { display:block; width:100%; min-width:0; min-height:44px; height:44px; border-radius:7px; padding:4px 3px; font-size:10px; line-height:1.2; white-space:normal; }
   body .mobile-drawer { width:max(60vw,220px); max-width:100vw; padding:12px 12px calc(12px + env(safe-area-inset-bottom)); }
   body .mobile-drawer-head { gap:8px; margin-bottom:12px; font-size:16px; }
   body .mobile-close { width:44px; height:44px; min-width:44px; min-height:44px; flex:0 0 44px; font-size:24px; }

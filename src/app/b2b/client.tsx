@@ -1140,7 +1140,7 @@ export function B2BAdmin({
         </a>
         {manager && <a href="/b2b?tab=stock" className={view === "stock" ? "active" : undefined} onClick={event => {event.preventDefault();switchView("stock");}}>Administrare stoc</a>}
       </nav>
-      {view === "locations" && <button className="button b2b-add-mobile" onClick={event => { addLocationTrigger.current = event.currentTarget; setLocationForm("new"); }}>Adaugă local</button>}
+      {view === "locations" && <div className="b2b-add-mobile-frame"><button className="button b2b-add-mobile" onClick={event => { addLocationTrigger.current = event.currentTarget; setLocationForm("new"); }}>Adaugă local</button></div>}
       </div>
       {view === "locations" && (
         <div className="b2b-toolbar">
