@@ -628,7 +628,7 @@ function PortalContent({ data }: { data: B2BData }) {
       </header>
       <div className={"portal-location-row" + (data.locations.length > 1 ? " has-switch" : "")} >
       <section className="portal-location-panel" aria-label={location.name}>
-        <div className="portal-location-main"><span className="icon-tile"><NavigationIcon name="b2b" /></span><div className="portal-location-copy"><h2>{location.name}</h2><p><NavigationIcon name="pin" />{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div></div>
+        <div className="portal-location-main"><span className="icon-tile"><NavigationIcon name="b2b" /></span><div className="portal-location-copy"><h2>{location.name}</h2><p>{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div></div>
         <div className="portal-location-contact"><strong>{location.contact || "—"}</strong>{location.phone ? <a href={"tel:" + location.phone.replace(/[^+\d]/g, "")}>{location.phone}</a> : <span>—</span>}</div>
       </section>
         {data.locations.length > 1 && <button ref={locationSwitchTrigger} type="button" className="location-switch" aria-haspopup="dialog" onClick={() => setChoosingLocation(true)}><span>{t("Schimbă locația")}</span><NavigationIcon name="chevron" /></button>}

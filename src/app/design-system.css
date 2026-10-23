@@ -815,7 +815,7 @@ body .mobile-close { display:grid; place-items:center; padding:0; line-height:1;
 }
 
 /* One product placeholder accompanies catalogue and checkout product labels. */
-body .catalogue-composer { background:transparent; }
+body .catalogue-composer { background:transparent; border:0; border-radius:0; overflow:visible; }
 body .catalogue-composer > summary { position:relative; display:flex; align-items:center; justify-content:center; width:180px; max-width:100%; min-height:44px; padding:10px 16px; border:1px solid var(--accent); border-radius:var(--radius-control); background:var(--accent); color:#060606; font-size:12px; font-weight:600; gap:6px; text-align:center; list-style:none; }
 body .catalogue-composer > summary:hover { background:#dcdcdc; }
 body .catalogue-composer > summary::-webkit-details-marker { display:none; }
