@@ -143,6 +143,7 @@ body .b2b-location-list { border-radius: var(--radius-card); overflow: clip; }
 body .b2b-location-row { padding-block: 16px; }
 body .b2b-mobile-location { padding: 16px; border-radius: var(--radius-card); background: var(--surface); }
 body .b2b-select > button { min-height: 44px; border-radius: var(--radius-control); }
+body .b2b-filter-chevron { display:block; width:14px; height:14px; flex:0 0 14px; align-self:center; }
 body .b2b-checkout-list li { padding-block: 12px; }
 body .b2b-checkout-list li.b2b-edit-row { grid-template-columns: minmax(0, 1fr) 132px 96px; }
 body .b2b-checkout-list .b2b-edit-quantity .b2b-quantity { grid-template-columns: 44px 36px 44px; width: 132px; gap: 4px; }

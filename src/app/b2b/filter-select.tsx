@@ -81,7 +81,7 @@ export function FilterSelect({
         }}
       >
         {options.find((o) => o.value === value)?.label}
-        <span aria-hidden="true">⌄</span>
+        <svg className="b2b-filter-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
         <div className="b2b-filter-popup">
