@@ -1100,6 +1100,11 @@ export function B2BAdmin({
   }
 
   const [locationForm, setLocationForm] = useState<Location | "new" | null>(null);
+  const addLocationTrigger = useRef<HTMLButtonElement | null>(null);
+  function closeLocationForm() {
+    setLocationForm(null);
+    requestAnimationFrame(() => addLocationTrigger.current?.focus({ preventScroll: true }));
+  }
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const matchingLocations = sortLocations(
@@ -1135,7 +1140,7 @@ export function B2BAdmin({
         </a>
         {manager && <a href="/b2b?tab=stock" className={view === "stock" ? "active" : undefined} onClick={event => {event.preventDefault();switchView("stock");}}>Administrare stoc</a>}
       </nav>
-      {view === "locations" && <button className="button b2b-add-mobile" onClick={() => setLocationForm("new")}>Adaugă local</button>}
+      {view === "locations" && <button className="button b2b-add-mobile" onClick={event => { addLocationTrigger.current = event.currentTarget; setLocationForm("new"); }}>Adaugă local</button>}
       </div>
       {view === "locations" && (
         <div className="b2b-toolbar">
@@ -1155,7 +1160,7 @@ export function B2BAdmin({
             ]}
             onChange={setLocationSort}
           />
-          <button className="button b2b-add-desktop" onClick={() => setLocationForm("new")}>
+          <button className="button b2b-add-desktop" onClick={event => { addLocationTrigger.current = event.currentTarget; setLocationForm("new"); }}>
             Adaugă local
           </button>
         </div>
@@ -1168,7 +1173,7 @@ export function B2BAdmin({
           modal
           internalFields={manager}
           location={locationForm === "new" ? undefined : locationForm}
-          onDone={() => setLocationForm(null)}
+          onDone={closeLocationForm}
         />
       )}
       {view === "locations" && (
