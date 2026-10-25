@@ -450,3 +450,33 @@ input[type=file] { max-width:100%; }
   .feedback-history-comment { grid-column: 1 / -1; grid-row: 3; }
   .feedback-history-toggle { min-height: 44px; }
 }
+.upload-library .panel-head h1 { font-size:clamp(21px,2vw,27px); line-height:1.25; letter-spacing:-.04em; max-width:none; overflow-wrap:anywhere; }
+.upload-back { margin-bottom:16px; }
+.upload-folder-subtitle { margin:-10px 0 20px; color:var(--muted); }
+.upload-tools { display:flex; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+.upload-tools > details { flex:0 1 360px; max-width:100%; margin:0; }
+.upload-folder-form { display:grid; gap:12px; }
+.upload-folder-form label { display:grid; gap:6px; }
+.upload-folder-form input, .upload-folder-form select { width:100%; min-height:44px; font-size:16px; }
+.upload-folder-grid, .upload-file-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr)); gap:16px; margin-bottom:16px; }
+.upload-folder-card { display:flex; align-items:center; gap:14px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); text-decoration:none; }
+.upload-folder-card > svg { flex-shrink:0; }
+.upload-folder-card > div { min-width:0; }
+.upload-folder-card h2, .upload-file-info h2 { font-size:16px; letter-spacing:0; overflow-wrap:anywhere; }
+.upload-folder-card p { margin:6px 0; color:var(--muted); }
+.upload-file-card { min-width:0; padding:12px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); display:flex; flex-direction:column; gap:12px; }
+.upload-image-card > a:first-child { display:block; overflow:hidden; border-radius:8px; background:#000; aspect-ratio:4/5; }
+.upload-image-card img { width:100%; height:100%; object-fit:contain; display:block; }
+.upload-file-info { display:grid; gap:6px; }
+.upload-file-card .attachment-actions { margin-top:auto; flex-wrap:wrap; }
+.upload-library a:focus-visible, .upload-library summary:focus-visible { outline:2px solid #fff; outline-offset:4px; }
+@media(max-width:800px) {
+ .upload-folder-grid, .upload-file-grid { gap:8px; }
+ .upload-library .upload-file-grid { grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr)); }
+ .upload-folder-card { padding:12px; }
+ .upload-folder-card h2, .upload-file-info h2 { font-size:13px; }
+ .upload-folder-card p { font-size:12px; }
+ .upload-library .meta { font-size:11px; }
+ .upload-tools { gap:8px; margin-bottom:16px; }
+ .upload-file-card .button, .upload-library .upload-back { min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+}

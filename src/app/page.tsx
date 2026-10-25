@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { activityData, createComment, createWorkspaceItemForm, deleteAttachment, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { activityData, createComment, createWorkspaceItemForm, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { MemberDashboard } from "./member-dashboard";
@@ -18,7 +18,7 @@ import { MerchComposer } from "./merch-composer";
 import { ModalEntryCard, ModalEntryGrid } from "./merch-grid";
 import { WorkspaceHeader } from "./workspace-header";
 import { MobileMenu } from "./mobile-menu";
-import { PdfUploader } from "./pdf-uploader";
+import { UploadLibrary } from "./upload-library";
 import { TaskComposer } from "./task-composer";
 import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
@@ -63,7 +63,6 @@ const entryReactionOptions = [
 
 function date(value: Date) { return new Intl.DateTimeFormat("ro-RO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Chisinau" }).format(value); }
 function relativeTime(value: Date) { const minutes = Math.max(0, Math.floor((Date.now() - value.getTime()) / 60_000)); if (minutes < 1) return "Acum câteva secunde"; if (minutes < 60) return `Acum ${minutes} ${minutes === 1 ? "minut" : "minute"}`; const hours = Math.floor(minutes / 60); if (hours < 24) return `Acum ${hours} ${hours === 1 ? "oră" : "ore"}`; const days = Math.floor(hours / 24); return `Acum ${days} ${days === 1 ? "zi" : "zile"}`; }
-function fileSize(bytes: number) { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`; }
 function canManage(memberSlug: string, authorSlug: string) { return memberSlug === "patrick" || memberSlug === authorSlug; }
 function canManageWorkspace(memberSlug: string, authorSlug: string, section: string, catalogueGroup?: string | null) { return memberSlug === "patrick" || (memberSlug === authorSlug && section !== "information" && section !== "merch" && !(section === "catalogue" && catalogueGroup !== "ideas")); }
 function preview(value: string) { return value.length > 50 ? `${value.slice(0, 50).trimEnd()}…` : value; }
@@ -330,15 +329,11 @@ function CatalogueSection({ brandFilter, data, memberSlug, group }: { brandFilte
   return <><nav className="catalogue-submenu filter-nav" aria-label="Grupe catalog">{catalogueGroups.map((entry) => <FilterLink key={entry.key} className={entry.key === group ? "active" : undefined} href={`/?brand=${brandFilter}&view=catalogue&catalogue=${entry.key}`}>{entry.label}</FilterLink>)}</nav><BrandFilterNav selected={brandFilter} view="catalogue" catalogue={group} /><WorkspaceSection brandFilter={brandFilter} section="catalogue" title={active.label} displayTitle={pageTitle({ view: "catalogue", brand: brandFilter, catalogue: group })} catalogueGroup={group} showBrandFilter={false} items={data.workspaceItems.filter(({ item }) => item.section === "catalogue" && item.catalogueGroup === group)} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={memberSlug} /></>;
 }
 
-function UploadsSection({ brandFilter, data, memberSlug }: { brandFilter: BrandFilter; data: Data; memberSlug: string }) {
-  const canManagePdfs = memberSlug === "patrick";
-  return <><BrandFilterNav selected={brandFilter} view="uploads" /><section className="panel content-section"><div className="panel-head"><PageHeading title={pageTitle({ view: "uploads", brand: brandFilter })} count={data.attachments.length} /></div>{canManagePdfs && <Composer label="Încarcă PDF"><PdfUploader initialBrand={initialBrand(brandFilter)} /></Composer>}<div className="items attachment-grid">{data.attachments.map(({ attachment }) => {
-    const attachmentBrand = attachment.brand as Brand;
-    return <article id={`attachment-${attachment.id}`} key={attachment.id} className="item attachment"><div><div className="entry-card-head"><h3 className="item-title">{attachment.filename}</h3><BrandBadge brand={attachmentBrand} /></div><div className="meta"><span>{fileSize(attachment.size)}</span></div></div><div className="attachment-actions"><a className="button ghost" href={`/api/attachments/${attachment.id}`}>Descarcă PDF</a>{canManagePdfs && <form action={deleteAttachment}><input type="hidden" name="id" value={attachment.id} /><input type="hidden" name="brand" value={attachmentBrand} /><input type="hidden" name="filename" value={attachment.filename} /><ConfirmDeleteButton itemName={attachment.filename}>Șterge</ConfirmDeleteButton></form>}</div></article>;
-  })}</div></section></>;
+function UploadsSection({ brandFilter, memberSlug, folder }: { brandFilter: BrandFilter; memberSlug: string; folder?: string }) {
+  return <><BrandFilterNav selected={brandFilter} view="uploads" /><UploadLibrary brandFilter={brandFilter} memberSlug={memberSlug} folderParam={folder} /></>;
 }
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; taskBrand?: string; activity?: string }> }) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; taskBrand?: string; activity?: string; folder?: string }> }) {
   const member = await currentMember();
   if (!member) return <main className="landing"><section className="landing-card"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><p className="eyebrow">Platformă internă pentru membri</p><h1>O imagine comună asupra muncii.</h1><p>Folosește linkul personal KAJA pentru a intra în spațiul de lucru.</p>{!hasDatabase && <div className="setup">Configurarea bazei de date este în așteptare.</div>}</section></main>;
   const params = await searchParams;
@@ -363,6 +358,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
   const activitySource = params.activity === "external" || params.activity === "internal" || params.activity === "deleted" ? params.activity : undefined;
   const activityFull = params.activity === "all" || activitySource !== undefined;
-  const content = view === "activity" ? <><MemberDashboard slug={member.slug} brand={brandFilter} activity={globalActivity} deletedActivity={deletedActivity} full={activityFull} source={activitySource} filters={<BrandFilterNav selected={brandFilter} view="activity" activity={activitySource ?? activityFull} />} />{params.activity === "all" && <LegacyProposalDetails data={data} memberSlug={member.slug} />}</> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} data={data} memberSlug={member.slug} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  const content = view === "activity" ? <><MemberDashboard slug={member.slug} brand={brandFilter} activity={globalActivity} deletedActivity={deletedActivity} full={activityFull} source={activitySource} filters={<BrandFilterNav selected={brandFilter} view="activity" activity={activitySource ?? activityFull} />} />{params.activity === "all" && <LegacyProposalDetails data={data} memberSlug={member.slug} />}</> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} memberSlug={member.slug} folder={params.folder} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
   return <><main className="workspace-shell"><WorkspaceHeader view={view} memberName={member.name} brand={brandFilter} catalogue={group} tasks={taskView} /><MobileMenu brand={brandFilter} view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
 }

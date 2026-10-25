@@ -95,17 +95,34 @@ export const workspaceItemImages = pgTable("workspace_item_images", {
   index("workspace_item_images_brand_item_position_idx").on(table.brand, table.itemId, table.position),
 ]);
 
+export const attachmentFolders = pgTable("attachment_folders", {
+  id: serial("id").primaryKey(),
+  brand: varchar("brand", { length: 20 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  subtitle: varchar("subtitle", { length: 300 }).notNull().default(""),
+  published: boolean("published").notNull().default(true),
+  createdBy: integer("created_by").notNull().references(() => members.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
 export const attachments = pgTable("attachments", {
   id: serial("id").primaryKey(),
   brand: varchar("brand", { length: 20 }).notNull().default("kaja"),
   filename: varchar("filename", { length: 255 }).notNull(),
+  contentType: varchar("content_type", { length: 64 }).notNull().default("application/pdf"),
+  folderId: integer("folder_id").references(() => attachmentFolders.id),
   pathname: text("pathname").notNull(),
   url: text("url").notNull(),
   size: integer("size").notNull(),
   uploadedBy: integer("uploaded_by").notNull().references(() => members.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-}, (table) => [uniqueIndex("attachments_pathname_unique").on(table.pathname)]);
+}, (table) => [
+  uniqueIndex("attachments_pathname_unique").on(table.pathname),
+  index("attachments_folder_idx").on(table.folderId),
+  uniqueIndex("attachments_folder_filename_unique").on(table.folderId, table.filename).where(sql`${table.deletedAt} is null and ${table.folderId} is not null`),
+]);
 
 export const activity = pgTable("activity", {
   id: serial("id").primaryKey(),

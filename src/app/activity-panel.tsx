@@ -13,7 +13,7 @@ function hrefFor(row: ActivityRows[number]) {
   const brand = event.brand as Brand;
   if (event.entityType === "update") return `/?brand=${brand}&view=activity#entry-update-${event.entityId}`;
   if (event.entityType === "task") return `/?brand=${row.taskCompleted ? "all" : brand}&view=tasks&tasks=${row.taskCompleted ? "history" : "all"}#entry-task-${event.entityId}`;
-  if (event.entityType === "attachment") return `/?brand=${brand}&view=uploads#attachment-${event.entityId}`;
+  if (event.entityType === "attachment") return `/api/attachments/${event.entityId}?open=1`;
   return `/?brand=${brand}&view=${event.entityType}${event.entityType === "catalogue" ? `&catalogue=${event.catalogueGroup || "live"}` : ""}#entry-${event.entityType}-${event.entityId}`;
 }
 
