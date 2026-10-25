@@ -34,7 +34,7 @@ try {
       const response = await page.goto(`${base}/?view=uploads&brand=kaja&folder=${folder.id}`,{waitUntil:"networkidle"});
       if(!folder.published && slug!=="patrick") { assert.equal(response.status(),404); continue; }
       assert.equal(response.status(),200);
-      assert.equal(await page.locator(".upload-image-card").count(),files.length);
+      assert.equal(await page.locator(".upload-compact-card").count(),files.length);
       assert.equal(await page.getByText("Degustare HOOKAH PLACE",{exact:true}).count(),1);
       assert.equal(await page.getByText("Editează dosarul",{exact:true}).count(),slug==="patrick"?1:0);
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${slug} ${width} folder overflow`);

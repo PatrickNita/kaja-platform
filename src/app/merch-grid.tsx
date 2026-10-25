@@ -61,7 +61,7 @@ export function ModalEntryGrid({ children, entryIds, label, twoColumnMobile = fa
   return <div className="modal-entry-grid-shell" tabIndex={-1}><div className={`items card-grid modal-entry-grid${twoColumnMobile ? " two-column-mobile" : ""}`} aria-label={label}>{children}</div></div>;
 }
 
-export function ModalEntryCard({ children, entryId, label, preview }: { children: ReactNode; entryId: string; label: string; preview: ReactNode }) {
+export function ModalEntryCard({ children, entryId, label, preview, modalClassName = "" }: { children: ReactNode; entryId: string; label: string; preview: ReactNode; modalClassName?: string }) {
   const [drilldown, setDrilldown] = useState(false);
   const trigger = useRef<HTMLDivElement>(null);
   const modal = useRef<HTMLDivElement>(null);
@@ -167,7 +167,7 @@ export function ModalEntryCard({ children, entryId, label, preview }: { children
     {mounted && active && createPortal(
       <div className="entry-modal-layer" style={drilldown ? { visibility: "hidden" } : undefined} inert={drilldown} aria-hidden={drilldown || undefined}>
         <button className="entry-modal-backdrop" type="button" aria-label={`Închide ${label}`} onClick={close} disabled={saving} />
-        <div ref={modal} className="entry-modal-surface" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} onKeyDown={handleModalKeyDown}>
+        <div ref={modal} className={`entry-modal-surface${modalClassName ? ` ${modalClassName}` : ""}`} role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} onKeyDown={handleModalKeyDown}>
           <EntryDrilldownContext.Provider value={setDrilldown}>{children}</EntryDrilldownContext.Provider>
         </div>
       </div>,

@@ -270,11 +270,11 @@ export async function deleteWorkspaceItemImage(formData: FormData) {
 }
 export async function deleteAttachment(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, filename: z.string().min(1).max(255) }).parse(Object.fromEntries(formData));
-  if (member.slug !== "patrick") throw new Error("Doar Patrick poate șterge PDF-uri.");
+  if (member.slug !== "patrick") throw new Error("Doar Patrick poate șterge fișiere.");
   const [attachment] = await db!.select().from(attachments).where(and(eq(attachments.id, input.id), eq(attachments.brand, input.brand), isNull(attachments.deletedAt)));
   if (!attachment) return;
   await del(attachment.url); await db!.update(attachments).set({ deletedAt: new Date() }).where(eq(attachments.id, attachment.id));
-  await recordActivity(member, { brand: input.brand, entityType: "attachment", entityId: attachment.id, action: "deleted", summary: `a șters PDF-ul „${attachment.filename}”`, title: attachment.filename }, { notifyTelegram: false }); refresh();
+  await recordActivity(member, { brand: input.brand, entityType: "attachment", entityId: attachment.id, action: "deleted", summary: `a șters fișierul „${attachment.filename}”`, title: attachment.filename }, { notifyTelegram: false }); refresh();
 }
 export async function createComment(formData: FormData) {
   const member = await actor();
