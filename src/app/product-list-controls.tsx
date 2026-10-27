@@ -3,14 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FilterSelect } from "./b2b/filter-select";
 import { ProductPlaceholder } from "./design-primitives";
-import { normalizeProductSort, productListSortOptions } from "../lib/product-list-sort";
+import { catalogueUsageSortAvailable, normalizeProductSort, productListSortOptions } from "../lib/product-list-sort";
 import { SearchField } from "./design-primitives";
 import { WorkspaceListToolbar } from "./workspace-list-toolbar";
 import { CatalogueAddButton } from "./catalogue-composer";
 
 export function ProductListSort({ catalogue = false, canCreate=false }: { catalogue?: boolean; canCreate?:boolean }) {
   const params=useSearchParams(),router=useRouter(),pathname=usePathname();
-  const usage=catalogue && params.get("brand") === "kaja" && (params.get("catalogue") ?? "live") === "live";
+  const usage=catalogue && catalogueUsageSortAvailable(params.get("brand"),params.get("catalogue"));
   const requested=params.get("sort"),value=normalizeProductSort(requested,usage);
   const urlQuery=params.get("q") ?? "";
   const [search,setSearch]=useState(urlQuery),timer=useRef<ReturnType<typeof setTimeout> | null>(null);

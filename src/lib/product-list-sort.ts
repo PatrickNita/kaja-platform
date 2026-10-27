@@ -5,6 +5,9 @@ export const productListSortOptions = [
   { value: "usage-asc", label: "Cel mai rar folosit" },
 ] as const;
 export type ProductListSort = typeof productListSortOptions[number]["value"];
+export function catalogueUsageSortAvailable(brand: string | null | undefined, group: string | null | undefined) {
+  return (!brand || brand === "all" || brand === "kaja") && (!group || group === "live");
+}
 export const productSearchKey=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("ro").trim();
 export function matchesProductSearch(query:string,...fields:(string|null|undefined)[]) {
   const key=productSearchKey(query);

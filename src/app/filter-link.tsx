@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { normalizeProductSort } from "../lib/product-list-sort";
+import { catalogueUsageSortAvailable, normalizeProductSort } from "../lib/product-list-sort";
 import type { ComponentProps } from "react";
 
 function withProductSort(href: ComponentProps<typeof Link>["href"], sort: string | null, search: string | null) {
@@ -11,7 +11,7 @@ function withProductSort(href: ComponentProps<typeof Link>["href"], sort: string
     const catalogue=target.pathname === "/" && target.searchParams.get("view") === "catalogue";
     const feedback=target.pathname === "/feedback" && target.searchParams.get("tab") !== "history";
     if (catalogue || feedback) {
-      const usage=catalogue && target.searchParams.get("brand") === "kaja" && (target.searchParams.get("catalogue") ?? "live") === "live";
+      const usage=catalogue && catalogueUsageSortAvailable(target.searchParams.get("brand"),target.searchParams.get("catalogue"));
       if(sort)target.searchParams.set("sort",normalizeProductSort(sort,usage));
       if(search)target.searchParams.set("q",search);
       href=target.pathname+target.search;
