@@ -3,7 +3,7 @@ import { ProductTable } from "../product-table";
 import { FilterLink } from "../filter-link";
 import { useSearchParams } from "next/navigation";
 import { ProductListSort } from "../product-list-controls";
-import { normalizeProductSort, sortProductList } from "../../lib/product-list-sort";
+import { normalizeProductSort, sortProductList, matchesProductSearch } from "../../lib/product-list-sort";
 import { markSeen } from "../member-seen";
 import { useEffect, useRef, useState } from "react";
 import { feedbackPath, feedbackBrands, type FeedbackBrand, type FeedbackProduct, type MemberFeedbackProduct, type ProductComment } from "../../lib/feedback-model";
@@ -14,12 +14,13 @@ import { NavigationIcon } from "../navigation-icon";
 export function FeedbackAdmin({ products, brand, origin }: { products: MemberFeedbackProduct[]; brand: FeedbackBrand; origin: string }) {
   const [selected, setSelected] = useState<FeedbackProduct | null>(null);
   const params=useSearchParams();
-  const sortedProducts=sortProductList(products,normalizeProductSort(params.get("sort")),p=>({name:p.name,id:p.id}));
+  const sortedProducts=sortProductList(products.filter(p=>matchesProductSearch(params.get("q") ?? "",p.name,p.flavor)),normalizeProductSort(params.get("sort")),p=>({name:p.name,id:p.id}));
   const opener = useRef<HTMLButtonElement | null>(null);
   function close() { setSelected(null); requestAnimationFrame(() => opener.current?.focus()); }
   return <>
+    <nav className="catalogue-submenu filter-nav" aria-label="Vizualizare feedback"><FilterLink href={`/feedback?tab=products&brand=${brand}`} className="active" aria-current="page">Produse ({sortedProducts.length})</FilterLink><FilterLink href="/feedback?tab=history">Istoric feedback</FilterLink></nav>
     <nav className="catalogue-submenu filter-nav brand-filter-nav" aria-label="Filtrează după brand">{feedbackBrands.map((b) => <FilterLink key={b.key} href={`/feedback?brand=${b.key}`} className={brand === b.key ? "active" : undefined}>{b.label}</FilterLink>)}</nav>
-    <section className="panel content-section"><div className="panel-head"><h2>Feedback <span className="page-entry-count">({products.length})</span></h2></div><ProductListSort /><ProductTable label="Lista produselor pentru feedback" variant="product-table--feedback" columns={["Produs","Gust","Brand","Comentarii"]}><div className="items feedback-product-list">{sortedProducts.map((p) => <div key={p.id} role="row"><button type="button" aria-haspopup="dialog" aria-label={`Deschide feedback pentru ${p.name}`} className="card-wrap feedback-product product-list-row" onClick={(event) => { opener.current = event.currentTarget; setSelected(p); }}><span className="product-table-product" role="cell"><span className="product-list-symbol"><NavigationIcon name="feedback" /></span><strong className="item-title">{p.name}</strong></span><span className="product-table-flavor product-list-secondary" role="cell">{p.flavor}</span><span className="product-table-brand entry-brand-inline" role="cell">{feedbackBrands.find(b=>b.key===p.brand)?.label ?? p.brand}</span><span className="product-table-count product-list-secondary" role="cell">{p.feedbackCount}</span><span className="product-table-chevron" role="cell"><NavigationIcon name="chevron" /></span></button></div>)}</div></ProductTable>{!products.length && <p className="feedback-secondary">Nu există produse în catalogul activ al acestui brand.</p>}</section>
+    <section className="panel content-section feedback-products-section"><ProductListSort /><ProductTable label="Lista produselor pentru feedback" variant="product-table--feedback" columns={["Produs","Gust","Brand","Comentarii"]}><div className="items feedback-product-list">{sortedProducts.map((p) => <div key={p.id} role="row" className="workspace-data-entry"><button type="button" aria-haspopup="dialog" aria-label={`Deschide feedback pentru ${p.name}`} className="card-wrap feedback-product product-list-row workspace-data-row" onClick={(event) => { opener.current = event.currentTarget; setSelected(p); }}><span className="product-table-product workspace-data-identity" role="cell"><span className="product-list-symbol"><NavigationIcon name="feedback" /></span><strong className="item-title workspace-data-title">{p.name}</strong></span><span className="product-table-flavor product-list-secondary" role="cell">{p.flavor}</span><span className="product-table-brand entry-brand-inline" role="cell">{feedbackBrands.find(b=>b.key===p.brand)?.label ?? p.brand}</span><span className="product-table-count product-list-secondary" role="cell">{p.feedbackCount}</span><span className="product-table-chevron" role="cell"><NavigationIcon name="chevron" /></span></button></div>)}</div></ProductTable>{!sortedProducts.length && <p className="feedback-secondary">Nu există produse pentru filtrele selectate.</p>}</section>
     {selected && <ProductFeedback key={selected.id} product={selected} origin={origin} close={close} />}
   </>;
 }

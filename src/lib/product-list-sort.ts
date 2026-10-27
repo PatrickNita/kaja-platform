@@ -5,6 +5,11 @@ export const productListSortOptions = [
   { value: "usage-asc", label: "Cel mai rar folosit" },
 ] as const;
 export type ProductListSort = typeof productListSortOptions[number]["value"];
+export const productSearchKey=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLocaleLowerCase("ro").trim();
+export function matchesProductSearch(query:string,...fields:(string|null|undefined)[]) {
+  const key=productSearchKey(query);
+  return !key || fields.some(field=>productSearchKey(field ?? "").includes(key));
+}
 export function normalizeProductSort(value: string | null | undefined, usage = false): ProductListSort {
   return productListSortOptions.some(option => option.value === value && (usage || option.value.startsWith("name-"))) ? value as ProductListSort : "name-asc";
 }

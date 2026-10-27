@@ -1,4 +1,5 @@
 "use client";
+import { WorkspaceListToolbar } from "../workspace-list-toolbar";
 import "./b2b.css";
 import { PublicLanguageProvider, usePortalLanguage, LanguageSelector } from "../public-language";
 import { matchesProduct, type PublicLanguage } from "../../lib/public-language";
@@ -1143,7 +1144,7 @@ export function B2BAdmin({
       {view === "locations" && <div className="b2b-add-mobile-frame"><button className="button b2b-add-mobile" onClick={event => { addLocationTrigger.current = event.currentTarget; setLocationForm("new"); }}>Adaugă local</button></div>}
       </div>
       {view === "locations" && (
-        <div className="b2b-toolbar">
+        <WorkspaceListToolbar>
           <SearchField
             aria-label="Caută localuri"
             placeholder="Caută local…"
@@ -1163,7 +1164,7 @@ export function B2BAdmin({
           <button className="button b2b-add-desktop" onClick={event => { addLocationTrigger.current = event.currentTarget; setLocationForm("new"); }}>
             Adaugă local
           </button>
-        </div>
+        </WorkspaceListToolbar>
       )}
       {view === "stock" && manager && <StockAdmin />}
       <Feedback error={error} success={success} />
@@ -1178,13 +1179,13 @@ export function B2BAdmin({
       )}
       {view === "locations" && (
         <section
-          className={`b2b-location-list b2b-summary-table${manager ? " b2b-summary-manager" : ""}`}
+          className={`b2b-location-list b2b-summary-table workspace-data-table${manager ? " b2b-summary-manager" : ""}`}
           aria-label="Lista localurilor"
         >
           <div className="b2b-summary-scroll"><div className="b2b-summary-content">
-          <div className="b2b-list-head" aria-hidden="true"><span>Local</span><span>Adresă</span><span>Pers. contact</span><span>Nr. de telefon</span>{manager && <><span>Denumire SRL</span><span>IDNO</span></>}<span>Ultima comandă</span><span>Total comenzi</span><span>Cashback total</span><span /></div>
+          <div className="b2b-list-head workspace-data-head" aria-hidden="true"><span>Local</span><span>Adresă</span><span>Pers. contact</span><span>Nr. de telefon</span>{manager && <><span>Denumire SRL</span><span>IDNO</span></>}<span>Ultima comandă</span><span>Total comenzi</span><span>Cashback total</span><span /></div>
           {matchingLocations.map((local) => (
-            <div key={local.id} className="b2b-location-entry">
+            <div key={local.id} className="b2b-location-entry workspace-data-entry">
               <button
                 type="button"
                 className="b2b-mobile-location"
@@ -1203,8 +1204,8 @@ export function B2BAdmin({
                 <time className="b2b-mobile-last" dateTime={local.last_order_at ?? undefined} aria-label={local.last_order_at ? "Ultima comandă: " + formatOrderDate(local.last_order_at) : "Fără comenzi"}>{local.last_order_at ? new Intl.DateTimeFormat("ro-RO", {dateStyle:"short",timeStyle:"short",timeZone:"Europe/Chisinau"}).format(new Date(local.last_order_at)) : "Fără comenzi"}</time>
                 <NavigationIcon name="chevron" />
               </button>
-              <button type="button" className="b2b-location-row b2b-summary-row" aria-label={"Detalii pentru " + local.name} aria-haspopup="dialog" onClick={event => { detailsTrigger.current = event.currentTarget; setError(""); setSuccess(""); setDetailsLocation(local.id); }}>
-                <span className="location-name-cell"><NavigationIcon name="b2b" /><strong>{local.name}</strong></span>
+              <button type="button" className="b2b-location-row b2b-summary-row workspace-data-row" aria-label={"Detalii pentru " + local.name} aria-haspopup="dialog" onClick={event => { detailsTrigger.current = event.currentTarget; setError(""); setSuccess(""); setDetailsLocation(local.id); }}>
+                <span className="location-name-cell workspace-data-identity"><NavigationIcon name="b2b" /><strong className="workspace-data-title">{local.name}</strong></span>
                 <span>{local.address}</span>
                 <span>{local.contact || "—"}</span>
                 <span>{local.phone || "—"}</span>

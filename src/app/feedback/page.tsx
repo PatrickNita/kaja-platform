@@ -22,11 +22,11 @@ export default async function FeedbackPage({ searchParams }: { searchParams: Pro
   return <main className="workspace-shell">
     <WorkspaceHeader view="feedback" memberName={member.name} />
     <MobileMenu brand={brand} view="feedback" catalogue="live" tasks="all" memberSlug={member.slug} />
-    <div className="workspace-content">
-      <nav className="catalogue-submenu filter-nav" aria-label="Vizualizare feedback">
+    <div className={"workspace-content" + (!history ? " workspace-product-page" : "")}>
+      {history && <nav className="catalogue-submenu filter-nav" aria-label="Vizualizare feedback">
         <Link href={`/feedback?tab=products&brand=${brand}`} className={!history ? "active" : undefined} aria-current={!history ? "page" : undefined}>Produse</Link>
         <Link href="/feedback?tab=history" className={history ? "active" : undefined} aria-current={history ? "page" : undefined}>Istoric feedback</Link>
-      </nav>
+      </nav>}
       {history ? <FeedbackHistory key={historyBrand(params.brand)} brand={historyBrand(params.brand)} commentId={Number(params.comment) || null} /> : <FeedbackAdmin products={await memberFeedbackProducts(brand)} brand={brand} origin={feedbackOrigin()} />}
     </div>
   </main>;
