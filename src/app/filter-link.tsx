@@ -1,11 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { normalizeProductSort } from "../lib/product-list-sort";
 import type { ComponentProps } from "react";
 
+function withProductSort(href: ComponentProps<typeof Link>["href"], sort: string | null) {
+  if (typeof href === "string" && sort) {
+    const target=new URL(href,"https://kaja.local");
+    const catalogue=target.pathname === "/" && target.searchParams.get("view") === "catalogue";
+    const feedback=target.pathname === "/feedback" && target.searchParams.get("tab") !== "history";
+    if (catalogue || feedback) {
+      const usage=catalogue && target.searchParams.get("brand") === "kaja" && (target.searchParams.get("catalogue") ?? "live") === "live";
+      target.searchParams.set("sort",normalizeProductSort(sort,usage));
+      href=target.pathname+target.search;
+    }
+  }
+  return href;
+}
+
 export function FilterLink({ onClick, ...props }: ComponentProps<typeof Link>) {
+  const params=useSearchParams();
+  const href=withProductSort(props.href,params.get("sort"));
   return <Link
     {...props}
+    href={href}
     scroll={false}
     onClick={(event) => {
       onClick?.(event);

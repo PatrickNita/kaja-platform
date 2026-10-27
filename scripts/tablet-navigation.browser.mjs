@@ -15,7 +15,7 @@ try {
   for (const width of [320,390,768,800,801,834,1024,1199,1200,1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(`${base}/?view=catalogue&brand=all&catalogue=live`, { waitUntil: "networkidle" });
-    const card = page.locator(".catalogue-compact-card .entry-card-preview").first();
+    const card = page.locator(".catalogue-list-card .entry-card-preview").first();
     await card.press("Enter");
     const dialog = page.getByRole("dialog");
     await dialog.waitFor();
