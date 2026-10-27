@@ -1197,9 +1197,11 @@ export function B2BAdmin({
                   setDetailsLocation(local.id);
                 }}
               >
+                <NavigationIcon name="b2b" />
                 <strong>{local.name}</strong>
                 <span className="b2b-mobile-address">{local.address}</span>
                 <time className="b2b-mobile-last" dateTime={local.last_order_at ?? undefined} aria-label={local.last_order_at ? "Ultima comandă: " + formatOrderDate(local.last_order_at) : "Fără comenzi"}>{local.last_order_at ? new Intl.DateTimeFormat("ro-RO", {dateStyle:"short",timeStyle:"short",timeZone:"Europe/Chisinau"}).format(new Date(local.last_order_at)) : "Fără comenzi"}</time>
+                <NavigationIcon name="chevron" />
               </button>
               <button type="button" className="b2b-location-row b2b-summary-row" aria-label={"Detalii pentru " + local.name} aria-haspopup="dialog" onClick={event => { detailsTrigger.current = event.currentTarget; setError(""); setSuccess(""); setDetailsLocation(local.id); }}>
                 <span className="location-name-cell"><NavigationIcon name="b2b" /><strong>{local.name}</strong></span>
