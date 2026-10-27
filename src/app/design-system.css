@@ -82,7 +82,7 @@ body .item-title { font-size: 14px; font-weight: 700; line-height: 1.45; letter-
 body :is(.feedback-secondary, .b2b-checkout-flavor) { color: var(--muted); font-weight: 400; }
 body .item p { color: #b3b3b3; }
 body .card-grid { gap: var(--space-3); margin-top: var(--space-4); }
-body .modal-entry-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr)); gap:var(--space-3); align-items:start; }
+body .modal-entry-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,max(300px,calc((100% - 36px)/4))),1fr)); gap:var(--space-3); align-items:start; }
 body :is(.workspace-content, .stack) { gap: var(--space-6); }
 
 /* Member shell: persistent sidebar on desktop, safe-area aware dock on mobile. */
