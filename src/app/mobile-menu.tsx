@@ -71,10 +71,17 @@ export function MobileMenu({
     };
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", close);
+    const mobileViewport = window.matchMedia("(max-width: 800px)");
+    const closeOnDesktop = () => {
+      if (!mobileViewport.matches) setOpen(false);
+    };
+    mobileViewport.addEventListener("change", closeOnDesktop);
     return () => {
       document.body.style.overflow = previousOverflow;
-      trigger.current?.focus();
+      if (trigger.current?.getClientRects().length) trigger.current.focus();
+      else document.querySelector<HTMLAnchorElement>(".workspace-nav a.active")?.focus({ preventScroll: true });
       window.removeEventListener("keydown", close);
+      mobileViewport.removeEventListener("change", closeOnDesktop);
     };
   }, [open]);
 
