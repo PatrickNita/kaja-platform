@@ -11,6 +11,7 @@ export type OrderNotification = {
   at: string;
   actor: string;
   location: { name: string; address: string; idno?: string | null };
+  previousLocation?: { name: string; address: string };
   lines: NotificationLine[];
   previous: NotificationLine[];
   total: number;
@@ -35,6 +36,7 @@ export function notificationMessages(event: OrderNotification): string[] {
     );
   if (event.kind === "edited") {
     text.push("", "MODIFICĂRI");
+    if (event.previousLocation) text.push(`Local: ${clean(event.previousLocation.name)} · ${clean(event.previousLocation.address)} → ${clean(event.location.name)} · ${clean(event.location.address)}`);
     const ids = new Set(
       [...event.previous, ...event.lines].map((line) => line.id),
     );

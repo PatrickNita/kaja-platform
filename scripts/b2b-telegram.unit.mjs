@@ -22,6 +22,7 @@ const event = {
   total: 80000,
 };
 const text = notificationMessages(event).join("\n");
+assert.match(notificationMessages({...event,kind:"edited",previousLocation:{name:"Vechi",address:"Adresă veche"},previous:event.lines}).join("\n"),/Local: Vechi · Adresă veche → Test · Adresă fictivă/);
 assert.match(text, /COMANDĂ NOUĂ #12/);
 assert.match(text, /12:00/);
 assert.match(text, /2 buc\. × 400 MDL = 800 MDL/);

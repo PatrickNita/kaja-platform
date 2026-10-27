@@ -203,6 +203,9 @@ try {
   };
   route = load("src/app/api/b2b/route.ts");
   accessRoute = load("src/app/comenzi/acces/[id]/[token]/route.ts");
+  if(process.env.B2B_TEST_LOCATION_ONLY === "1") {
+    await (await import("./b2b-order-location.scenarios.mjs")).verifyOrderLocation({db,api,route,base,crypto,setCookie:value=>{cookie=value;},setMember:value=>{member=value;}});
+  } else {
   let [group] = await db.query("select * from b2b_access_groups where id=1");
   for (let i = 1; i <= 3; i++) await entry(i, old[i - 1], 404);
   cookie = crypto.sessionValue(1, 1);
@@ -840,11 +843,13 @@ try {
   );
   member = {slug:"patrick",name:"Patrick"};
   await verifyInventory({db, api, load, setMember:value => {member=value;}, base, stockMigration});
+  await (await import("./b2b-order-location.scenarios.mjs")).verifyOrderLocation({db,api,route,base,crypto,setCookie:value=>{cookie=value;},setMember:value=>{member=value;}});
   console.log(
     "PASS: " +
       checks +
       " real API scenarios; migration, singleton compatibility, shared links, sessions, isolation, concurrent grouping, per-location cashback and contact transfer.",
   );
+  }
 } finally {
   await root.query("drop schema if exists " + schemaName + " cascade");
 }

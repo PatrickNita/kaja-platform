@@ -11,6 +11,7 @@ import {
   nextStatus,
   statusLabel,
   stockLimit,
+  type Location,
   type Order,
   type Product,
   type Status,
@@ -42,6 +43,8 @@ export function History({
   allowEdit,
   mode,
   hideHeading = false,
+  locations = [],
+  onLocationChanged,
 }: {
   orders: Order[];
   products: Product[];
@@ -49,6 +52,8 @@ export function History({
   allowEdit: boolean;
   mode: "admin" | "portal";
   hideHeading?: boolean;
+  locations?: Location[];
+  onLocationChanged?: (order: Order) => void;
 }) {
   const { language, t } = usePortalLanguage();
   const params = useSearchParams();
@@ -162,6 +167,8 @@ export function History({
         <OrderDialog
           key={order.id}
           order={order}
+          locations={locations}
+          onLocationChanged={onLocationChanged}
           products={products}
           mode={mode}
           manager={manager}
@@ -186,6 +193,8 @@ function OrderDialog({
   onClose,
   onSaved,
   onSeen,
+  locations,
+  onLocationChanged,
 }: {
   order: Order;
   products: Product[];
@@ -195,6 +204,8 @@ function OrderDialog({
   onClose: () => void;
   onSaved: (message: string) => void;
   onSeen: (id: number, version: number) => void;
+  locations: Location[];
+  onLocationChanged?: (order: Order) => void;
 }) {
   const { language, t, flavor } = usePortalLanguage();
   const router = useRouter();
@@ -202,9 +213,12 @@ function OrderDialog({
     version: number;
     target: Status;
   } | null>(null);
-  const [step, setStep] = useState<"details" | "edit" | "review" | "status">(
+  const [step, setStep] = useState<"details" | "edit" | "review" | "status" | "location">(
     "details",
   );
+  const [destinationId,setDestinationId] = useState(order.location_id);
+  const locationTrigger = useRef<HTMLButtonElement>(null);
+  const canMove = mode === "portal" && allowEdit && order.status === "placed" && locations.length > 1 && Boolean(onLocationChanged);
   const [seenError, setSeenError] = useState(false), [seenRetry, setSeenRetry] = useState(0);
   useEffect(() => {
     if (mode !== "admin" || step !== "details") return;
@@ -352,6 +366,18 @@ function OrderDialog({
       setBusy(false);
     }
   }
+  async function saveLocation() {
+    if (!canMove || stale || destinationId === order.location_id || inFlight.current) return;
+    inFlight.current=true; setBusy(true); setError("");
+    try {
+      const response=await request({mode:"portal",operation:"changeOrderLocation",locationId:order.location_id,destinationLocationId:destinationId,orderId:order.id,version:baseVersion});
+      setBaseVersion(response.result.order.version);
+      onLocationChanged?.(response.result.order);
+      setStep("details"); router.refresh();
+    } catch(e) { setError(requestError(e,"Salvarea nu a reușit.")); router.refresh(); }
+    finally { inFlight.current=false;setBusy(false); }
+  }
+  function backToDetails() {setStep("details");setError("");requestAnimationFrame(()=>locationTrigger.current?.focus());}
   const targetStatus =
     step === "status"
       ? (statusIntent?.target ?? null)
@@ -383,7 +409,7 @@ function OrderDialog({
   }
   const editing = step === "edit" || step === "review";
   const title =
-    step === "details"
+    step === "location" ? t("Modifică locația") : step === "details"
       ? t(`Comanda #${order.id}`)
       : step === "status"
         ? targetStatus === "paid"
@@ -416,7 +442,14 @@ function OrderDialog({
         </p>
       </div>
       {step === "details" && order.author !== "Local" && <div className="b2b-order-metadata"><span>{t("Plasată de ")}{order.author}</span></div>}
-      {step === "status" ? (
+      {step === "location" ? <>
+        <div className="b2b-location-options b2b-order-location-options" role="group" aria-label={t("Alege locația comenzii")}>
+          {locations.map(local=><button key={local.id} type="button" className={destinationId===local.id ? "button" : "button ghost"} aria-pressed={destinationId===local.id} disabled={busy} onClick={()=>setDestinationId(local.id)}><strong>{local.name}</strong><span className="b2b-location-option-address"> · {local.address}</span></button>)}
+        </div>
+        {(!canMove || stale) && <p className="b2b-error" role="alert">{t("Comanda a fost actualizată între timp. Revino la detalii pentru a verifica starea curentă.")}</p>}
+        <Feedback error={error}/>
+        <div className="b2b-actions"><button className="button ghost" disabled={busy} onClick={backToDetails}>{t("Înapoi")}</button><button className="button" disabled={busy || !canMove || stale || destinationId===order.location_id} onClick={saveLocation}>{t(busy ? "Se salvează…" : "Salvează locația")}</button></div>
+      </> : step === "status" ? (
         <div className="b2b-status-confirm">
           <p>
             {targetStatus === "paid"
@@ -542,13 +575,14 @@ function OrderDialog({
             )}
             <Feedback error={error} />
             {step === "details" && (
-              <div className="b2b-order-dialog-actions">
+              <div className={"b2b-order-dialog-actions" + (mode === "portal" ? " b2b-order-dialog-actions--portal" : "")}>
                 {editable && (
                   <button
                     className="button ghost"
                     onClick={() => setStep("edit")}
                   >{t("Modifică comanda")}</button>
                 )}
+                {canMove && <button ref={locationTrigger} className="button ghost" onClick={()=>{setDestinationId(order.location_id);setBaseVersion(order.version);setError("");setStep("location");}}>{t("Modifică locația")}</button>}
                 {manager && targetStatus && (
                   <button
                     className="button"

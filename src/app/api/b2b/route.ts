@@ -34,6 +34,7 @@ const envelope = z.object({
     "editLocation",
     "rotateLink",
     "saveOrder",
+    "changeOrderLocation",
     "status",
   ]),
 });
@@ -149,6 +150,38 @@ export async function POST(request: Request) {
       );
       if (!updated)
         return jsonResponse({ error: conflict }, { status: 409 });
+    } else if (operation === "changeOrderLocation") {
+      if (mode !== "portal" || !location) return jsonResponse({ error: "Acces neautorizat." }, { status: 403 });
+      const orderId = id.parse(body.orderId), version = id.parse(body.version), destinationId = id.parse(body.destinationLocationId);
+      if (destinationId === location.id) return jsonResponse({ error: conflict }, { status: 409 });
+      const [updated] = await query<{ order: unknown; notification_id: number }>(sql`
+        with authorized as materialized (
+          select l.* from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id
+          where g.id=${location.access_group_id!} and g.version=${location.version}
+          and l.id in (${location.id},${destinationId}) order by l.id for share of l,g
+        ), previous as materialized (
+          select o.*,coalesce((select jsonb_agg(jsonb_build_object('id',i.product_id,'name',i.name,'flavor',i.flavor,'grams',i.grams,'price',i.price,'quantity',i.quantity) order by i.product_id) from b2b_order_items i where i.order_id=o.id),'[]'::jsonb) as lines
+          from b2b_orders o where o.id=${orderId} and o.location_id=${location.id}
+          and (select count(*) from authorized)=2 for update of o
+        ), changed as (
+          update b2b_orders o set location_id=l.id,
+          location_snapshot=jsonb_build_object('name',l.name,'address',l.address,'contact',l.contact,'phone',l.phone),
+          version=o.version+1,updated_at=now()
+          from previous p,authorized l where o.id=p.id and l.id=${destinationId}
+          and o.version=${version} and o.status='placed' returning o.*
+        ), notified as (
+          insert into b2b_notifications(order_id,order_version,payload)
+          select c.id,c.version,jsonb_build_object('kind','edited','orderId',c.id,'at',now(),'actor','Local',
+            'location',c.location_snapshot || jsonb_build_object('idno',l.idno),'previousLocation',p.location_snapshot,
+            'lines',p.lines,'previous',p.lines,'total',c.total)
+          from changed c join previous p on p.id=c.id join authorized l on l.id=c.location_id returning id,order_id
+        ) select jsonb_build_object('id',c.id,'location_id',c.location_id,'location_name',c.location_snapshot->>'name',
+          'location_snapshot',c.location_snapshot,'author',c.author,'status',c.status,'version',c.version,'total',c.total,
+          'created_at',c.created_at,'cashback',0,'items',p.lines) as "order",n.id as notification_id
+          from changed c join previous p on p.id=c.id join notified n on n.order_id=c.id`);
+      if (!updated) return jsonResponse({ error: conflict }, { status: 409 });
+      result = { order: updated.order };
+      notificationId = updated.notification_id;
     } else if (operation === "saveOrder") {
       if (mode === "admin" && !manager)
         return jsonResponse(

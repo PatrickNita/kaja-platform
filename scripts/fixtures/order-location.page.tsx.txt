@@ -1,0 +1,11 @@
+import {notFound} from 'next/navigation';
+import {B2BPortal} from '../b2b/client';
+import type {B2BData} from '../../lib/b2b/model';
+export default async function QA({searchParams}:{searchParams:Promise<{single?:string;status?:string;lang?:string}>}) {
+  if(process.env.NODE_ENV!=='development')notFound();
+  const params=await searchParams;
+  const locations=[1,2].map(id=>({id,name:id===1?'Local Alpha':'Local Beta cu denumire foarte lungă pentru verificarea încadrării',address:'Strada cu adresă lungă pentru verificarea dialogului 123',contact:'Persoană contact',phone:'069111111',version:1,details_version:1,access_group_id:100,cashback:0}));
+  const products=[{id:1,name:'Produs test',flavor:'Gheață',grams:200,price:40000,stock:80}];
+  const data:B2BData={locations:params.single?locations.slice(0,1):locations,products,orders:[{id:9001,location_id:1,location_name:locations[0].name,location_snapshot:locations[0],author:'Local',status:params.status==='confirmed'?'confirmed':params.status==='paid'?'paid':'placed',version:1,total:80000,cashback:0,created_at:'2026-10-27T10:00:00Z',items:[{...products[0],quantity:2}]}]};
+  return <B2BPortal data={data} initialLanguage={params.lang==='ru'?'ru':'ro'}/>;
+}

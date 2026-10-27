@@ -830,6 +830,11 @@
 .b2b-order-dialog-actions .button {
   flex: 1 1 160px;
 }
+.b2b-order-dialog-actions--portal { flex-direction:column; }
+.b2b-order-dialog-actions--portal .button { flex:none; width:100%; }
+.b2b-order-location-options .button { white-space:normal; align-items:flex-start; flex-direction:column; }
+.b2b-order-location-options strong { flex-shrink:1; max-width:100%; overflow:visible; overflow-wrap:anywhere; }
+.b2b-order-location-options .b2b-location-option-address { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
 .b2b-status-confirm {
   overflow-y: auto;
   min-height: 0;

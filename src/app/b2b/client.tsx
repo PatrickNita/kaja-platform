@@ -578,6 +578,8 @@ function PortalContent({ data }: { data: B2BData }) {
   const [view, setView] = useState<"order" | "history">("order");
   const [success, setSuccess] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [movedOrders,setMovedOrders] = useState<Record<number,Order>>({});
+  const portalOrders=data.orders.map(order=>movedOrders[order.id] && movedOrders[order.id].version>order.version ? movedOrders[order.id] : order);
   const [choosingLocation, setChoosingLocation] = useState(false);
   const locationSwitchTrigger = useRef<HTMLButtonElement>(null);
   function closeLocationPicker() {
@@ -680,7 +682,9 @@ function PortalContent({ data }: { data: B2BData }) {
         <div id="istoric-comenzi">
           <History
             hideHeading
-            orders={data.orders.filter((o) => o.location_id === location.id)}
+            orders={portalOrders.filter((o) => o.location_id === location.id)}
+            locations={data.locations}
+            onLocationChanged={order=>{setMovedOrders(previous=>({...previous,[order.id]:order}));setSelectedLocation(order.location_id);try {localStorage.setItem(storageKey,String(order.location_id));}catch {}}}
             products={data.products}
             manager={false}
             allowEdit
