@@ -873,14 +873,12 @@ body .catalogue-composer .composer-content { padding:12px; display:grid; gap:12p
   body .catalogue-navigation .workspace-list-toolbar > .b2b-add-desktop { display:none; }
 }
 
-/* Overlays do not reserve space or change table column geometry. */
-body .horizontal-scroll-hints { position:relative; min-width:0; max-width:100%; }
-body .scroll-edge { position:absolute; top:0; bottom:0; width:52px; z-index:2; pointer-events:none; border-radius:var(--radius-card); }
-body .scroll-edge--right { right:0; background:linear-gradient(to right,transparent,rgba(0,0,0,.35)); }
-body .scroll-edge--left { left:0; background:linear-gradient(to left,transparent,rgba(0,0,0,.35)); }
-body .scroll-edge button { position:absolute; top:0; display:grid; place-items:center; width:44px; height:44px; min-height:44px; padding:0; border:0; background:transparent; color:#eee; pointer-events:auto; cursor:pointer; }
-body .scroll-edge--right button { right:0; }
-body .scroll-edge--left button { left:0; }
-body .scroll-edge button::before { content:""; position:absolute; width:28px; height:28px; border:1px solid #555; border-radius:50%; background:#292929; box-shadow:0 2px 8px #0006; }
-body .scroll-edge button svg { position:relative; }
-body .scroll-edge button:focus-visible { outline:2px solid #ececec; outline-offset:-3px; border-radius:8px; }
+/* Separate scroll controls leave every table cell unobstructed. */
+body .horizontal-scroll-hints { min-width:0; max-width:100%; }
+body .table-scroll-bar { display:flex; align-items:center; gap:8px; height:44px; }
+body .table-scroll-bar button { display:grid; place-items:center; flex:0 0 44px; width:44px; height:44px; min-height:44px; padding:0; border:0; border-radius:8px; background:transparent; color:#ddd; cursor:pointer; }
+body .table-scroll-bar button:hover:not(:disabled) { background:#242424; }
+body .table-scroll-bar button:disabled { color:#555; cursor:default; }
+body .table-scroll-bar button:focus-visible { outline:2px solid #ececec; outline-offset:-3px; }
+body .table-scroll-track { position:relative; flex:1; height:3px; overflow:hidden; border-radius:3px; background:#333; }
+body .table-scroll-track span { position:absolute; top:0; height:100%; border-radius:inherit; background:#aaa; }

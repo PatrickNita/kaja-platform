@@ -3,18 +3,17 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function HorizontalScrollHints({ children, className, label }: { children: ReactNode; className: string; label: string }) {
   const scroller = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
+  const [scroll, setScroll] = useState({ overflow: false, left: false, right: false, position: 0, fraction: 1 });
   useEffect(() => {
     const element = scroller.current;
     if (!element) return;
     const measure = () => {
-      const scrollable = /auto|scroll/.test(getComputedStyle(element).overflowX);
-      const left = scrollable && element.scrollLeft > 2;
-      const right = scrollable && element.scrollWidth - element.clientWidth - element.scrollLeft > 2;
-      for (const [edge, visible] of [["left", left], ["right", right]] as const) {
-        if (!visible && document.activeElement === element.parentElement?.querySelector(`.scroll-edge--${edge} button`)) element.focus({ preventScroll: true });
-      }
-      setEdges(previous => previous.left === left && previous.right === right ? previous : { left, right });
+      const maximum = element.scrollWidth - element.clientWidth;
+      const overflow = /auto|scroll/.test(getComputedStyle(element).overflowX) && maximum > 2;
+      const position = overflow ? Math.max(0, Math.min(1, element.scrollLeft / maximum)) : 0;
+      const next = { overflow, left: overflow && element.scrollLeft > 2, right: overflow && maximum - element.scrollLeft > 2, position, fraction: overflow ? element.clientWidth / element.scrollWidth : 1 };
+      if (!overflow && element.parentElement?.querySelector(".table-scroll-bar")?.contains(document.activeElement)) element.focus({ preventScroll: true });
+      setScroll(previous => Object.keys(next).every(key => previous[key as keyof typeof next] === next[key as keyof typeof next]) ? previous : next);
     };
     const observer = new ResizeObserver(measure);
     observer.observe(element);
@@ -27,10 +26,14 @@ export function HorizontalScrollHints({ children, className, label }: { children
   function move(direction: number) {
     const element = scroller.current;
     if (!element) return;
-    element.scrollBy({ left: direction * element.clientWidth * 0.75, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    element.scrollTo({ left: direction < 0 ? 0 : element.scrollWidth - element.clientWidth, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
   return <div className="horizontal-scroll-hints">
+    {scroll.overflow && <div className="table-scroll-bar" role="group" aria-label={`Derulare: ${label}`}>
+      <button className="table-scroll-left" type="button" disabled={!scroll.left} onClick={() => move(-1)} aria-label="Mergi la începutul tabelului"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></button>
+      <div className="table-scroll-track" aria-hidden="true"><span style={{ width: `${scroll.fraction * 100}%`, left: `${scroll.position * (1 - scroll.fraction) * 100}%` }} /></div>
+      <button className="table-scroll-right" type="button" disabled={!scroll.right} onClick={() => move(1)} aria-label="Mergi la capătul tabelului"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></button>
+    </div>}
     <div ref={scroller} className={className} role="region" aria-label={label} tabIndex={0}>{children}</div>
-    {(["left", "right"] as const).map(edge => edges[edge] && <div key={edge} className={`scroll-edge scroll-edge--${edge}`}><button type="button" onClick={() => move(edge === "left" ? -1 : 1)} aria-label={edge === "left" ? "Vezi coloanele din stânga" : "Vezi coloanele din dreapta"}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={edge === "left" ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6"} /></svg></button></div>)}
   </div>;
 }
