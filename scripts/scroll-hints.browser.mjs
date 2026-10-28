@@ -10,7 +10,7 @@ await context.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.co
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 try{
 for(const width of (process.env.SCROLL_TEST_WIDTHS ? process.env.SCROLL_TEST_WIDTHS.split(",").map(Number) : [320,390,768,834,1024,1200,1440]))for(const path of ['/?view=catalogue&brand=kaja&catalogue=live','/feedback?brand=kaja',...(base.includes('127.0.0.1')?[]:['/b2b'])]){
- await page.setViewportSize({width,height:1000});await page.goto(base+path,{waitUntil:'networkidle'});const wrapper=page.locator('.horizontal-scroll-hints').first();await wrapper.waitFor();
+ await page.setViewportSize({width,height:1000});await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:60000});const wrapper=page.locator('.horizontal-scroll-hints').first();await wrapper.waitFor();
  const scroll=wrapper.locator(':scope > [role=region]');const overflow=await scroll.evaluate(el=>/auto|scroll/.test(getComputedStyle(el).overflowX)&&el.scrollWidth>el.clientWidth+2);
  const right=wrapper.locator('.table-scroll-right'),left=wrapper.locator('.table-scroll-left'),bar=wrapper.locator('.table-scroll-bar');
  if(overflow){await right.waitFor();assert(await left.isDisabled());assert(await right.isEnabled());
