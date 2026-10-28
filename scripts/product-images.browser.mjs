@@ -39,6 +39,11 @@ for(const c of [member,portal,publicContext]) await c.route('**/*',route=>route.
 const errors=[];
 const page=await portal.newPage();const catalogue=await member.newPage();const feedback=await publicContext.newPage();
 for(const p of [page,catalogue,feedback])p.on('pageerror',e=>errors.push(e.message));
+const languageReady=async(p,language)=>p.waitForFunction(lang=>{
+ const button=Array.from(document.querySelectorAll('.language-option')).find(el=>el.textContent===lang.toUpperCase());
+ const props=button&&Object.keys(button).find(key=>key.startsWith('__reactProps$'));
+ return Boolean(props&&typeof button[props]?.onClick==='function');
+},language);
 const loaded=async(p,selector)=>{
  await p.locator(selector).first().waitFor();await p.locator(selector).evaluateAll(images=>images.forEach(i=>i.loading='eager'));
  try { await p.waitForFunction(sel=>Array.from(document.querySelectorAll(sel)).every(i=>i.complete&&i.naturalWidth>0),selector,{timeout:45000}); }
@@ -74,6 +79,7 @@ try {
   await catalogue.waitForFunction(()=>document.activeElement?.classList.contains('entry-card-preview'));
   for(const language of ['ro','ru']){
    await page.goto(base+'/comenzi',{waitUntil:'domcontentloaded',timeout:60000});
+   await languageReady(page,language);
    await page.getByRole('button',{name:language.toUpperCase(),exact:true}).click();
    await page.waitForFunction(lang=>document.querySelector('.b2b-portal')?.getAttribute('lang')===lang,language);
    await loaded(page,'.b2b-product .product-image img');assert.equal(await page.locator('.b2b-product .product-image img').count(),25);
@@ -97,6 +103,7 @@ try {
    await page.keyboard.press('Escape');
    await page.waitForFunction(()=>document.activeElement?.classList.contains('b2b-order-card'));
    await feedback.goto(base+'/feedback/kaja/1st-sin',{waitUntil:'domcontentloaded',timeout:60000});
+   await languageReady(feedback,language);
    await feedback.getByRole('button',{name:language.toUpperCase(),exact:true}).click();
    await feedback.waitForFunction(lang=>document.querySelector('.feedback-public-card')?.getAttribute('lang')===lang,language);
    await loaded(feedback,'.feedback-product-image img');
