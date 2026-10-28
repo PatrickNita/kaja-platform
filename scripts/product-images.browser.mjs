@@ -139,7 +139,7 @@ try {
  if(!base.includes('127.0.0.1')) { await catalogue.goto(base+'/b2b?tab=history',{waitUntil:'domcontentloaded',timeout:60000});
  const adminLargeBefore=largeRequests.get(catalogue).length;
  const history=catalogue.locator('.b2b-order-card').first();
- assert(await history.count(),'Internal history order missing');await history.click();await loaded(catalogue,'dialog .b2b-checkout-product .product-image img');assert.equal(largeRequests.get(catalogue).length,adminLargeBefore,'Internal history downloaded an original');await catalogue.screenshot({path:output+'/admin-history-1440.png',animations:'disabled'}); }
+ assert(await history.count(),'Internal history order missing');await history.evaluate(el=>new Promise(resolve=>{const check=()=>{const key=Object.keys(el).find(k=>k.startsWith('__reactProps$'));if(key&&typeof el[key]?.onClick==='function')resolve(true);else setTimeout(check,20);};check();}));await history.click();await loaded(catalogue,'dialog .b2b-checkout-product .product-image img');assert.equal(largeRequests.get(catalogue).length,adminLargeBefore,'Internal history downloaded an original');await catalogue.screenshot({path:output+'/admin-history-1440.png',animations:'disabled'}); }
  assert.equal(largeRequests.get(page).length,0,'B2B review/history requested an original');
  assert.deepEqual(errors,[]);
  assert.equal(await snapshot(),before,'Read-only verification changed order or product data');
