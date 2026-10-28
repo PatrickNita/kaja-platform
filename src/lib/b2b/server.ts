@@ -59,7 +59,7 @@ export async function loadData(location?: Location, memberLocationId?: number): 
   );
   const [products, orders] = await Promise.all([
     query<Product>(
-      sql`select id,name,flavor,grams,price,stock,stock_version as "stockVersion" from b2b_products order by position,id`,
+      sql`select p.id,p.name,p.flavor,p.grams,p.price,p.stock,p.stock_version as "stockVersion",(select im.id from workspace_items w join workspace_item_images im on im.item_id=w.id and im.brand=w.brand and im.deleted_at is null where w.brand='kaja' and w.section='catalogue' and w.catalogue_group='live' and w.deleted_at is null and w.feedback_slug is not null and lower(btrim(w.product_name))=lower(btrim(p.name)) order by im.position,im.id limit 1) as "imageId" from b2b_products p order by p.position,p.id`,
     ),
     memberLocationId ? [] : query<Order>(sql`select o.id,o.location_id,o.location_snapshot->>'name' as location_name,o.location_snapshot,o.author,o.status,o.version,o.total,o.created_at ${member ? sql`,coalesce((select seen_version from member_order_seen s join members m on m.id=s.member_id where s.order_id=o.id and m.slug=${member.slug}),0) as seen_version` : sql``},coalesce(c.amount,0) as cashback,
  coalesce((select jsonb_agg(jsonb_build_object('id',i.product_id,'name',i.name,'flavor',i.flavor,'grams',i.grams,'price',i.price,'quantity',i.quantity) order by i.product_id) from b2b_order_items i where i.order_id=o.id),'[]'::jsonb) as items
@@ -67,7 +67,7 @@ export async function loadData(location?: Location, memberLocationId?: number): 
   ]);
   return {
     products,
-    orders,
+    orders: orders.map(order => ({ ...order, items: order.items.map(item => ({ ...item, imageId: products.find(product => product.id === item.id)?.imageId ?? null })) })),
     locations: locations.map((l) => {
       const { token_cipher, preview_revision, ...safe } = l;
       return token_cipher

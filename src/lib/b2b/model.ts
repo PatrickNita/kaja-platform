@@ -42,6 +42,7 @@ export const money = (bani: number) =>
     bani / 100,
   ) + " MDL";
 export type Product = {
+  imageId?: number | null;
   id: number;
   name: string;
   flavor: string;

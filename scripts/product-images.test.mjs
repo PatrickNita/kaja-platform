@@ -1,0 +1,28 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import ts from "typescript";
+import { PgDialect } from "drizzle-orm/pg-core";
+const require = createRequire(import.meta.url);
+let rows=[], blob=null, calls=0, query;
+const source=ts.transpileModule(readFileSync(new URL("../src/app/api/product-images/[id]/route.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const route={};
+new Function("exports","require",source)(route,name=>{
+ if(name==="@vercel/blob")return {get:async(url,options)=>{assert.equal(url,"private-blob-url");assert.equal(options.access,"private");return blob;}};
+ if(name==="next/server")return {NextResponse:Response};
+ if(name.endsWith("/db"))return {db:{execute:async(statement)=>{calls++;query=new PgDialect().sqlToQuery(statement);return {rows};}}};
+ return require(name);
+});
+const request=id=>route.GET(new Request("https://example.test/api/product-images/"+id),{params:Promise.resolve({id})});
+for(const id of ["0","-1","1.5","abc","01","9007199254740992","2147483648"])assert.equal((await request(id)).status,404);
+assert.equal(calls,0);
+assert.equal((await request("25")).status,404);
+assert.deepEqual(query.params,[25]);
+for(const rule of ["im.deleted_at is null","w.deleted_at is null","w.brand='kaja'","w.section='catalogue'","w.catalogue_group='live'","w.feedback_slug is not null","first_image.deleted_at is null","order by first_image.position,first_image.id limit 1"])assert(query.sql.includes(rule),rule);
+rows=[{url:"private-blob-url"}];
+assert.equal((await request("25")).status,404);
+blob={statusCode:200,headers:new Headers({"content-type":"text/html"}),stream:new ReadableStream()};
+assert.equal((await request("25")).status,404);
+blob={statusCode:200,headers:new Headers({"content-type":"image/png"}),stream:new Blob(["png-bytes"]).stream()};
+const response=await request("25");assert.equal(response.status,200);assert.equal(response.headers.get("content-type"),"image/png");assert.equal(response.headers.get("cache-control"),"no-store");assert.equal(response.headers.get("x-content-type-options"),"nosniff");assert.equal(await response.text(),"png-bytes");
+console.log("Public primary-image restrictions, IDs, missing blobs, MIME type and response: passed");

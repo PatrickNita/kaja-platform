@@ -6,7 +6,7 @@ export const feedbackBrands = [
   { key: "virginia", label: "LUMEN" },
 ] as const;
 export type FeedbackBrand = (typeof feedbackBrands)[number]["key"];
-export type FeedbackProduct = { id: string; brand: string; name: string; flavor: string; slug: string };
+export type FeedbackProduct = { id: string; brand: string; name: string; flavor: string; slug: string; imageId?: number | null };
 export type MemberFeedbackProduct = FeedbackProduct & { feedbackCount: number };
 export function feedbackPath(product: Pick<FeedbackProduct, "brand" | "slug">) {
   const brand = product.brand === "virginia" ? "lumen" : product.brand;

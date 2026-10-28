@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
+import { ProductImage } from "../product-image";
 import { NavigationIcon } from "../navigation-icon";
 import { usePublicLanguage, LanguageSelector } from "../public-language";
 import type { PublicLanguage } from "../../lib/public-language";
@@ -34,6 +35,7 @@ export function PublicFeedbackForm({ product, challenge, initialLanguage = "ro" 
   return <section className="feedback-public-card" lang={language}>
     <header className="public-product-header"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><LanguageSelector language={language} setLanguage={setLanguage} /></header>
     <div className="feedback-public-header">
+      {product.brand === "kaja" && <ProductImage imageId={product.imageId} name={product.name} className="feedback-product-image" />}
       <h1 className="item-title">{product.name} <span className="feedback-secondary">- {flavor(product.flavor)}</span></h1>
     </div>
     {sent ? <p role="status" className="b2b-success">{t.success}</p> : <form onSubmit={submit} className="form">

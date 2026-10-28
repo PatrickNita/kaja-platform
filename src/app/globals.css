@@ -575,3 +575,8 @@ body .entry-modal-surface.upload-preview-surface .entry-modal-header { position:
 }
 
 .b2b-filter-popup [role=option] { min-height:44px; }
+
+body .product-image { overflow:hidden; }
+body .product-image.has-product-image { border:0; border-radius:4px; background:#000; }
+.product-image > img { display:block; width:100%; height:100%; object-fit:contain; }
+body .feedback-public-header > .feedback-product-image { width:min(160px,100%); height:auto; aspect-ratio:1; margin:0 auto 16px; flex-basis:auto; border-radius:8px; }

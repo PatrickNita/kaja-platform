@@ -60,11 +60,14 @@ export function ConfirmDialog({
   const titleId = useId();
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = ref.current;
     document.body.style.overflow = "hidden";
-    ref.current?.showModal();
+    dialog?.showModal();
     return () => {
-      ref.current?.close();
+      dialog?.close();
       document.body.style.overflow = previousOverflow;
+      requestAnimationFrame(() => { if (opener?.isConnected) opener.focus({ preventScroll: true }); });
     };
   }, []);
   useEffect(() => {
