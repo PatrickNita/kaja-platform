@@ -39,7 +39,11 @@ for(const c of [member,portal,publicContext]) await c.route('**/*',route=>route.
 const errors=[];
 const page=await portal.newPage();const catalogue=await member.newPage();const feedback=await publicContext.newPage();
 for(const p of [page,catalogue,feedback])p.on('pageerror',e=>errors.push(e.message));
-const loaded=async(p,selector)=>{await p.locator(selector).first().waitFor();await p.locator(selector).evaluateAll(images=>images.forEach(i=>i.loading='eager'));await p.waitForFunction(sel=>Array.from(document.querySelectorAll(sel)).every(i=>i.complete&&i.naturalWidth>0),selector,{timeout:45000});};
+const loaded=async(p,selector)=>{
+ await p.locator(selector).first().waitFor();await p.locator(selector).evaluateAll(images=>images.forEach(i=>i.loading='eager'));
+ try { await p.waitForFunction(sel=>Array.from(document.querySelectorAll(sel)).every(i=>i.complete&&i.naturalWidth>0),selector,{timeout:45000}); }
+ catch(error){console.log('Incomplete images',await p.locator(selector).evaluateAll(images=>images.filter(i=>!i.complete||!i.naturalWidth).map(i=>({src:new URL(i.src).pathname,complete:i.complete,width:i.naturalWidth}))));throw error;}
+};
 try {
  for(const item of process.env.PRODUCT_IMAGES_LAYOUT_ONLY ? [] : uploaded){
   let lastError;
@@ -55,7 +59,7 @@ try {
  assert.equal((await publicContext.request.get(base+'/api/product-images/99999999')).status(),404);
  console.log(process.env.PRODUCT_IMAGES_LAYOUT_ONLY ? 'Layout-only pass; API checks already completed.' : '25 public image hashes match; private gallery stays unauthorized.');
  // Use the just-verified bytes for layout checks, isolating them from intermittent local Blob streams.
- for(const context of [member,portal,publicContext])await context.route('**/api/{product-images,item-images}/*',route=>{
+ if(base.includes('127.0.0.1')) for(const context of [member,portal,publicContext])await context.route('**/api/{product-images,item-images}/*',route=>{
   const id=Number(new URL(route.request().url()).pathname.split('/').at(-1));const image=uploaded.find(i=>i.imageId===id);
   return image?route.fulfill({status:200,contentType:'image/png',body:readFileSync(assets+'/'+image.slug+'.png')}):route.continue();
  });
@@ -64,20 +68,21 @@ try {
   await catalogue.goto(base+'/?view=catalogue&brand=kaja&catalogue=live',{waitUntil:'domcontentloaded',timeout:60000});
   await loaded(catalogue,'.product-list-thumbnail img');assert.equal(await catalogue.locator('.product-list-thumbnail img').count(),25);
   assert(await catalogue.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await catalogue.screenshot({path:output+'/catalogue-'+width+'.png',fullPage:true});
+  await catalogue.screenshot({path:output+'/catalogue-'+width+'.png',fullPage:true,animations:'disabled'});
   await catalogue.locator('.catalogue-list-card [role=button]').first().click();await loaded(catalogue,'.gallery-stage > img');
   await catalogue.keyboard.press('Escape');
   await catalogue.waitForFunction(()=>document.activeElement?.classList.contains('entry-card-preview'));
   for(const language of ['ro','ru']){
    await page.goto(base+'/comenzi',{waitUntil:'domcontentloaded',timeout:60000});
    await page.getByRole('button',{name:language.toUpperCase(),exact:true}).click();
+   await page.waitForFunction(lang=>document.querySelector('.b2b-portal')?.getAttribute('lang')===lang,language);
    await loaded(page,'.b2b-product .product-image img');assert.equal(await page.locator('.b2b-product .product-image img').count(),25);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-   await page.screenshot({path:output+'/portal-'+width+'-'+language+'.png',fullPage:true});
+   await page.screenshot({path:output+'/portal-'+width+'-'+language+'.png',fullPage:true,animations:'disabled'});
    await page.locator('.b2b-quantity button').nth(1).click();
    await page.locator('.b2b-cart-bar button').filter({hasText:language==='ru'?'Проверить':'Verifică'}).click();
    await loaded(page,'dialog .b2b-checkout-product .product-image img');
-   await page.screenshot({path:output+'/review-'+width+'-'+language+'.png'});
+   await page.screenshot({path:output+'/review-'+width+'-'+language+'.png',animations:'disabled'});
    await page.keyboard.press('Escape');
    await page.waitForFunction(()=>document.activeElement?.closest('.b2b-cart-bar'));
    await page.locator('.portal-view-tabs button').nth(1).click();
@@ -93,19 +98,20 @@ try {
    await page.waitForFunction(()=>document.activeElement?.classList.contains('b2b-order-card'));
    await feedback.goto(base+'/feedback/kaja/1st-sin',{waitUntil:'domcontentloaded',timeout:60000});
    await feedback.getByRole('button',{name:language.toUpperCase(),exact:true}).click();
+   await feedback.waitForFunction(lang=>document.querySelector('.feedback-public-card')?.getAttribute('lang')===lang,language);
    await loaded(feedback,'.feedback-product-image img');
    assert(await feedback.locator('.feedback-product-image').evaluate(el=>el.getBoundingClientRect().width<=160));
    assert(await feedback.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-   await feedback.screenshot({path:output+'/feedback-'+width+'-'+language+'.png',fullPage:true});
+   await feedback.screenshot({path:output+'/feedback-'+width+'-'+language+'.png',fullPage:true,animations:'disabled'});
   }
   console.log(width,'Catalog, portal, review, history, editing and public feedback RO/RU passed');
  }
  for(const item of uploaded){await feedback.goto(base+'/feedback/kaja/'+item.slug,{waitUntil:'domcontentloaded'});await loaded(feedback,'.feedback-product-image img');assert((await feedback.locator('.feedback-public-header').innerText()).includes(item.name));}
  await publicContext.route('**/api/product-images/*',route=>route.fulfill({status:404,body:''}));
  await feedback.goto(base+'/feedback/kaja/1st-sin',{waitUntil:'domcontentloaded',timeout:60000});await feedback.waitForFunction(()=>!document.querySelector('.feedback-product-image img')&&document.querySelector('.feedback-product-image svg'));console.log('Missing image fallback passed.');
- if(!base.includes('127.0.0.1')) { await catalogue.goto(base+'/b2b?tab=orders',{waitUntil:'domcontentloaded',timeout:60000});
+ if(!base.includes('127.0.0.1')) { await catalogue.goto(base+'/b2b?tab=history',{waitUntil:'domcontentloaded',timeout:60000});
  const history=catalogue.locator('.b2b-order-card').first();
- if(await history.count()){await history.click();await loaded(catalogue,'dialog .b2b-checkout-product .product-image img');} }
+ assert(await history.count(),'Internal history order missing');await history.click();await loaded(catalogue,'dialog .b2b-checkout-product .product-image img');await catalogue.screenshot({path:output+'/admin-history-1440.png',animations:'disabled'}); }
  assert.deepEqual(errors,[]);
  assert.equal(await snapshot(),before,'Read-only verification changed order or product data');
  console.log('25 public product pages passed; no browser exceptions; orders, line items and stock unchanged.');

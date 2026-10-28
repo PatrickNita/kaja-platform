@@ -24,5 +24,5 @@ assert.equal((await request("25")).status,404);
 blob={statusCode:200,headers:new Headers({"content-type":"text/html"}),stream:new ReadableStream()};
 assert.equal((await request("25")).status,404);
 blob={statusCode:200,headers:new Headers({"content-type":"image/png"}),stream:new Blob(["png-bytes"]).stream()};
-const response=await request("25");assert.equal(response.status,200);assert.equal(response.headers.get("content-type"),"image/png");assert.equal(response.headers.get("cache-control"),"no-store");assert.equal(response.headers.get("x-content-type-options"),"nosniff");assert.equal(await response.text(),"png-bytes");
+const response=await request("25");assert.equal(response.status,200);assert.equal(response.headers.get("content-type"),"image/png");assert.equal(response.headers.get("cache-control"),"no-store");assert.equal(response.headers.get("content-length"),"9");assert.equal(response.headers.get("x-content-type-options"),"nosniff");assert.equal(await response.text(),"png-bytes");
 console.log("Public primary-image restrictions, IDs, missing blobs, MIME type and response: passed");

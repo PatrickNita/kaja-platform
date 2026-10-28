@@ -17,5 +17,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!blob || blob.statusCode !== 200) return new NextResponse("Not found", { status: 404 });
   const type = blob.headers.get("content-type") || "";
   if (!["image/png", "image/jpeg", "image/webp"].includes(type)) return new NextResponse("Not found", { status: 404 });
-  return new NextResponse(blob.stream, { headers: { "Content-Type": type, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+  const bytes = await new Response(blob.stream).arrayBuffer();
+  return new NextResponse(bytes, { headers: { "Content-Type": type, "Content-Length": String(bytes.byteLength), "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
