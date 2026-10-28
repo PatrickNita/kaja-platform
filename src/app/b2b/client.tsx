@@ -1,4 +1,5 @@
 "use client";
+import { HorizontalScrollHints } from "../horizontal-scroll-hints";
 import { WorkspaceListToolbar } from "../workspace-list-toolbar";
 import "./b2b.css";
 import { PublicLanguageProvider, usePortalLanguage, LanguageSelector } from "../public-language";
@@ -1187,7 +1188,7 @@ export function B2BAdmin({
           className={`b2b-location-list b2b-summary-table workspace-data-table${manager ? " b2b-summary-manager" : ""}`}
           aria-label="Lista localurilor"
         >
-          <div className="b2b-summary-scroll"><div className="b2b-summary-content">
+          <HorizontalScrollHints className="b2b-summary-scroll" label="Coloanele localurilor"><div className="b2b-summary-content">
           <div className="b2b-list-head workspace-data-head" aria-hidden="true"><span>Local</span><span>Adresă</span><span>Pers. contact</span><span>Nr. de telefon</span>{manager && <><span>Denumire SRL</span><span>IDNO</span></>}<span>Ultima comandă</span><span>Total comenzi</span><span>Cashback total</span><span /></div>
           {matchingLocations.map((local) => (
             <div key={local.id} className="b2b-location-entry workspace-data-entry">
@@ -1228,7 +1229,7 @@ export function B2BAdmin({
               <p className="b2b-empty">Nu există localuri potrivite.</p>
             )
           )}
-          </div></div>
+          </div></HorizontalScrollHints>
         </section>
       )}
       {detail && <LocationFlow key={detail.id} initial={{location:detail,products:data.products,memberSlug}} onClose={() => { setDetailsLocation(null); requestAnimationFrame(() => detailsTrigger.current?.focus({preventScroll:true})); }} />}
