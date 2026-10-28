@@ -895,7 +895,7 @@ function LocationFilter({
       </button>
       {open && (
         <div className="b2b-filter-popup">
-          <input
+          <SearchField showIcon={false} type="text"
             ref={input}
             role="combobox"
             aria-label="Caută local"

@@ -882,3 +882,15 @@ body .table-scroll-bar button:disabled { color:#555; cursor:default; }
 body .table-scroll-bar button:focus-visible { outline:2px solid #ececec; outline-offset:-3px; }
 body .table-scroll-track { position:relative; flex:1; height:3px; overflow:hidden; border-radius:3px; background:#333; }
 body .table-scroll-track span { position:absolute; top:0; height:100%; border-radius:inherit; background:#aaa; }
+
+body .search-field-placeholder { display:none; }
+body .search-field--plain > input { padding-left:12px; }
+@media(max-width:800px) {
+  body .search-field > input { height:44px; min-height:44px; padding-block:0; font-size:16px; line-height:normal; appearance:none; -webkit-appearance:none; }
+  body .search-field > input::placeholder { color:transparent; opacity:0; }
+  body .search-field > .search-field-placeholder { position:absolute; top:50%; left:34px; right:10px; transform:translateY(-50%); margin:0; font-family:inherit; font-size:12px; font-weight:400; line-height:1.25; color:#777; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none; }
+  body .search-field > input:placeholder-shown + .search-field-placeholder { display:block; }
+  body .search-field--plain > input { padding-left:10px; }
+  body .search-field--plain > .search-field-placeholder { left:10px; }
+  body .search-field > .navigation-icon { top:50%; transform:translateY(-50%); }
+}
