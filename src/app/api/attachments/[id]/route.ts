@@ -1,6 +1,7 @@
-import { get } from "@vercel/blob";
+import { get, BlobNotFoundError } from "@vercel/blob";
 import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { imageVariantUrl, isImageVariant } from "../../../../lib/image-variant-path";
 import { currentMember } from "../../../../lib/auth";
 import { db } from "../../../../lib/db";
 import { attachments, attachmentFolders } from "../../../../lib/schema";
@@ -24,7 +25,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     destination.hash = `attachment-${attachment.id}`;
     return NextResponse.redirect(destination);
   }
-  const blob = await get(attachment.url, { access: "private" });
+  const variant = new URL(request.url).searchParams.get("variant");
+  if (variant !== null && (!isImageVariant(variant) || attachment.contentType !== "image/png")) return new NextResponse("Invalid variant", { status: 400 });
+  let blob;
+  try { blob = await get(variant && isImageVariant(variant) ? imageVariantUrl(attachment, variant) : attachment.url, { access: "private" }); }
+  catch (error) { return new NextResponse("Image unavailable", { status: error instanceof BlobNotFoundError ? 404 : 503 }); }
+  if (variant) {
+    if (!blob || blob.statusCode !== 200 || blob.headers.get("content-type") !== "image/webp") return new NextResponse("Not found", { status: 404 });
+    const bytes = await new Response(blob.stream).arrayBuffer();
+    return new NextResponse(bytes, { headers: { "Content-Type": "image/webp", "Content-Length": String(bytes.byteLength), "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
+  }
   if (!blob || blob.statusCode !== 200) return new NextResponse("Not found", { status: 404 });
   const preview = new URL(request.url).searchParams.get("preview") === "1" && attachment.contentType === "image/png";
   return new NextResponse(blob.stream, { headers: {

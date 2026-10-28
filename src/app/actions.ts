@@ -276,6 +276,7 @@ export async function deleteAttachment(formData: FormData) {
   if (member.slug !== "patrick") throw new Error("Doar Patrick poate șterge fișiere.");
   const [attachment] = await db!.select().from(attachments).where(and(eq(attachments.id, input.id), eq(attachments.brand, input.brand), isNull(attachments.deletedAt)));
   if (!attachment) return;
+  if (attachment.contentType === "image/png") await deleteProductImageVariants(attachment);
   await del(attachment.url); await db!.update(attachments).set({ deletedAt: new Date() }).where(eq(attachments.id, attachment.id));
   await recordActivity(member, { brand: input.brand, entityType: "attachment", entityId: attachment.id, action: "deleted", summary: `a șters fișierul „${attachment.filename}”`, title: attachment.filename }, { notifyTelegram: false }); refresh();
 }

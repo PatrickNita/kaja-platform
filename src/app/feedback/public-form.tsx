@@ -36,7 +36,7 @@ export function PublicFeedbackForm({ product, challenge, initialLanguage = "ro" 
     <header className="public-product-header"><Image className="logo" src="/kaja-logo.png" alt="KAJA" width={1024} height={240} priority /><LanguageSelector language={language} setLanguage={setLanguage} /></header>
     <div className="feedback-public-header">
       {product.brand === "kaja" && <ProductImage imageId={product.imageId} name={product.name} className="feedback-product-image" variant="preview" />}
-      <h1 className="item-title">{product.name} <span className="feedback-secondary">- {flavor(product.flavor)}</span></h1>
+      <h1 className="item-title">{product.name}<span className="feedback-secondary">{flavor(product.flavor)}</span></h1>
     </div>
     {sent ? <p role="status" className="b2b-success">{t.success}</p> : <form onSubmit={submit} className="form">
       <label htmlFor="feedback-body">{t.label}</label><div className="feedback-textarea-wrap"><textarea id="feedback-body" placeholder={language === "ro" ? "Cum ți s-a părut produsul?" : "Как вам продукт?"} value={body} onChange={(event) => setBody(event.target.value)} required minLength={1} maxLength={2000} rows={4} disabled={busy} aria-describedby="feedback-hint feedback-counter" /><span id="feedback-counter" className="feedback-counter">{body.length}/2.000</span></div>

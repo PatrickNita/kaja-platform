@@ -2,6 +2,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { del, get } from "@vercel/blob";
 import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { ensureProductImageVariants } from "../../../lib/product-image-variants";
 import { recordActivity } from "../../../lib/activity";
 import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
       const prefix = new Uint8Array(8); let length = 0;
       try { while (length < 8) { const chunk = await reader.read(); if (chunk.done) break; const slice = chunk.value.subarray(0, 8 - length); prefix.set(slice, length); length += slice.length; } } finally { await reader.cancel(); }
       if (storedBlob.blob.size > maxAttachmentSize || !validAttachmentSignature(prefix.subarray(0, length), payload.contentType)) { await del(blob.url); return; }
+      if (payload.contentType === "image/png") await ensureProductImageVariants(blob);
       const seededMember = memberSeed.find((member) => member.slug === payload.slug);
       if (!seededMember) return;
       await db.insert(members).values(seededMember).onConflictDoNothing();

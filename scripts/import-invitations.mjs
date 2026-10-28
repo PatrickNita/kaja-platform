@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { put, get, head, BlobNotFoundError } from "@vercel/blob";
+import { ensureProductImageVariants } from "../src/lib/product-image-variants.ts";
 
 const project = JSON.parse(readFileSync(new URL("../.vercel/project.json", import.meta.url), "utf8"));
 if (project.projectId !== "prj_Ip1P7MnHAcBYOkIfs5gzLehy7575") throw Error("Unexpected project");
@@ -34,6 +35,7 @@ for (const input of inputs) {
       if (!(error instanceof BlobNotFoundError)) throw error;
       blob = await put(pathname, input.bytes, { access: "private", contentType: "image/png", addRandomSuffix: false, allowOverwrite: false });
     }
+    await ensureProductImageVariants(blob, input.bytes);
     await query`insert into attachments(brand,filename,content_type,folder_id,pathname,url,size,uploaded_by) values('kaja',${input.filename},'image/png',${folder.id},${blob.pathname},${blob.url},${input.bytes.length},${actor.id}) on conflict do nothing`;
   }
   console.log(`Stored ${input.filename}`);

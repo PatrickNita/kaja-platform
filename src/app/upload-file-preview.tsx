@@ -9,7 +9,7 @@ export function UploadFileThumbnail({ id, filename, png }: { id: number; filenam
   const [loaded, setLoaded] = useState(false);
   return <span className="upload-file-thumbnail" aria-label={failed ? `Preview indisponibil pentru ${filename}` : undefined}>
     {(!png || failed || !loaded) && <svg width="26" height="30" viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5 2h9l5 5v19H5Z M14 2v6h5 M8 14h8 M8 18h8" /></svg>}
-    {png && !failed && <img className={loaded ? "is-loaded" : ""} loading="lazy" src={`/api/attachments/${id}?preview=1`} alt="" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
+    {png && !failed && <img className={loaded ? "is-loaded" : ""} loading="lazy" src={`/api/attachments/${id}?variant=thumb`} alt="" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
   </span>;
 }
 
