@@ -9,7 +9,7 @@ else assert.equal((await context.request.get(process.env.PRODUCT_IMAGES_MEMBER_U
 await context.route('**/*',r=>['GET','HEAD'].includes(r.request().method())?r.continue():r.fulfill({status:200,contentType:'application/json',body:'{}'}));
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 try{
-for(const width of [320,390,768,834,1024,1440])for(const path of ['/?view=catalogue&brand=kaja&catalogue=live','/feedback?brand=kaja',...(base.includes('127.0.0.1')?[]:['/b2b'])]){
+for(const width of (process.env.SCROLL_TEST_WIDTHS ? process.env.SCROLL_TEST_WIDTHS.split(",").map(Number) : [320,390,768,834,1024,1200,1440]))for(const path of ['/?view=catalogue&brand=kaja&catalogue=live','/feedback?brand=kaja',...(base.includes('127.0.0.1')?[]:['/b2b'])]){
  await page.setViewportSize({width,height:1000});await page.goto(base+path,{waitUntil:'networkidle'});const wrapper=page.locator('.horizontal-scroll-hints').first();await wrapper.waitFor();
  const scroll=wrapper.locator(':scope > [role=region]');const overflow=await scroll.evaluate(el=>/auto|scroll/.test(getComputedStyle(el).overflowX)&&el.scrollWidth>el.clientWidth+2);
  const right=wrapper.locator('.scroll-edge--right button'),left=wrapper.locator('.scroll-edge--left button');
