@@ -98,6 +98,9 @@ try {
    await page.getByRole('button',{name:language.toUpperCase(),exact:true}).click();
    await page.waitForFunction(lang=>document.querySelector('.b2b-portal')?.getAttribute('lang')===lang,language);
    await loaded(page,'.b2b-product .product-image img');assert.equal(await page.locator('.b2b-product .product-image img').count(),25);assert(await page.locator('.b2b-product .product-image img').evaluateAll(images=>images.every(i=>i.naturalWidth===96)));assert.equal(largeRequests.get(page).length,0,'Portal downloaded an original');
+   const catalogueImage=await catalogue.locator('.product-list-thumbnail').first().evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,radius:getComputedStyle(el).borderRadius}));
+   const portalImage=await page.locator('.b2b-product .product-image').first().evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,radius:getComputedStyle(el).borderRadius}));
+   assert.deepEqual(catalogueImage,portalImage,'Catalogue and ordering thumbnails must have identical dimensions and corners');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    await page.screenshot({path:output+'/portal-'+width+'-'+language+'.png',fullPage:true,animations:'disabled'});
    await page.locator('.b2b-quantity button').nth(1).click();
