@@ -39,5 +39,5 @@ export function ProductListThumbnail({ imageId, title }: { imageId?:number; titl
   const [failedImage,setFailedImage]=useState<number>();
   const image=useRef<HTMLImageElement>(null);
   useEffect(()=>{if (image.current?.complete && !image.current.naturalWidth) setFailedImage(imageId);},[imageId]);
-  return <span className="product-list-thumbnail">{imageId && failedImage !== imageId ? <img ref={image} src={`/api/item-images/${imageId}`} alt={`Previzualizare ${title}`} loading="lazy" onError={()=>setFailedImage(imageId)} /> : <ProductPlaceholder />}</span>;
+  return <span className="product-list-thumbnail">{imageId && failedImage !== imageId ? <img ref={image} src={`/api/item-images/${imageId}?variant=thumb`} alt={`Previzualizare ${title}`} loading="lazy" onError={()=>setFailedImage(imageId)} /> : <ProductPlaceholder />}</span>;
 }

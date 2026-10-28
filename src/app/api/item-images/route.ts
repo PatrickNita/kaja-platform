@@ -2,6 +2,7 @@ import { del, head } from "@vercel/blob";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { ensureProductImageVariants, deleteProductImageVariants } from "../../../lib/product-image-variants";
 import { recordActivity } from "../../../lib/activity";
 import { currentMember } from "../../../lib/auth";
 import { db, memberSeed } from "../../../lib/db";
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
 
         const [item] = await db.select().from(workspaceItems).where(and(eq(workspaceItems.id, payload.itemId!), eq(workspaceItems.brand, payload.brand), isNull(workspaceItems.deletedAt)));
         if (!item || !supportsImageGallery(item) || !canManageWorkspaceItem(member, item)) throw new Error("Înregistrarea nu mai este disponibilă.");
+        if (item.section === "catalogue") await ensureProductImageVariants(blob);
         const [lastImage] = await db.select({ position: workspaceItemImages.position }).from(workspaceItemImages).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, payload.brand), isNull(workspaceItemImages.deletedAt))).orderBy(desc(workspaceItemImages.position)).limit(1);
         await db.insert(workspaceItemImages).values({ brand: payload.brand, itemId: item.id, pathname: blob.pathname, url: blob.url, position: (lastImage?.position ?? -1) + 1, uploadedBy: member.id });
         await recordActivity(member, { brand: payload.brand, entityType: item.section as "events" | "catalogue" | "merch", entityId: item.id, action: "image_uploaded", summary: `a adăugat o imagine la „${item.title}”`, title: item.title, catalogueGroup: item.catalogueGroup });
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
           await db.delete(workspaceItemImages).where(eq(workspaceItemImages.itemId, createdItemId));
           await db.delete(workspaceItems).where(eq(workspaceItems.id, createdItemId));
         }
+        await deleteProductImageVariants(blob);
         await del(blob.url);
         throw error;
       }

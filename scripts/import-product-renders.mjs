@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
+import { ensureProductImageVariants } from "../src/lib/product-image-variants.ts";
 import { put, get, head, BlobNotFoundError } from "@vercel/blob";
 
 const project = JSON.parse(readFileSync(new URL("../.vercel/project.json", import.meta.url), "utf8"));
@@ -36,6 +37,7 @@ for (const p of inputs) {
     if (!(error instanceof BlobNotFoundError)) throw error;
     blob = await put(pathname,p.bytes,{access:"private",contentType:"image/png",addRandomSuffix:false,allowOverwrite:false});
   }
+  await ensureProductImageVariants(blob,p.bytes);
   await q`insert into workspace_item_images(brand,item_id,pathname,url,position,uploaded_by)
     select 'kaja',${p.itemId},${blob.pathname},${blob.url},coalesce((select min(position) from workspace_item_images where item_id=${p.itemId} and deleted_at is null),0)-1,${actor.id}
     on conflict(pathname) do nothing`;

@@ -1,6 +1,7 @@
 "use server";
 
 import { catalogueLocationTotalQuery, catalogueUsageQuery, productLocationCount, type ProductUsage } from "../lib/catalogue-usage";
+import { deleteProductImageVariants } from "../lib/product-image-variants";
 import { del } from "@vercel/blob";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -241,6 +242,7 @@ export async function deleteWorkspaceItem(formData: FormData) {
   const itemImages = await db!.select().from(workspaceItemImages).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, input.brand), isNull(workspaceItemImages.deletedAt)));
   const imageUrls = new Set(itemImages.map((image) => image.url));
   if (item.merchImageUrl) imageUrls.add(item.merchImageUrl);
+  for (const image of itemImages) await deleteProductImageVariants(image);
   for (const imageUrl of imageUrls) await del(imageUrl);
   if (itemImages.length) await db!.update(workspaceItemImages).set({ deletedAt: new Date() }).where(and(eq(workspaceItemImages.itemId, item.id), eq(workspaceItemImages.brand, input.brand), isNull(workspaceItemImages.deletedAt)));
   const now = new Date();
@@ -262,6 +264,7 @@ export async function deleteWorkspaceItemImage(formData: FormData) {
   const image = images.find((entry) => entry.id === input.id);
   if (!image) return;
   if (item.section === "merch" && images.length <= 1) throw new Error("Un produs Merch trebuie să păstreze cel puțin o imagine.");
+  await deleteProductImageVariants(image);
   await del(image.url);
   await db!.update(workspaceItemImages).set({ deletedAt: new Date() }).where(eq(workspaceItemImages.id, image.id));
   if (item.merchImageUrl === image.url) await db!.update(workspaceItems).set({ merchImageUrl: null, merchImagePathname: null, updatedBy: member.id, updatedAt: new Date() }).where(eq(workspaceItems.id, item.id));
