@@ -15,6 +15,8 @@ for(const width of (process.env.SCROLL_TEST_WIDTHS ? process.env.SCROLL_TEST_WID
  const right=wrapper.locator('.table-scroll-right'),left=wrapper.locator('.table-scroll-left'),bar=wrapper.locator('.table-scroll-bar');
  if(overflow){await right.waitFor();assert(await left.isDisabled());assert(await right.isEnabled());
  assert.equal(await bar.evaluate(el=>el.getBoundingClientRect().height),44);
+ const spacing=await page.evaluate(()=>{const bar=document.querySelector('.table-scroll-bar'),track=bar.querySelector('.table-scroll-track').getBoundingClientRect(),toolbar=document.querySelector('.workspace-list-toolbar').getBoundingClientRect(),table=bar.nextElementSibling.getBoundingClientRect();return {above:track.top-toolbar.bottom,below:table.top-track.bottom};});
+ assert(Math.abs(spacing.above-spacing.below)<=1.1,`Unequal track spacing: ${JSON.stringify(spacing)}`);assert(spacing.above<=22&&spacing.below<=22,'Extra space around scroll controls');
  assert(await bar.evaluate(el=>el.getBoundingClientRect().bottom<=el.nextElementSibling.getBoundingClientRect().top));
  const dimensions=await scroll.evaluate(el=>({width:el.clientWidth,content:el.scrollWidth,children:Array.from(el.firstElementChild.children).slice(0,2).map(c=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height}))}));
  await bar.evaluate(el=>el.style.display='none');assert.deepEqual(await scroll.evaluate(el=>({width:el.clientWidth,content:el.scrollWidth,children:Array.from(el.firstElementChild.children).slice(0,2).map(c=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height}))})),dimensions);await bar.evaluate(el=>el.style.display='');

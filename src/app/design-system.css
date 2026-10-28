@@ -860,7 +860,7 @@ body .workspace-list-toolbar { display:flex; flex-wrap:nowrap; align-items:cente
 body .workspace-list-toolbar .search-field, body .workspace-list-toolbar .b2b-select { width:220px; min-width:0; }
 body .workspace-list-toolbar input { max-width:420px; min-width:0; }
 body .workspace-list-toolbar > .b2b-add-desktop { margin-left:0; flex-shrink:0; }
-body .catalogue-navigation, body .workspace-product-page, body .catalogue-list, body .feedback-products-section { display:grid; gap:20px; min-width:0; }
+body .catalogue-navigation, body .workspace-product-page, body .catalogue-list, body .feedback-products-section { --product-section-gap:20px; display:grid; gap:var(--product-section-gap); min-width:0; }
 body .catalogue-composer { width:100%; margin:0; }
 body .catalogue-composer:not([open]), body .catalogue-composer > summary[hidden] { display:none; }
 body .catalogue-composer .composer-content { padding:12px; display:grid; gap:12px; }
@@ -869,7 +869,7 @@ body .catalogue-composer .composer-content { padding:12px; display:grid; gap:12p
   body .workspace-list-toolbar .search-field, body .workspace-list-toolbar .b2b-select { width:auto; flex:1; min-width:0; }
 }
 @media(max-width:800px) {
-  body .catalogue-navigation, body .workspace-product-page, body .catalogue-list, body .feedback-products-section { gap:16px; }
+  body .catalogue-navigation, body .workspace-product-page, body .catalogue-list, body .feedback-products-section { --product-section-gap:16px; }
   body .catalogue-navigation .workspace-list-toolbar > .b2b-add-desktop { display:none; }
 }
 
@@ -894,3 +894,7 @@ body .search-field--plain > input { padding-left:12px; }
   body .search-field--plain > .search-field-placeholder { left:10px; }
   body .search-field > .navigation-icon { top:50%; transform:translateY(-50%); }
 }
+
+/* The 44px scroll controls supply equal breathing room above and below the track. */
+body :is(.catalogue-list,.feedback-products-section) > .horizontal-scroll-hints:has(> .table-scroll-bar) { margin-top:calc(-1 * var(--product-section-gap)); }
+body .b2b-admin > .b2b-summary-table:has(.table-scroll-bar) { margin-top:-20px; }
