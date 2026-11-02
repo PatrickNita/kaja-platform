@@ -334,6 +334,8 @@ body .feedback-history-preview--mobile { display:none; }
 body .feedback-history-row > .navigation-icon { width:14px; height:14px; }
 body .feedback-history-row .feedback-history-product { font-size:13px; font-weight:600; }
 body .feedback-history-row time, body .feedback-history-row .feedback-history-brand { color:#999; font-size:11px; }
+body .feedback-history-date { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+body .feedback-history-date .unread-dot { flex:0 0 6px; margin:0; }
 body .feedback-product { position:relative; padding-right:36px; }
 body .feedback-product::after { content:"›"; position:absolute; right:16px; top:50%; transform:translateY(-50%); color:#777; font-size:20px; font-weight:400; }
 @media (min-width:1200px) {
