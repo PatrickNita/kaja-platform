@@ -329,7 +329,8 @@ body .feedback-history-list { margin-bottom:16px; }
 body button.feedback-history-row { display:grid; grid-template-columns:80px minmax(120px,1fr) minmax(110px,1fr) minmax(0,2fr) 135px 16px; align-items:start; gap:12px; width:100%; text-align:left; padding:12px 16px; border:0; border-bottom:1px solid var(--line); background:#111; color:#ccc; font-size:13px; }
 body button.feedback-history-row:hover { background:#1b1b1b; }
 body button.feedback-history-row:last-child { border-bottom:0; }
-body .feedback-history-row .clamped { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; }
+body .feedback-history-preview { display:block; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+body .feedback-history-preview--mobile { display:none; }
 body .feedback-history-row > .navigation-icon { width:14px; height:14px; }
 body .feedback-history-row .feedback-history-product { font-size:13px; font-weight:600; }
 body .feedback-history-row time, body .feedback-history-row .feedback-history-brand { color:#999; font-size:11px; }
@@ -807,7 +808,8 @@ body .mobile-close { display:grid; place-items:center; padding:0; line-height:1;
   body .feedback-history-identity .feedback-history-flavor { font-size:12px; }
   body .feedback-history-row .feedback-history-comment { display:flex; align-items:flex-start; gap:6px; }
   body .feedback-history-comment > .navigation-icon { display:block; width:16px; height:16px; flex:0 0 16px; margin-top:1px; }
-  body .feedback-history-comment .clamped { min-width:0; }
+  body .feedback-history-preview--desktop { display:none; }
+  body .feedback-history-preview--mobile { display:block; flex:1; }
 }
 
 /* One product placeholder accompanies catalogue and checkout product labels. */

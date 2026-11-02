@@ -439,7 +439,6 @@ input[type=file] { max-width:100%; }
 .feedback-history-row > *, .feedback-history-comment { min-width: 0; overflow-wrap: anywhere; }
 .feedback-history-brand, .feedback-history-row time { color: var(--muted); font-size: 11px; }
 .feedback-history-comment p { margin: 0; white-space: pre-wrap; }
-.feedback-history-comment .clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .feedback-history-toggle { display: block; color: var(--muted); background: none; border: 0; padding: 6px 0; min-height: 32px; font-size: 11px; text-decoration: underline; cursor: pointer; }
 .feedback-history-panel > .button { margin-top: 12px; }
 @media(max-width:767px) {
