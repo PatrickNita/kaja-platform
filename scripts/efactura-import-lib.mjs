@@ -115,7 +115,7 @@ BEGIN
   ELSE
    INSERT INTO b2b_orders(location_id,location_snapshot,author,author_member_id,request_key,status,total,confirmed_by,created_at,updated_at,confirmed_at)
    SELECT id,jsonb_build_object('name',name,'address',address,'contact',contact,'phone',phone,'invoice',ord->'invoice'),
-    (data->'member'->>'name')||' (import e-Factura)',(data->'member'->>'id')::int,(ord->>'requestKey')::uuid,'confirmed',(ord->>'total')::int,(data->'member'->>'id')::int,(ord->>'issuedAt')::timestamptz,(ord->>'issuedAt')::timestamptz,(ord->>'issuedAt')::timestamptz
+    'Local',null,(ord->>'requestKey')::uuid,'confirmed',(ord->>'total')::int,(data->'member'->>'id')::int,(ord->>'issuedAt')::timestamptz,(ord->>'issuedAt')::timestamptz,(ord->>'issuedAt')::timestamptz
    FROM b2b_locations WHERE id=loc_id RETURNING id INTO imported_order_id;
    FOR ln IN SELECT value FROM jsonb_array_elements(ord->'lines') LOOP
     IF NOT EXISTS(SELECT 1 FROM b2b_products WHERE id=(ln->>'productId')::int AND name=ln->>'name' AND grams=(ln->>'grams')::int) OR (ln->>'quantity')::int<=0 OR (ln->>'price')::int<=0 THEN RAISE EXCEPTION 'Invalid product'; END IF;
