@@ -41,6 +41,7 @@ export const money = (bani: number) =>
   new Intl.NumberFormat("ro-MD", { maximumFractionDigits: 2 }).format(
     bani / 100,
   ) + " MDL";
+export const formatOrderNumber = (number: number) => String(number).padStart(3, "0");
 export type Product = {
   imageId?: number | null;
   id: number;
@@ -72,6 +73,7 @@ export type Location = {
 export type OrderItem = Product & { quantity: number };
 export type Order = {
   id: number;
+  order_number: number;
   location_id: number;
   location_name: string;
   location_snapshot: Pick<Location, "name" | "address" | "contact" | "phone">;

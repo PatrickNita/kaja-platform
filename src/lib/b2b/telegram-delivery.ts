@@ -1,3 +1,4 @@
+import { formatOrderNumber } from "./model.ts";
 export type NotificationLine = {
   id: number;
   name: string;
@@ -8,6 +9,7 @@ export type NotificationLine = {
 export type OrderNotification = {
   kind: "created" | "edited";
   orderId: number;
+  orderNumber?: number;
   at: string;
   actor: string;
   location: { name: string; address: string; idno?: string | null };
@@ -25,7 +27,7 @@ export function notificationMessages(event: OrderNotification): string[] {
     timeStyle: "short",
   }).format(new Date(event.at));
   const text = [
-    `${event.kind === "created" ? "COMANDĂ NOUĂ" : "COMANDĂ MODIFICATĂ"} #${event.orderId}`,
+    `${event.kind === "created" ? "COMANDĂ NOUĂ" : "COMANDĂ MODIFICATĂ"} #${formatOrderNumber(event.orderNumber ?? event.orderId)}`,
     `${clean(event.location.name)} · ${clean(event.location.address)}`,
     `IDNO: ${event.location.idno?.trim() ? clean(event.location.idno) : "—"}`,
     date,
@@ -97,7 +99,7 @@ export async function deliverNotification(
     throw new Error("B2B Telegram configuration missing");
   const lease = crypto.randomUUID();
   const [row] = await execute(
-    `update b2b_notifications set processing_token=$2::uuid,processing_at=now() where id=$1 and sent_at is null and (processing_at is null or processing_at < now()-interval '5 minutes') returning payload,sent_parts`,
+    `update b2b_notifications set processing_token=$2::uuid,processing_at=now() where id=$1 and sent_at is null and (processing_at is null or processing_at < now()-interval '5 minutes') returning payload,sent_parts,(select order_number from b2b_orders where id=b2b_notifications.order_id) as order_number`,
     [id, lease],
   );
   if (!row) {
@@ -109,7 +111,7 @@ export async function deliverNotification(
     return;
   }
   try {
-    const messages = notificationMessages(row.payload as OrderNotification);
+    const messages = notificationMessages({ ...(row.payload as OrderNotification), orderNumber: Number(row.order_number) });
     for (let part = Number(row.sent_parts); part < messages.length; part++) {
       const response = await sendFetch(
         `https://api.telegram.org/bot${token}/sendMessage`,

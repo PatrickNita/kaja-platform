@@ -175,7 +175,7 @@ export async function POST(request: Request) {
             'location',c.location_snapshot || jsonb_build_object('idno',l.idno),'previousLocation',p.location_snapshot,
             'lines',p.lines,'previous',p.lines,'total',c.total)
           from changed c join previous p on p.id=c.id join authorized l on l.id=c.location_id returning id,order_id
-        ) select jsonb_build_object('id',c.id,'location_id',c.location_id,'location_name',c.location_snapshot->>'name',
+        ) select jsonb_build_object('id',c.id,'order_number',c.order_number,'location_id',c.location_id,'location_name',c.location_snapshot->>'name',
           'location_snapshot',c.location_snapshot,'author',c.author,'status',c.status,'version',c.version,'total',c.total,
           'created_at',c.created_at,'cashback',0,'items',p.lines) as "order",n.id as notification_id
           from changed c join previous p on p.id=c.id join notified n on n.order_id=c.id`);
@@ -220,6 +220,7 @@ export async function POST(request: Request) {
           : sql`o.status='placed'`;
         const [updated] = await query<{
           id: number;
+          order_number: number;
           notification_id: number | null;
         }>(sql`with authorized as materialized (${authorized}), previous as materialized (
           select o.*,coalesce((select jsonb_agg(jsonb_build_object('id',i.product_id,'name',i.name,'flavor',i.flavor,'price',i.price,'quantity',i.quantity) order by i.product_id) from b2b_order_items i where i.order_id=o.id),'[]'::jsonb) as lines
@@ -227,7 +228,7 @@ export async function POST(request: Request) {
         ), changed as (
           update b2b_orders o set total=${total},version=o.version+1,updated_at=now()
           from previous p where o.id=p.id
-          and o.version=${version} and ${allowed} ${access} returning o.id,o.version,o.location_snapshot
+          and o.version=${version} and ${allowed} ${access} returning o.id,o.order_number,o.version,o.location_snapshot
         ), removed as (
           delete from b2b_order_items i using changed c where i.order_id=c.id
           and not exists(select 1 from jsonb_to_recordset(${lineJson}::jsonb) as x(id integer) where x.id=i.product_id)
@@ -245,22 +246,23 @@ export async function POST(request: Request) {
           where (select jsonb_agg(jsonb_build_array(x.id,x.quantity) order by x.id) from jsonb_to_recordset(p.lines) as x(id integer,quantity integer))
             is distinct from (select jsonb_agg(jsonb_build_array(x.id,x.quantity) order by x.id) from jsonb_to_recordset(${lineJson}::jsonb) as x(id integer,quantity integer))
           returning id,order_id
-        ) select c.id,n.id as notification_id from changed c left join notified n on n.order_id=c.id`);
+        ) select c.id,c.order_number,n.id as notification_id from changed c left join notified n on n.order_id=c.id`);
         if (!updated)
           return jsonResponse({ error: conflict }, { status: 409 });
-        result = { id: orderId };
+        result = { id: orderId, order_number: updated.order_number };
         seenOrder = { id: orderId, version: version + 1 };
         notificationId = updated.notification_id ?? undefined;
       } else {
         const requestKey = z.uuid().parse(body.requestKey);
         const [created] = await query<{
           id: number;
+          order_number: number;
           notification_id: number;
         }>(sql`with authorized as materialized (${authorized}), created as (
           insert into b2b_orders(location_id,location_snapshot,author,author_member_id,request_key,total)
           select l.id,jsonb_build_object('name',l.name,'address',l.address,'contact',l.contact,'phone',l.phone),
           ${member?.name ?? "Local"},${member?.id ?? null},${requestKey}::uuid,${total} from authorized l
-          where l.id=${locationId} ${access} on conflict(request_key) do nothing returning id,version,location_snapshot
+          where l.id=${locationId} ${access} on conflict(request_key) do nothing returning id,order_number,version,location_snapshot
         ), inserted as (
           insert into b2b_order_items(order_id,product_id,name,flavor,grams,price,quantity)
           select c.id,x.id,x.name,x.flavor,x.grams,x.price,x.quantity from created c,
@@ -270,14 +272,14 @@ export async function POST(request: Request) {
           select c.id,c.version,jsonb_build_object('kind','created','orderId',c.id,'at',now(),'actor',${member?.name ?? "Local"}::text,
           'location',jsonb_build_object('name',c.location_snapshot->>'name','address',c.location_snapshot->>'address','idno',(select l.idno from authorized l)),
           'lines',${lineJson}::jsonb,'previous','[]'::jsonb,'total',${total}::integer) from created c returning id,order_id
-        ) select c.id,n.id as notification_id from created c join notified n on n.order_id=c.id`);
+        ) select c.id,c.order_number,n.id as notification_id from created c join notified n on n.order_id=c.id`);
         if (created) {
-          result = { id: created.id };
+          result = { id: created.id, order_number: created.order_number };
           seenOrder = { id: created.id, version: 1 };
           notificationId = created.notification_id;
         } else {
-          const [existing] = await query<{ id: number }>(
-            sql`with authorized as materialized (${authorized}) select o.id from b2b_orders o join authorized l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
+          const [existing] = await query<{ id: number; order_number: number }>(
+            sql`with authorized as materialized (${authorized}) select o.id,o.order_number from b2b_orders o join authorized l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
           );
           if (!existing)
             return jsonResponse({ error: conflict }, { status: 409 });

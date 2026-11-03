@@ -23,6 +23,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   stockLimit,
+  formatOrderNumber,
   canManageOrders,
   money,
   type B2BData,
@@ -313,7 +314,7 @@ export function OrderEditor({
   products: Product[];
   mode: "admin" | "portal";
   order?: Order;
-  onDone: (id: number) => void;
+  onDone: (orderNumber: number) => void;
   onCartChange?: (dirty: boolean) => void;
 }) {
   const { language, t, flavor } = usePortalLanguage();
@@ -415,7 +416,7 @@ export function OrderEditor({
       setRequestKey(crypto.randomUUID());
       setReview(false);
       router.refresh();
-      onDone(response.result.id);
+      onDone(response.result.order_number);
     } catch (e) {
       setError(requestError(e, "Trimiterea nu a reușit."));
     } finally {
@@ -429,7 +430,7 @@ export function OrderEditor({
       aria-label={order ? t("Modifică comanda") : t("Comandă nouă")}
     >
       {!hideHeading && (
-        <h2>{order ? t(`Modifică comanda #${order.id}`) : t("Comandă nouă")}</h2>
+        <h2>{order ? t(`Modifică comanda #${formatOrderNumber(order.order_number)}`) : t("Comandă nouă")}</h2>
       )}
       <SearchField
         className="b2b-product-search"
@@ -672,7 +673,7 @@ function PortalContent({ data }: { data: B2BData }) {
             mode="portal"
             location={location}
             products={data.products}
-            onDone={(id) => setSuccess(`Comanda #${id} a fost plasată.`)}
+            onDone={(number) => setSuccess(`Comanda #${formatOrderNumber(number)} a fost plasată.`)}
           />
         </div>
       )}
@@ -1064,7 +1065,7 @@ export function LocationFlow({ initial, onClose, onChanged }: { initial: Locatio
     {screen === "guide" && <LocationGuide location={detail} link={origin + detail.link} onClose={() => setScreen("details")} />}
     {screen === "link" && <ConfirmDialog title={"Link de acces · " + detail.name} busy={busy} onClose={() => setScreen("details")}><label className="b2b-link-label">Link secret<input aria-label="Link secret complet" readOnly value={origin + detail.link} onFocus={e => e.currentTarget.select()} /></label><button className="button" onClick={() => copy(detail)}>Copiază linkul</button><Feedback error={error} success={success} /></ConfirmDialog>}
     {screen === "edit" && manager && <LocationForm modal internalFields location={detail} onDone={back} />}
-    {screen === "order" && manager && <OrderEditor location={detail} products={data.products} mode="admin" modal onClose={() => { if (!dirty || window.confirm("Renunți la produsele selectate?")) setScreen("details"); }} onCartChange={setDirty} onDone={id => { setSuccess(`Comanda #${id} a fost salvată pentru ${detail.name}.`); back(); }} />}
+    {screen === "order" && manager && <OrderEditor location={detail} products={data.products} mode="admin" modal onClose={() => { if (!dirty || window.confirm("Renunți la produsele selectate?")) setScreen("details"); }} onCartChange={setDirty} onDone={number => { setSuccess(`Comanda #${formatOrderNumber(number)} a fost salvată pentru ${detail.name}.`); back(); }} />}
   </>;
 }
 

@@ -37,6 +37,7 @@ try {
     "create table task_assignees(task_id integer,member_id integer,completed boolean default false)",
   ]) await q(text);
   for (const text of readFileSync("drizzle/0021_member_seen.sql", "utf8").split("--> statement-breakpoint")) await q(text);
+  await root.transaction([root.query(`set local search_path to ${schema}`), ...readFileSync("drizzle/0025_b2b_order_numbers.sql", "utf8").split("--> statement-breakpoint").map(text => root.query(text))]);
   await q("insert into members(slug,name) values('patrick','Patrick'),('ionut','Ionut'),('andrei','Andrei'),('igor','Igor')");
   await q("insert into workspace_items(brand,section,product_name,title) values('kaja','catalogue','NILLA','NILLA'),('hexenwerk','catalogue','TEST','TEST'),('virginia','catalogue','LUMEN TEST','LUMEN TEST')");
   await q("insert into product_feedback(item_id,body,created_at) select 1,'Feedback fictiv '||i,'2026-10-20T10:00:00Z'::timestamptz+(i%5)*interval '1 microsecond' from generate_series(1,65) i");

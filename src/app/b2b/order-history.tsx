@@ -7,6 +7,7 @@ import { markSeen } from "../member-seen";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   canEditOrder,
+  formatOrderNumber,
   money,
   nextStatus,
   statusLabel,
@@ -145,7 +146,7 @@ export function History({
             }}
             aria-label={
               t("Deschide comanda #") +
-              o.id +
+              formatOrderNumber(o.order_number) +
               " · " +
               o.location_name +
               " · " +
@@ -154,9 +155,9 @@ export function History({
               t(shortStatus[o.status])
             }
           >
-            {mode === "portal" ? <span className="b2b-history-line"><strong>{t(`Comanda #${o.id}`)}</strong><span className="b2b-history-date">{language === "ru" ? ", от " : ", din "}<time dateTime={o.created_at}>{new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "ro-RO", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Chisinau" }).format(new Date(o.created_at)).replace(/ г\./, "")}</time></span></span> : <span className="b2b-admin-history-line">
+            {mode === "portal" ? <span className="b2b-history-line"><strong>{t(`Comanda #${formatOrderNumber(o.order_number)}`)}</strong><span className="b2b-history-date">{language === "ru" ? ", от " : ", din "}<time dateTime={o.created_at}>{new Intl.DateTimeFormat(language === "ru" ? "ru-RU" : "ro-RO", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Chisinau" }).format(new Date(o.created_at)).replace(/ г\./, "")}</time></span></span> : <span className="b2b-admin-history-line">
               <strong>{o.location_name}{isUnread(o) && <span className="unread-dot" aria-label="Nevăzut" />}</strong>
-              <span className="b2b-history-date">{t(`Comanda #${o.id}`)}, din <time dateTime={o.created_at}>{new Intl.DateTimeFormat("ro-RO", {dateStyle:"short",timeStyle:"short",timeZone:"Europe/Chisinau"}).format(new Date(o.created_at))}</time></span>
+              <span className="b2b-history-date">{t(`Comanda #${formatOrderNumber(o.order_number)}`)}, din <time dateTime={o.created_at}>{new Intl.DateTimeFormat("ro-RO", {dateStyle:"short",timeStyle:"short",timeZone:"Europe/Chisinau"}).format(new Date(o.created_at))}</time></span>
             </span>}
             <span className={"b2b-status " + o.status}>
               {t(shortStatus[o.status])}
@@ -358,7 +359,7 @@ function OrderDialog({
         sessionStorage.removeItem(storageKey);
       } catch {}
       router.refresh();
-      onSaved("Comanda #" + order.id + " a fost actualizată.");
+      onSaved("Comanda #" + formatOrderNumber(order.order_number) + " a fost actualizată.");
     } catch (e) {
       setError(requestError(e, "Salvarea nu a reușit."));
       router.refresh();
@@ -399,7 +400,7 @@ function OrderDialog({
         status: targetStatus,
       });
       router.refresh();
-      onSaved("Comanda #" + order.id + " · " + statusLabel[targetStatus]);
+      onSaved("Comanda #" + formatOrderNumber(order.order_number) + " · " + statusLabel[targetStatus]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Actualizarea nu a reușit.");
       router.refresh();
@@ -411,14 +412,14 @@ function OrderDialog({
   const editing = step === "edit" || step === "review";
   const title =
     step === "location" ? t("Modifică locația") : step === "details"
-      ? t(`Comanda #${order.id}`)
+      ? t(`Comanda #${formatOrderNumber(order.order_number)}`)
       : step === "status"
         ? targetStatus === "paid"
           ? "Confirmă achitarea"
           : t("Confirmă comanda")
         : step === "review"
           ? t("Verifică modificările")
-          : t(`Modifică comanda #${order.id}`);
+          : t(`Modifică comanda #${formatOrderNumber(order.order_number)}`);
   const shownLines =
     step === "details"
       ? order.items

@@ -227,6 +227,7 @@ export const b2bProducts = pgTable('b2b_products', {
  stock:integer('stock').notNull().default(100),stockVersion:integer('stock_version').notNull().default(1),
 });
 export const b2bOrders = pgTable('b2b_orders', {
+ orderNumber:integer('order_number').notNull().unique().default(sql`nextval('b2b_order_number_seq')`),
  id:serial('id').primaryKey(),locationId:integer('location_id').notNull().references(()=>b2bLocations.id),
  locationSnapshot:jsonb('location_snapshot').notNull(),author:varchar('author',{length:160}).notNull(),authorMemberId:integer('author_member_id').references(()=>members.id),
  requestKey:uuid('request_key').notNull().unique(),status:varchar('status',{length:20}).notNull().default('placed'),version:integer('version').notNull().default(1),total:integer('total').notNull(),

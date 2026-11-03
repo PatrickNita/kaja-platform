@@ -88,7 +88,7 @@ function load(path) {
           },
         },
       };
-    if (name.startsWith(".")) return load(resolve(dirname(path), name + ".ts"));
+    if (name.startsWith(".")) return load(resolve(dirname(path), name.endsWith(".ts") ? name : name + ".ts"));
     return require(name);
   });
   return result;
@@ -149,6 +149,8 @@ try {
     "insert into members(slug,name) values('patrick','Patrick'),('ionut','Ionut'),('igor','Igor'),('andrei','Andrei')",
   );
   await db.query("create table product_feedback(id serial primary key)");
+  await db.query("create table workspace_items(id serial primary key,brand text,section text,catalogue_group text,deleted_at timestamptz,feedback_slug text,product_name text)");
+  await db.query("create table workspace_item_images(id serial primary key,item_id integer,brand text,deleted_at timestamptz,position integer)");
   for (const statement of readFileSync("drizzle/0021_member_seen.sql", "utf8").split("--> statement-breakpoint")) await db.query(statement);
   crypto = load("src/lib/b2b/crypto.ts");
   const old = [];
@@ -192,6 +194,7 @@ try {
   );
   const stockMigration = readFileSync("drizzle/0022_b2b_stock.sql","utf8").split("--> statement-breakpoint");
   await db.transaction(stockMigration.map(q => db.query(q)));
+  await db.transaction(readFileSync("drizzle/0025_b2b_order_numbers.sql", "utf8").split("--> statement-breakpoint").map(q => db.query(q)));
   assert.equal((await db.query("select count(*)::int as n from b2b_products where stock=100"))[0].n,25);
   await db.query("update b2b_products set stock=100000");
   server = load("src/lib/b2b/server.ts");
