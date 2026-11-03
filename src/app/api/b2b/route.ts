@@ -25,7 +25,7 @@ const locationFields = z.object({
   name: z.string().trim().min(1).max(160),
   address: z.string().trim().min(1).max(500),
   contact: z.string().trim().min(1).max(160),
-  phone: z.string().trim().min(5).max(40),
+  phone: z.string().trim().max(40).refine(value => !value || value.length >= 5),
 });
 const envelope = z.object({
   mode: z.enum(["admin", "portal"]),

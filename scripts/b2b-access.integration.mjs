@@ -203,7 +203,9 @@ try {
   };
   route = load("src/app/api/b2b/route.ts");
   accessRoute = load("src/app/comenzi/acces/[id]/[token]/route.ts");
-  if(process.env.B2B_TEST_LOCATION_ONLY === "1") {
+  if(process.env.B2B_TEST_CONTACT_ONLY === "1") {
+    await (await import("./b2b-contact.scenarios.mjs")).verifyOptionalContacts({db,api,setMember:value=>{member=value;}});
+  } else if(process.env.B2B_TEST_LOCATION_ONLY === "1") {
     await (await import("./b2b-order-location.scenarios.mjs")).verifyOrderLocation({db,api,route,base,crypto,setCookie:value=>{cookie=value;},setMember:value=>{member=value;}});
   } else {
   let [group] = await db.query("select * from b2b_access_groups where id=1");

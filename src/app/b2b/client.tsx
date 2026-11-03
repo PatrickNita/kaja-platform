@@ -16,6 +16,7 @@ import { StockAdmin } from "./stock-admin";
 import { FilterSelect } from "./filter-select";
 import { sortLocations, formatOrderDate } from "../../lib/b2b/presentation";
 import { contactKey } from "../../lib/b2b/contact";
+import { ContactPhone } from "./contact-phone";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
@@ -139,12 +140,7 @@ function LocationDetails({
       </div>
       <div className="b2b-location-contact">
       <p className="b2b-location-person">{location.contact}</p>
-      <a
-        className="b2b-location-phone"
-        href={"tel:" + location.phone.replace(/[^+\d]/g, "")}
-      >
-        {location.phone}
-      </a>
+      <ContactPhone className="b2b-location-phone" value={location.phone} />
       </div>
       <p className="b2b-cashback">
         {totalCashback === undefined ? t("CASHBACK") : t("CASHBACK TOTAL")}:{" "}
@@ -174,8 +170,9 @@ function LocationForm({
     const values = Object.fromEntries(new FormData(event.currentTarget));
     const contactChanged = Boolean(
       location &&
-      contactKey(location.contact, location.phone) !==
-        contactKey(String(values.contact), String(values.phone)),
+      (contactKey(location.contact, location.phone) !==
+        contactKey(String(values.contact), String(values.phone)) ||
+        (!location.phone && !String(values.phone).trim() && location.contact.trim() !== String(values.contact).trim())),
     );
     if (
       contactChanged &&
@@ -239,11 +236,10 @@ function LocationForm({
         />
       </label>
       <label>
-        Numărul de telefon
+        Numărul de telefon / contact (opțional)
         <input
           name="phone"
-          type="tel"
-          required
+          type="text"
           minLength={5}
           maxLength={40}
           defaultValue={location?.phone}
@@ -634,7 +630,7 @@ function PortalContent({ data }: { data: B2BData }) {
       <div className={"portal-location-row" + (data.locations.length > 1 ? " has-switch" : "")} >
       <section className="portal-location-panel" aria-label={location.name}>
         <div className="portal-location-main"><span className="icon-tile"><NavigationIcon name="b2b" /></span><div className="portal-location-copy"><h2>{location.name}</h2><p>{location.address}</p><p className="portal-cashback">{t(totalCashback === undefined ? "Cashback:" : "Cashback total:")} <strong>{money(totalCashback ?? location.cashback)}</strong></p></div></div>
-        <div className="portal-location-contact"><strong>{location.contact || "—"}</strong>{location.phone ? <a href={"tel:" + location.phone.replace(/[^+\d]/g, "")}>{location.phone}</a> : <span>—</span>}</div>
+        <div className="portal-location-contact"><strong>{location.contact || "—"}</strong><ContactPhone value={location.phone} /></div>
       </section>
         {data.locations.length > 1 && <button ref={locationSwitchTrigger} type="button" className="location-switch" aria-haspopup="dialog" onClick={() => setChoosingLocation(true)}><span>{t("Schimbă locația")}</span><NavigationIcon name="chevron" /></button>}
       </div>
@@ -1021,9 +1017,7 @@ export function LocationFlow({ initial, onClose, onChanged }: { initial: Locatio
             <div className="b2b-location-info-group">
               <span className="b2b-info-label">Persoană de contact</span>
               <strong>{detail.contact}</strong>
-              <a href={"tel:" + detail.phone.replace(/[^+\d]/g, "")}>
-                {detail.phone}
-              </a>
+              <ContactPhone value={detail.phone} />
             </div>
             <div className="b2b-location-info-pair">
               <div className="b2b-location-info-group">
