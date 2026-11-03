@@ -219,7 +219,7 @@ body .icon-tile .navigation-icon { width:22px; height:22px; }
 body .member-dashboard { display:grid; gap:16px; min-width:0; }
 body .member-dashboard > section { margin-top:4px; }
 body .dashboard-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-body .dashboard-stat { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(145deg,#181818,#101010); text-decoration:none; min-width:0; }
+body .dashboard-stat { display:flex; align-items:center; gap:12px; padding:16px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(145deg,#181818,#101010); text-decoration:none; min-width:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
 body .dashboard-stat > span:last-child { min-width:0; }
 body .dashboard-stat span span { display:block; color:#bbb; font-size:12px; }
 body .dashboard-stat strong { display:block; margin-top:4px; font-size:28px; font-weight:600; line-height:1; font-variant-numeric:tabular-nums; }

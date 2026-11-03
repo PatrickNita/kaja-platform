@@ -84,5 +84,46 @@ try {
   assert.equal(dashboardResponse.headers.get("cache-control"), "private, no-store");
   assert.deepEqual(Object.keys(await dashboardResponse.json()).sort(), ["feedback", "orders"]);
   assert.equal((await countsRoute.GET(new Request("http://localhost/api/member-dashboard?brand=unknown"))).status, 400);
-  console.log("PASS real SQL: all initially unread, four independent members, brand counts, own tasks, monotonic order versions, races, invalid future versions, loaded feedback only, pagination and member-only same-origin validation.");
+  // Dashboard actions mark all matching rows, not just the first history page.
+  await q("insert into product_feedback(item_id,body) select 1,'Bulk feedback '||i from generate_series(1,65) i");
+  await q("insert into product_feedback(item_id,body) values(2,'HEX'),(3,'LUMEN')");
+  member = null;
+  assert.equal((await post({ type: "dashboard", kind: "orders", brand: "all" })).status, 401);
+  for (const slug of ["patrick", "ionut", "andrei", "igor"]) {
+    member = { slug };
+    assert.equal((await post({ type: "dashboard", kind: "orders", brand: "all", memberId: 2 })).status, 400);
+    assert.equal((await post({ type: "dashboard", kind: "feedback", brand: "unknown" })).status, 400);
+    assert.equal((await post({ type: "dashboard", kind: "feedback", brand: "all" }, "https://other.invalid")).status, 403);
+    const otherBefore = await counts(slug === "patrick" ? "ionut" : "patrick");
+    for (const brand of ["hexenwerk", "virginia"]) {
+      const ordersBefore = (await counts(slug)).orders;
+      assert.equal((await post({ type: "dashboard", kind: "orders", brand })).status, 200);
+      assert.equal((await counts(slug)).orders, ordersBefore);
+      assert.equal((await post({ type: "dashboard", kind: "feedback", brand })).status, 200);
+      assert.equal((await counts(slug, brand)).feedback, 0);
+    }
+    assert((await counts(slug, "kaja")).feedback > 50);
+    assert.equal((await post({ type: "dashboard", kind: "feedback", brand: "kaja" })).status, 200);
+    assert.equal((await counts(slug)).feedback, 0);
+    assert.equal((await post({ type: "dashboard", kind: "orders", brand: "kaja" })).status, 200);
+    assert.deepEqual(await counts(slug), { orders: 0, feedback: 0 });
+    // A second session/repeated click sees the same state and is idempotent.
+    await Promise.all([post({ type: "dashboard", kind: "orders", brand: "all" }), post({ type: "dashboard", kind: "feedback", brand: "all" })]);
+    assert.deepEqual(await counts(slug), { orders: 0, feedback: 0 });
+    assert.deepEqual(await counts(slug === "patrick" ? "ionut" : "patrick"), otherBefore);
+  }
+  await q("update b2b_orders set version=version+1 where id=1");
+  await q("insert into b2b_orders(location_snapshot) values ('{\"name\":\"New order\"}')");
+  await q("insert into product_feedback(item_id,body) values(1,'New KAJA'),(2,'New HEX'),(3,'New LUMEN')");
+  assert.deepEqual(await counts(), { orders: 2, feedback: 3 });
+  member = { slug: "patrick" };
+  await post({ type: "dashboard", kind: "feedback", brand: "kaja" });
+  assert.equal((await counts()).feedback, 2);
+  await post({ type: "dashboard", kind: "feedback", brand: "all" });
+  await post({ type: "dashboard", kind: "orders", brand: "all" });
+  assert.deepEqual(await counts(), { orders: 0, feedback: 0 });
+  assert.deepEqual(await counts("ionut"), { orders: 2, feedback: 3 });
+  await q("update b2b_orders set version=version+1 where id=1");
+  assert.equal((await counts()).orders, 1);
+  console.log("PASS real SQL: single and bulk seen, all brands, >50 feedback rows, four independent members, shared session state, idempotency, later orders/versions/feedback stay unread, and authenticated same-origin validation.");
 } finally { await root.query(`drop schema if exists ${schema} cascade`); }
