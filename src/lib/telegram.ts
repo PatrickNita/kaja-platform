@@ -2,7 +2,8 @@ import { send } from "@vercel/queue";
 import { and, asc, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db } from "./db";
-import { telegramDebounce, telegramOutbox } from "./schema";
+import { members, taskAssignees, tasks, telegramDebounce, telegramOutbox } from "./schema";
+import { deliverDigestMessages, formatNewTaskMessages, type TelegramDigestMessage } from "./telegram-task-digest";
 
 export const TELEGRAM_DIGEST_TOPIC = "telegram-digest";
 export const TELEGRAM_DIGEST_DELAY_SECONDS = 30 * 60;
@@ -306,7 +307,7 @@ export async function resetTelegramDigestAfterCancellation(actorId: number) {
   }
 }
 
-async function sendTelegramMessage(text: string) {
+async function sendTelegramMessage(message: TelegramDigestMessage) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) throw new Error("Telegram is not configured.");
@@ -314,7 +315,7 @@ async function sendTelegramMessage(text: string) {
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    body: JSON.stringify({ chat_id: chatId, text: message.text, entities: message.entities, disable_web_page_preview: true }),
   });
   if (!response.ok) throw new Error(`Telegram sendMessage failed with status ${response.status}.`);
 }
@@ -410,15 +411,47 @@ export async function processTelegramDigest(message: TelegramDigestQueueMessage)
     reactionType: row.reactionType,
     createdAt: row.createdAt,
   }));
-  const text = formatTelegramDigest(events);
-
   try {
-    const [latestState] = await db.select({
-      generation: telegramDebounce.generation,
-      processingGeneration: telegramDebounce.processingGeneration,
-    }).from(telegramDebounce).where(eq(telegramDebounce.actorId, message.actorId)).limit(1);
-    if (!latestState || latestState.generation !== message.generation || latestState.processingGeneration !== message.generation) return;
-    if (text) await sendTelegramMessage(text);
+    const newTaskEvents = events.filter((event) => event.entityType === "task" && event.action === "created");
+    const taskIds = [...new Set(newTaskEvents.map((event) => event.entityId))];
+    const assignments = taskIds.length ? await db.select({
+      taskId: tasks.id, title: tasks.title, createdAt: tasks.createdAt,
+      memberId: members.id, name: members.name,
+    }).from(tasks)
+      .innerJoin(taskAssignees, eq(taskAssignees.taskId, tasks.id))
+      .innerJoin(members, eq(members.id, taskAssignees.memberId))
+      .where(and(inArray(tasks.id, taskIds), isNull(tasks.deletedAt))) : [];
+    const taskMessages = formatNewTaskMessages(taskIds.flatMap((taskId) => {
+      const current = assignments.filter((assignment) => assignment.taskId === taskId);
+      if (!current.length) return [];
+      return [{
+        taskId, title: current[0].title, createdAt: current[0].createdAt,
+        eventIds: newTaskEvents.filter((event) => event.entityId === taskId).map((event) => event.id),
+        assignees: current.map((assignment) => ({ id: assignment.memberId, name: assignment.name })),
+      }];
+    }));
+    const otherEvents = events.filter((event) => event.entityType !== "task" || event.action !== "created");
+    const text = formatTelegramDigest(otherEvents);
+    const messages: TelegramDigestMessage[] = [
+      ...taskMessages,
+      ...(text ? [{ text, entities: [], eventIds: otherEvents.map((event) => event.id) }] : []),
+    ];
+    const database = db;
+    const delivered = await deliverDigestMessages(messages, {
+      isCurrent: async () => {
+        const [latestState] = await database.select({
+          generation: telegramDebounce.generation,
+          processingGeneration: telegramDebounce.processingGeneration,
+        }).from(telegramDebounce).where(eq(telegramDebounce.actorId, message.actorId)).limit(1);
+        return !!latestState && latestState.generation === message.generation && latestState.processingGeneration === message.generation;
+      },
+      send: sendTelegramMessage,
+      acknowledge: async (eventIds) => {
+        if (eventIds.length) await database.update(telegramOutbox).set({ sentAt: new Date() })
+          .where(and(inArray(telegramOutbox.id, eventIds), isNull(telegramOutbox.sentAt)));
+      },
+    });
+    if (!delivered) return;
     await completeDigest(message.actorId, message.generation, rows.map((row) => row.id));
   } catch (error) {
     try {
