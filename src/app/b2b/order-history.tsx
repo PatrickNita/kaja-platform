@@ -443,7 +443,7 @@ function OrderDialog({
           {order.location_snapshot.contact} · {order.location_snapshot.phone}
         </p>
       </div>
-      {step === "details" && order.author !== "Local" && <div className="b2b-order-metadata"><span>{t("Plasată de ")}{order.author}</span></div>}
+      {step === "details" && order.author !== "Local" && order.author !== "Patrick" && <div className="b2b-order-metadata"><span>{t("Plasată de ")}{order.author}</span></div>}
       {step === "location" ? <>
         <div className="b2b-location-options b2b-order-location-options" role="group" aria-label={t("Alege locația comenzii")}>
           {locations.map(local=><button key={local.id} type="button" className={destinationId===local.id ? "button" : "button ghost"} aria-pressed={destinationId===local.id} disabled={busy} onClick={()=>setDestinationId(local.id)}><strong>{local.name}</strong><span className="b2b-location-option-address"> · {local.address}</span></button>)}
