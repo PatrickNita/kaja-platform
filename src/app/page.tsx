@@ -24,6 +24,7 @@ import { WorkspaceHeader } from "./workspace-header";
 import { MobileMenu } from "./mobile-menu";
 import { UploadLibrary } from "./upload-library";
 import { TaskComposer } from "./task-composer";
+import { groupTaskList, taskListState } from "../lib/task-list";
 import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
 export const dynamic = "force-dynamic";
@@ -312,20 +313,33 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
   });
   const taskHref = (nextView: TaskView, nextBrand: BrandFilter) => `/?brand=${nextBrand}&view=tasks&tasks=${nextView}`;
   const availableViews = memberSlug === "patrick" ? taskViews : taskViews.filter(({ key }) => key !== "history");
+  const groups = groupTaskList(visibleTasks, data.taskAssignees);
   return <>
     <nav className="catalogue-submenu filter-nav task-submenu" aria-label="Filtre sarcini">{availableViews.map((entry) => <FilterLink key={entry.key} className={entry.key === taskView ? "active" : undefined} href={taskHref(entry.key, entry.key === "history" ? "all" : brandFilter)}>{entry.label}</FilterLink>)}</nav>
     {taskView !== "history" && <BrandFilterNav selected={brandFilter} view="tasks" tasks={taskView} />}
-    <section className="panel content-section">
+    <section className="panel content-section task-list-section">
       <div className="panel-head"><PageHeading title={pageTitle({ view: "tasks", brand: brandFilter, tasks: taskView })} count={visibleTasks.length} /></div>
       {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={initialBrand(brandFilter)} members={data.members} /></Composer>}
-      <ModalEntryGrid entryIds={visibleTasks.map(({ task }) => `entry-task-${task.id}`)} label="sarcina">{visibleTasks.map(({ task, author, authorSlug }) => {
-        const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === task.id);
-        const taskBrand = task.brand as Brand;
-        const taskContext = <div className="task-card-context"><TaskMemberBadges assignments={assignments} /></div>;
-        return <article className="card-wrap" key={task.id}>
-          <EntryCard brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={hasAttention(data.attention, taskBrand, "task", task.id)} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} previewExtra={taskContext} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
-        </article>;
-      })}</ModalEntryGrid>
+      {!groups.length && <p className="empty">Nu există sarcini în această listă.</p>}
+      <ModalEntryGrid entryIds={visibleTasks.map(({ task }) => `entry-task-${task.id}`)} label="sarcina">{groups.map((group) => <section className="task-list-group" key={group.key} aria-labelledby={`task-group-${group.key}`}>
+        <h3 id={`task-group-${group.key}`} className="task-list-heading">{group.title} <span className="page-entry-count">({group.entries.length})</span></h3>
+        <ProductTable columns={["Sarcină", "Brand", "Stare", "Comentarii"]} variant="product-table--tasks" label={group.title}>
+          {group.entries.map(({ row: { task, author, authorSlug }, assignments }) => {
+            const taskBrand = task.brand as Brand;
+            const attentionActive = hasAttention(data.attention, taskBrand, "task", task.id);
+            const commentCount = data.comments.filter(({ comment }) => comment.entityType === "task" && comment.entityId === task.id).length;
+            return <article className="card-wrap task-list-card workspace-data-entry" key={task.id}>
+              <EntryCard rowPreview={<div className="product-list-row workspace-data-row" role="row">
+                <span className="workspace-data-identity" role="cell"><span className="product-list-symbol"><NavigationIcon name="tasks" /></span><strong className="workspace-data-title">{task.title}</strong>{attentionActive && <span className="attention-indicator" aria-label="Solicită mai multă atenție">⚠️</span>}</span>
+                <span className="product-list-secondary" role="cell">{selectedBrandLabel(taskBrand)}</span>
+                <span className="product-list-secondary" role="cell">{taskListState(assignments)}</span>
+                <span className="product-list-secondary" role="cell">{commentCount}</span>
+                <span className="product-table-chevron" role="cell"><NavigationIcon name="chevron" /></span>
+              </div>} brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={attentionActive} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
+            </article>;
+          })}
+        </ProductTable>
+      </section>)}</ModalEntryGrid>
     </section>
   </>;
 }

@@ -32,6 +32,7 @@ function errorMessage(error: unknown) {
 
 export function EntryInlineEditor({ entryId, title, body, authorControls, closeLabel, detailsMedia, children, editAction, hiddenFields = [], deleteControl, flavor, headerExtra }: Props) {
   const root = useRef<HTMLDivElement>(null);
+  const wasEditing = useRef(false);
   const generatedId = useId().replaceAll(":", "");
   const formId = `entry-edit-${generatedId}`;
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +54,9 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
   }, [activeEntryId, editing, entryId]);
 
   useLayoutEffect(() => {
-    if (!editing) return;
-    root.current?.querySelector<HTMLTextAreaElement>('textarea[name="title"]')?.focus({ preventScroll: true });
+    if (editing) root.current?.querySelector<HTMLTextAreaElement>('textarea[name="title"]')?.focus({ preventScroll: true });
+    else if (wasEditing.current) root.current?.querySelector<HTMLButtonElement>('[data-entry-edit]')?.focus({ preventScroll: true });
+    wasEditing.current = editing;
   }, [editing]);
 
   const save = async (formData: FormData) => {
@@ -97,7 +99,7 @@ export function EntryInlineEditor({ entryId, title, body, authorControls, closeL
             <button className="button" type="submit" form={formId} disabled={saving || !dirty || !valid}>{saving ? "Se salvează…" : "Salvează modificările"}</button>
             <button className="button ghost" type="button" onClick={cancel} disabled={saving}>Anulează</button>
           </> : <>
-            <button className="button ghost" type="button" onClick={(event) => { event.preventDefault(); setError(null); beginEditing(entryId, title, body ?? "", flavor); }}>Modifică</button>
+            <button className="button ghost" type="button" data-entry-edit onClick={(event) => { event.preventDefault(); setError(null); beginEditing(entryId, title, body ?? "", flavor); }}>Modifică</button>
             {deleteControl}
           </>}
         </div>

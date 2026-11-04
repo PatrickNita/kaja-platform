@@ -902,3 +902,16 @@ body .search-field--plain > input { padding-left:12px; }
 /* The 44px scroll controls supply equal breathing room above and below the track. */
 body :is(.catalogue-list,.feedback-products-section) > .horizontal-scroll-hints:has(> .table-scroll-bar) { margin-top:calc(-1 * var(--product-section-gap)); }
 body .b2b-admin > .b2b-summary-table:has(.table-scroll-bar) { margin-top:-20px; }
+
+/* Task groups share the catalogue table rules without changing other card grids. */
+body .task-list-section > .modal-entry-grid-shell > .modal-entry-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; margin:0; }
+body .task-list-group { display:grid; gap:8px; min-width:0; }
+body .task-list-heading { margin:0; font-size:14px; font-weight:600; line-height:1.45; color:#eee; letter-spacing:normal; }
+body .product-table--tasks { --product-columns:repeat(4,minmax(0,1fr)) 16px; min-width:660px; }
+body .product-table .task-list-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
+body .product-table .task-list-card:hover { border:0; box-shadow:none; }
+body .product-table--tasks .product-list-symbol > .navigation-icon { width:20px; height:20px; }
+body .task-list-section .modal-entry-grid-shell { min-width:0; }
+@media(max-width:800px) {
+  body .task-list-section > .modal-entry-grid-shell > .modal-entry-grid { gap:16px; }
+}
