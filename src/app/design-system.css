@@ -845,8 +845,8 @@ body .product-table--ideas { min-width:800px; }
 body .product-table--feedback { min-width:660px; }
 body .product-table-head, body .product-table .product-list-row { display:grid; grid-template-columns:var(--product-columns); }
 body .product-table .modal-entry-grid, body .product-table .feedback-product-list { display:grid; grid-template-columns:minmax(0,1fr); gap:0; margin:0; }
-body .product-table .catalogue-list-card { padding:0; border:0; border-radius:0; background:transparent; }
-body .product-table .catalogue-list-card:hover { border:0; box-shadow:none; }
+body .product-table .catalogue-list-card { padding:0; border:0 solid var(--line); border-radius:0; background:transparent; }
+body .product-table .catalogue-list-card:hover { border-color:var(--line); box-shadow:none; }
 body .product-table .entry-card-preview { border-radius:0; }
 body .product-table .product-list-row { width:100%; }
 body .product-table .feedback-product::after { content:none; }
@@ -910,8 +910,8 @@ body .task-list-heading { margin:0; font-size:14px; font-weight:600; line-height
 body .product-table--tasks { --product-columns:minmax(220px,1.3fr) minmax(100px,.6fr) minmax(240px,2fr) minmax(90px,.6fr) 16px; min-width:780px; }
 body .task-list-section .product-table-scroll { scrollbar-width:none; }
 body .task-list-section .product-table-scroll::-webkit-scrollbar { display:none; }
-body .product-table .task-list-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
-body .product-table .task-list-card:hover { border:0; box-shadow:none; }
+body .product-table .task-list-card { margin:0; padding:0; border:0 solid var(--line); border-radius:0; background:transparent; }
+body .product-table .task-list-card:hover { border-color:var(--line); box-shadow:none; }
 body .product-table--tasks .task-list-description { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 body .task-list-members { display:flex; flex-wrap:wrap; gap:4px; max-width:116px; flex-shrink:0; }
 body .task-list-member { display:inline-grid; place-items:center; width:26px; height:26px; flex:0 0 26px; border:1px solid #803d3d; border-radius:50%; background:#241414; color:#ffaaaa; font-size:10px; font-weight:700; line-height:1; }
