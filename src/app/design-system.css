@@ -907,10 +907,15 @@ body .b2b-admin > .b2b-summary-table:has(.table-scroll-bar) { margin-top:-20px; 
 body .task-list-section > .modal-entry-grid-shell > .modal-entry-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:20px; margin:0; }
 body .task-list-group { display:grid; gap:8px; min-width:0; }
 body .task-list-heading { margin:0; font-size:14px; font-weight:600; line-height:1.45; color:#eee; letter-spacing:normal; }
-body .product-table--tasks { --product-columns:repeat(4,minmax(0,1fr)) 16px; min-width:660px; }
+body .product-table--tasks { --product-columns:minmax(220px,1.3fr) minmax(100px,.6fr) minmax(240px,2fr) minmax(90px,.6fr) 16px; min-width:780px; }
 body .product-table .task-list-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
 body .product-table .task-list-card:hover { border:0; box-shadow:none; }
-body .product-table--tasks .product-list-symbol > .navigation-icon { width:20px; height:20px; }
+body .product-table--tasks .task-list-description { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body .task-list-members { display:flex; flex-wrap:wrap; gap:4px; max-width:82px; flex-shrink:0; }
+body .task-list-member { display:inline-flex; align-items:center; gap:4px; }
+body .task-list-member-mark { display:grid; place-items:center; width:15px; height:15px; border-radius:50%; background:#a43d3d; color:#fff; font-size:12px; font-weight:800; line-height:1; }
+body .task-list-member.completed .task-list-member-mark { background:#2c8a58; }
+body .task-list-member-initial { display:grid; place-items:center; width:20px; height:20px; border:1px solid #464643; border-radius:50%; color:#ddd; font-size:11px; font-weight:600; line-height:1; }
 body .task-list-section .modal-entry-grid-shell { min-width:0; }
 @media(max-width:800px) {
   body .task-list-section > .modal-entry-grid-shell > .modal-entry-grid { gap:16px; }

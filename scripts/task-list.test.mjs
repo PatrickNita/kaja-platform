@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { groupTaskList, taskListState } from "../src/lib/task-list.ts";
+import { groupTaskList, taskDescriptionPreview } from "../src/lib/task-list.ts";
 
 const row = (id, createdAt = id) => ({ task: { id, createdAt: new Date(createdAt * 1000) } });
 const assigned = (taskId, memberId, memberName, completed = false) => ({
@@ -18,11 +18,12 @@ assert.deepEqual(groups[1].entries[0].assignments.map(({ memberName }) => member
 assert.equal(new Set(groups.flatMap(({ entries }) => entries.map(({ row }) => row.task.id))).size, rows.length);
 assert.deepEqual(groupTaskList([], assignments), []);
 assert.equal(groupTaskList([row(9)], [])[0].title, "Sarcini fără responsabili");
-assert.equal(taskListState([assigned(1, 2, "Igor")]), "De făcut");
-assert.equal(taskListState([assigned(1, 2, "Igor", true)]), "Finalizată");
-assert.equal(taskListState(groups[1].entries[0].assignments), "1/2 finalizate");
-assert.equal(taskListState(groups[1].entries[1].assignments), "0/2 finalizate");
-assert.equal(taskListState([assigned(1, 1, "Andrei", true), assigned(1, 2, "Igor", true)]), "2/2 finalizate");
+assert.equal(taskDescriptionPreview("Scurt 😀"), "Scurt 😀");
+assert.equal(taskDescriptionPreview("  Primul rând\n\nAl doilea rând  "), "Primul rând Al doilea rând");
+assert.equal(taskDescriptionPreview("ș".repeat(100)), "ș".repeat(100));
+assert.equal(taskDescriptionPreview("ș".repeat(101)), "ș".repeat(100) + "...");
+assert.equal(taskDescriptionPreview("😀".repeat(101)), "😀".repeat(100) + "...");
+assert.equal(taskDescriptionPreview(""), "");
 // Filtering to "mine" must not reduce the full assignment set or duplicate shared tasks.
 const mine = rows.filter(({ task }) => assignments.some((a) => a.assignment.taskId === task.id && a.memberSlug === "igor"));
 assert.equal(groupTaskList(mine, assignments).find((g) => g.entries.some((e) => e.row.task.id === 3)).title,

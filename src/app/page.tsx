@@ -24,7 +24,7 @@ import { WorkspaceHeader } from "./workspace-header";
 import { MobileMenu } from "./mobile-menu";
 import { UploadLibrary } from "./upload-library";
 import { TaskComposer } from "./task-composer";
-import { groupTaskList, taskListState } from "../lib/task-list";
+import { groupTaskList, taskDescriptionPreview } from "../lib/task-list";
 import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
 export const dynamic = "force-dynamic";
@@ -323,16 +323,16 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
       {!groups.length && <p className="empty">Nu există sarcini în această listă.</p>}
       <ModalEntryGrid entryIds={visibleTasks.map(({ task }) => `entry-task-${task.id}`)} label="sarcina">{groups.map((group) => <section className="task-list-group" key={group.key} aria-labelledby={`task-group-${group.key}`}>
         <h3 id={`task-group-${group.key}`} className="task-list-heading">{group.title} <span className="page-entry-count">({group.entries.length})</span></h3>
-        <ProductTable columns={["Sarcină", "Brand", "Stare", "Comentarii"]} variant="product-table--tasks" label={group.title}>
+        <ProductTable columns={["Sarcină", "Brand", "Descrierea", "Comentarii"]} variant="product-table--tasks" label={group.title}>
           {group.entries.map(({ row: { task, author, authorSlug }, assignments }) => {
             const taskBrand = task.brand as Brand;
             const attentionActive = hasAttention(data.attention, taskBrand, "task", task.id);
             const commentCount = data.comments.filter(({ comment }) => comment.entityType === "task" && comment.entityId === task.id).length;
             return <article className="card-wrap task-list-card workspace-data-entry" key={task.id}>
               <EntryCard rowPreview={<div className="product-list-row workspace-data-row" role="row">
-                <span className="workspace-data-identity" role="cell"><span className="product-list-symbol"><NavigationIcon name="tasks" /></span><strong className="workspace-data-title">{task.title}</strong>{attentionActive && <span className="attention-indicator" aria-label="Solicită mai multă atenție">⚠️</span>}</span>
+                <span className="workspace-data-identity" role="cell"><span className="task-list-members">{assignments.map(({ assignment, memberName }) => <span key={assignment.memberId} className={`task-list-member ${assignment.completed ? "completed" : "incomplete"}`} role="img" aria-label={`${memberName}: ${assignment.completed ? "finalizat" : "nefinalizat"}`} title={`${memberName}: ${assignment.completed ? "finalizat" : "nefinalizat"}`}><span className="task-list-member-mark" aria-hidden="true">{assignment.completed ? "✓" : "×"}</span><span className="task-list-member-initial" aria-hidden="true">{Array.from(memberName.trim())[0]?.toLocaleUpperCase("ro")}</span></span>)}</span><strong className="workspace-data-title">{task.title}</strong>{attentionActive && <span className="attention-indicator" aria-label="Solicită mai multă atenție">⚠️</span>}</span>
                 <span className="product-list-secondary" role="cell">{selectedBrandLabel(taskBrand)}</span>
-                <span className="product-list-secondary" role="cell">{taskListState(assignments)}</span>
+                <span className="product-list-secondary task-list-description" role="cell">{taskDescriptionPreview(task.body) || "—"}</span>
                 <span className="product-list-secondary" role="cell">{commentCount}</span>
                 <span className="product-table-chevron" role="cell"><NavigationIcon name="chevron" /></span>
               </div>} brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={attentionActive} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />

@@ -3,10 +3,9 @@ type AssigneeRow = { assignment: { taskId: number; memberId: number; completed: 
 
 const names = new Intl.Collator("ro", { sensitivity: "base" });
 
-export function taskListState(assignments: AssigneeRow[]) {
-  const completed = assignments.filter(({ assignment }) => assignment.completed).length;
-  if (assignments.length > 1) return `${completed}/${assignments.length} finalizate`;
-  return completed ? "Finalizată" : "De făcut";
+export function taskDescriptionPreview(body: string) {
+  const characters = Array.from(body.replace(/\s+/g, " ").trim());
+  return characters.slice(0, 100).join("") + (characters.length > 100 ? "..." : "");
 }
 
 /** Group by the complete assignee set, including in the current member's list. */

@@ -10,7 +10,7 @@ const now=new Date(Date.now()-60000);
 let state={actorId:1,generation:'g',sentGeneration:null,dueAt:now,processingGeneration:null};
 const base={actorId:1,memberName:'Patrick',brand:'kaja',catalogueGroup:null,reactionType:null,createdAt:now};
 let rows=[{...base,id:1,entityType:'task',entityId:10,action:'created',title:'old'}, {...base,id:2,entityType:'task',entityId:11,action:'created',title:'deleted'}, {...base,id:3,entityType:'task',entityId:10,action:'edited',title:'Modificare'}];
-const current=[{taskId:10,title:'Actualizat',createdAt:now,memberId:2,name:'Igor'}];
+const current=[{taskId:10,title:'Actualizat',body:'DESCRIERE_DOAR_PLATFORMA',createdAt:now,memberId:2,name:'Igor'}];
 const updates=[], deliveries=[], scheduled=[];
 function query(kind,table) {
  let values;
@@ -35,6 +35,7 @@ assert.equal(deliveries[0].text,'Sarcini primite de Igor\n- Actualizat');
 assert.deepEqual(deliveries[0].entities,[{type:'bold',offset:0,length:'Sarcini primite de Igor'.length}]);
 assert.match(deliveries[1].text,/KAJA\n.*Patrick a modificat sarcina/);
 assert(!deliveries.some(m=>m.text.includes('deleted')));
+assert(!deliveries.some(message=>message.text.includes('DESCRIERE_DOAR_PLATFORMA')));
 assert.equal(state.sentGeneration,'g');
 assert(updates.some(u=>u.table==='telegramOutbox'&&u.values.sentAt));
 const before=deliveries.length;await mod.namespace.processTelegramDigest({actorId:1,generation:'g'});assert.equal(deliveries.length,before);

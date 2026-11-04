@@ -54,3 +54,6 @@ assert.equal(await deliverDigestMessages(one, {
   acknowledge: async () => assert.fail("Stale generation must not acknowledge"),
 }), false);
 console.log("Task digest: single, exact groups, ordering, Unicode, splitting, retry and stale generation passed.");
+
+const platformOnly="Prezentarea produsului si a catalogului, degustare, si creare link-uri pentru comenzi B2B";
+assert(!formatNewTaskMessages([{...task(1,[igor]),body:platformOnly,description:platformOnly}]).some(message=>message.text.includes(platformOnly)));
