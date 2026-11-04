@@ -20,7 +20,7 @@ const props={groupTaskList,taskDescriptionPreview,ProductTable,NavigationIcon,
  Composer:()=>null,TaskComposer:()=>null,initialBrand:x=>x,
  ModalEntryGrid:({children})=>React.createElement('div',{className:'modal-entry-grid-shell'},React.createElement('div',{className:'items card-grid modal-entry-grid'},children)),
  EntryCard:({rowPreview,title})=>React.createElement('div',{className:'entry-card-preview',role:'button','aria-label':title},rowPreview),
- TaskAssigneeManager:()=>null,hasAttention:()=>false,recordEditConfig:()=>null,updateTask:()=>{},selectedBrandLabel:x=>({kaja:'KAJA',hexenwerk:'HEXENWERK',virginia:'LUMEN'}[x]),
+ TaskResponsibilityProvider:({children})=>children,TaskAssigneeManager:()=>null,hasAttention:()=>false,recordEditConfig:()=>null,updateTask:()=>{},selectedBrandLabel:x=>({kaja:'KAJA',hexenwerk:'HEXENWERK',virginia:'LUMEN'}[x]),
 };
 const module={exports:{}};new Function('require','module','exports',...Object.keys(props),compile(section+'\nexport {TasksSection};'))(require,module,module.exports,...Object.values(props));
 const {TasksSection}=module.exports;

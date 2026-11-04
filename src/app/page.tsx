@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import { currentMember } from "../lib/auth";
 import { hasDatabase } from "../lib/db";
 import { workspaceItems } from "../lib/schema";
-import { activityData, createComment, createWorkspaceItemForm, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, setTaskAssignee, setTaskAssigneeCompletion, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
+import { activityData, createComment, createWorkspaceItemForm, deleteComment, deleteRecord, deleteWorkspaceItem, editUpdate, taskWorkspaceData, toggleCommentHeart, toggleEntryAttention, toggleEntryReaction, updateTask, updateWorkspaceItem, workspaceData } from "./actions";
 import { AutoResizeTextarea, CommentTextarea } from "./comment-textarea";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { MemberDashboard } from "./member-dashboard";
@@ -24,6 +24,7 @@ import { WorkspaceHeader } from "./workspace-header";
 import { MobileMenu } from "./mobile-menu";
 import { UploadLibrary } from "./upload-library";
 import { TaskComposer } from "./task-composer";
+import { TaskAssigneeManager, TaskResponsibilityProvider } from "./task-assignee-manager";
 import { groupTaskList, taskDescriptionPreview } from "../lib/task-list";
 import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
@@ -256,50 +257,6 @@ function LegacyProposalDetails({ data, memberSlug }: { data: Data; memberSlug: s
   </>;
 }
 
-function TaskMemberBadges({ assignments, label = true }: { assignments: TaskAssigneeRow[]; label?: boolean }) {
-  return <div className="task-assignee-preview">
-    {label && <span className="task-assignee-label">Responsabili</span>}
-    <div className="task-assignee-list">{assignments.map(({ assignment, memberName }) => <span key={assignment.id} className={`task-member-chip ${assignment.completed ? "completed" : "incomplete"}`}>
-      <span aria-hidden="true">{assignment.completed ? "✓" : "×"}</span>
-      {memberName}
-    </span>)}</div>
-  </div>;
-}
-
-function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, canManage }: { brand: Brand; taskId: number; assignments: TaskAssigneeRow[]; members: TaskData["members"]; canManage: boolean }) {
-  if (!canManage) return <section className="task-assignee-manager"><h4>Responsabili</h4><TaskMemberBadges assignments={assignments} label={false} /></section>;
-  return <section className="task-assignee-manager">
-    <h4>Responsabili</h4>
-    <div className="task-assignee-list manager">{allMembers.map((member) => {
-      const selected = assignments.find(({ assignment }) => assignment.memberId === member.id);
-      if (!selected) return <form action={setTaskAssignee} key={member.id}>
-        <input type="hidden" name="id" value={taskId} />
-        <input type="hidden" name="brand" value={brand} />
-        <input type="hidden" name="memberSlug" value={member.slug} />
-        <input type="hidden" name="assigned" value="true" />
-        <button className="task-member-chip unassigned" aria-label={`Adaugă responsabilul ${member.name}`}><span aria-hidden="true">+</span>{member.name}</button>
-      </form>;
-      return <div className={`task-member-control ${selected.assignment.completed ? "completed" : "incomplete"}`} key={member.id}>
-        <form action={setTaskAssigneeCompletion}>
-          <input type="hidden" name="id" value={taskId} />
-          <input type="hidden" name="brand" value={brand} />
-          <input type="hidden" name="memberSlug" value={member.slug} />
-          <input type="hidden" name="completed" value={selected.assignment.completed ? "false" : "true"} />
-          <button className={`task-member-chip ${selected.assignment.completed ? "completed" : "incomplete"}`} title={`${selected.assignment.completed ? "Marchează nefinalizat" : "Marchează finalizat"} pentru ${member.name}`} aria-label={`${selected.assignment.completed ? "Marchează nefinalizat" : "Marchează finalizat"} pentru ${member.name}`}><span aria-hidden="true">{selected.assignment.completed ? "✓" : "×"}</span>{member.name} · {selected.assignment.completed ? "Finalizat" : "De făcut"}</button>
-        </form>
-        <form action={setTaskAssignee}>
-          <input type="hidden" name="id" value={taskId} />
-          <input type="hidden" name="brand" value={brand} />
-          <input type="hidden" name="memberSlug" value={member.slug} />
-          <input type="hidden" name="assigned" value="false" />
-          <button className="task-member-remove" disabled={assignments.length <= 1} title={assignments.length <= 1 ? "Trebuie să rămână cel puțin un responsabil." : `Elimină responsabilul ${member.name}`} aria-label={`Elimină responsabilul ${member.name}`}>Elimină</button>
-        </form>
-      </div>;
-    })}</div>
-    <p>Trebuie să rămână cel puțin un responsabil. Când toți sunt marcați finalizați, sarcina trece în Istoric.</p>
-  </section>;
-}
-
 function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskData; memberSlug: string; taskView: TaskView; brandFilter: BrandFilter }) {
   const taskIsCompleted = (taskId: number) => {
     const assignments = data.taskAssignees.filter(({ assignment }) => assignment.taskId === taskId);
@@ -322,7 +279,7 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
       <div className="panel-head"><PageHeading title={pageTitle({ view: "tasks", brand: brandFilter, tasks: taskView })} count={visibleTasks.length} /></div>
       {memberSlug === "patrick" && taskView !== "history" && <Composer label="Adaugă sarcină"><TaskComposer initialBrand={initialBrand(brandFilter)} members={data.members} /></Composer>}
       {!groups.length && <p className="empty">Nu există sarcini în această listă.</p>}
-      <ModalEntryGrid entryIds={visibleTasks.map(({ task }) => `entry-task-${task.id}`)} label="sarcina">{groups.map((group) => <section className="task-list-group" key={group.key} aria-labelledby={`task-group-${group.key}`}>
+      <TaskResponsibilityProvider><ModalEntryGrid entryIds={visibleTasks.map(({ task }) => `entry-task-${task.id}`)} label="sarcina">{groups.map((group) => <section className="task-list-group" key={group.key} aria-labelledby={`task-group-${group.key}`}>
         <h3 id={`task-group-${group.key}`} className="task-list-heading">{group.title} <span className="page-entry-count">({group.entries.length})</span></h3>
         <ProductTable columns={["Sarcină", "Brand", "Descrierea", "Comentarii"]} variant="product-table--tasks" label={group.title}>
           {group.entries.map(({ row: { task, author, authorSlug }, assignments }) => {
@@ -336,11 +293,11 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
                 <span className="product-list-secondary task-list-description" role="cell">{taskDescriptionPreview(task.body) || "—"}</span>
                 <span className="product-list-secondary" role="cell">{commentCount}</span>
                 <span className="product-table-chevron" role="cell"><NavigationIcon name="chevron" /></span>
-              </div>} brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={attentionActive} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments} members={data.members} canManage={memberSlug === "patrick"} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
+              </div>} brand={taskBrand} type="task" id={task.id} title={task.title} body={task.body} author={author} authorSlug={authorSlug} attentionActive={attentionActive} comments={data.comments} reactions={data.reactions} entryReactions={[]} entryReactionsEnabled={false} detailsExtra={<TaskAssigneeManager brand={taskBrand} taskId={task.id} assignments={assignments.map(({ assignment, memberName, memberSlug }) => ({ memberId: assignment.memberId, memberName, memberSlug, completed: assignment.completed }))} members={data.members} canManage={memberSlug === "patrick"} viewerSlug={memberSlug} />} attentionInteractive={memberSlug === "patrick"} showAuthor={false} memberSlug={memberSlug} edit={recordEditConfig({ brand: taskBrand, type: "task", id: task.id, title: task.title, action: updateTask, allowed: memberSlug === "patrick" })} />
             </article>;
           })}
         </ProductTable>
-      </section>)}</ModalEntryGrid>
+      </section>)}</ModalEntryGrid></TaskResponsibilityProvider>
     </section>
   </>;
 }
@@ -354,6 +311,10 @@ function CatalogueSection({ brandFilter, data, memberSlug, group, sort, query=""
 
 function UploadsSection({ brandFilter, memberSlug, folder }: { brandFilter: BrandFilter; memberSlug: string; folder?: string }) {
   return <><BrandFilterNav selected={brandFilter} view="uploads" /><UploadLibrary brandFilter={brandFilter} memberSlug={memberSlug} folderParam={folder} /></>;
+}
+
+function WorkspacePage({ children, view, memberName, brand, group, taskView, memberSlug }: { children: ReactNode; view: Section; memberName: string; brand: BrandFilter; group: CatalogueGroup; taskView: TaskView; memberSlug: string }) {
+  return <main className="workspace-shell"><WorkspaceHeader view={view} memberName={memberName} brand={brand} catalogue={group} tasks={taskView} /><MobileMenu brand={brand} view={view} catalogue={group} tasks={taskView} memberSlug={memberSlug} /><div className="workspace-content">{children}</div></main>;
 }
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ view?: string; brand?: string; catalogue?: string; tasks?: string; taskBrand?: string; activity?: string; folder?: string; sort?: string; q?:string }> }) {
@@ -370,17 +331,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
   if (view === "tasks" && requestedTaskView === "history" && member.slug !== "patrick") redirect("/?brand=all&view=tasks&tasks=all");
   const taskView: TaskView = requestedTaskView === "history" && member.slug !== "patrick" ? "all" : requestedTaskView;
   if (params.activity === "deleted" && member.slug !== "patrick") redirect("/?view=activity&brand="+brandFilter);
-  const [data, globalTasks, globalActivity, deletedActivity] = await Promise.all([
+  const shell = { view, memberName: member.name, brand: brandFilter, group, taskView, memberSlug: member.slug };
+  if (view === "tasks") {
+    const taskData = await taskWorkspaceData();
+    if (!taskData) return <main className="landing">Este necesară baza de date.</main>;
+    return <WorkspacePage {...shell}><TasksSection data={taskData} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /></WorkspacePage>;
+  }
+  const [data, globalActivity, deletedActivity] = await Promise.all([
     workspaceData(brandFilter),
-    view === "tasks" ? taskWorkspaceData() : Promise.resolve(null),
     view === "activity" ? activityData(brandFilter) : Promise.resolve([] as ActivityData),
     view === "activity" && member.slug === "patrick" ? activityData(brandFilter,"deleted") : Promise.resolve([] as ActivityData),
   ]);
   if (!data) return <main className="landing">Este necesară baza de date.</main>;
-  if (view === "tasks" && !globalTasks) return <main className="landing">Este necesară baza de date.</main>;
   const sectionItems = data.workspaceItems.filter(({ item }) => item.section === view);
   const activitySource = params.activity === "external" || params.activity === "internal" || params.activity === "deleted" ? params.activity : undefined;
   const activityFull = params.activity === "all" || activitySource !== undefined;
-  const content = view === "activity" ? <><MemberDashboard slug={member.slug} brand={brandFilter} activity={globalActivity} deletedActivity={deletedActivity} full={activityFull} source={activitySource} filters={<BrandFilterNav selected={brandFilter} view="activity" activity={activitySource ?? activityFull} />} />{params.activity === "all" && <LegacyProposalDetails data={data} memberSlug={member.slug} />}</> : view === "tasks" ? <TasksSection data={globalTasks!} memberSlug={member.slug} taskView={taskView} brandFilter={brandFilter} /> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} sort={params.sort} query={params.q} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} memberSlug={member.slug} folder={params.folder} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
-  return <><main className="workspace-shell"><WorkspaceHeader view={view} memberName={member.name} brand={brandFilter} catalogue={group} tasks={taskView} /><MobileMenu brand={brandFilter} view={view} catalogue={group} tasks={taskView} memberSlug={member.slug} /><div className="workspace-content">{content}</div></main></>;
+  const content = view === "activity" ? <><MemberDashboard slug={member.slug} brand={brandFilter} activity={globalActivity} deletedActivity={deletedActivity} full={activityFull} source={activitySource} filters={<BrandFilterNav selected={brandFilter} view="activity" activity={activitySource ?? activityFull} />} />{params.activity === "all" && <LegacyProposalDetails data={data} memberSlug={member.slug} />}</> : view === "catalogue" ? <CatalogueSection brandFilter={brandFilter} data={data} memberSlug={member.slug} group={group} sort={params.sort} query={params.q} /> : view === "uploads" ? <UploadsSection brandFilter={brandFilter} memberSlug={member.slug} folder={params.folder} /> : <WorkspaceSection brandFilter={brandFilter} section={view} title={sections.find((entry) => entry.key === view)!.label} displayTitle={pageTitle({ view, brand: brandFilter })} items={sectionItems} images={data.images} comments={data.comments} reactions={data.reactions} entryReactions={data.entryReactions} attention={data.attention} memberSlug={member.slug} />;
+  return <WorkspacePage {...shell}>{content}</WorkspacePage>;
 }

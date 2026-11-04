@@ -15,3 +15,20 @@ export function taskAssignmentQueries(taskId: number, brand: string, memberId: n
         returning target.id`;
   return [lock, mutation] as const;
 }
+
+export function taskCompletionQueries(taskId: number, brand: string, memberId: number, completed: boolean, actorId: number) {
+  const lock = sql`select id from tasks where id = ${taskId} and brand = ${brand} and deleted_at is null for update`;
+  const mutation = sql`update task_assignees set completed = ${completed},
+      completed_at = case when ${completed} then now() else null end,
+      completed_by = case when ${completed} then ${actorId}::integer else null end
+    where task_id = ${taskId} and member_id = ${memberId}
+      and exists (select 1 from tasks where id = ${taskId} and brand = ${brand} and deleted_at is null)
+    returning id`;
+  return [lock, mutation] as const;
+}
+
+export function taskAssigneeSnapshotQuery(taskId: number) {
+  return sql`select a.member_id as "memberId", m.slug as "memberSlug", m.name as "memberName", a.completed
+    from task_assignees a join members m on m.id = a.member_id
+    where a.task_id = ${taskId} order by m.name, m.id`;
+}

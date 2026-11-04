@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { optimisticTaskAssignees } from "../src/lib/task-assignment-state.ts";
+const members = [{ id: 1, slug: "patrick", name: "Patrick" }, { id: 2, slug: "igor", name: "Igor" }];
+const assigned = [{ memberId: 1, memberSlug: "patrick", memberName: "Patrick", completed: false }];
+const add = optimisticTaskAssignees(assigned, { kind: "assigned", memberSlug: "igor", value: true }, members);
+assert.equal(add.length, 2); assert.equal(assigned.length, 1);
+assert.equal(optimisticTaskAssignees(assigned, { kind: "assigned", memberSlug: "patrick", value: false }, members).length, 1);
+assert.equal(optimisticTaskAssignees(add, { kind: "assigned", memberSlug: "patrick", value: false }, members).length, 1);
+const done = optimisticTaskAssignees(add, { kind: "completed", memberSlug: "igor", value: true }, members);
+assert(done.find(a => a.memberSlug === "igor").completed);
+assert(!add.find(a => a.memberSlug === "igor").completed);
+assert.equal(optimisticTaskAssignees(add, { kind: "assigned", memberSlug: "igor", value: true }, members).length, 2);
+console.log("PASS optimistic assignment: add, remove, final-member protection, completion, duplicate add and immutable rollback state.");

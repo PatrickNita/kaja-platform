@@ -13,7 +13,8 @@ import { db, memberSeed } from "../lib/db";
 import { activity, attachments, commentReactions, comments, entryReactions, members, taskAssignees, tasks, updates, workspaceItemImages, workspaceItems } from "../lib/schema";
 import { resetTelegramDigestAfterCancellation } from "../lib/telegram";
 import { canManageWorkspaceItem, supportsImageGallery } from "../lib/workspace-permissions";
-import { taskAssignmentQueries } from "../lib/task-assignment-queries";
+import { taskAssignmentQueries, taskCompletionQueries, taskAssigneeSnapshotQuery } from "../lib/task-assignment-queries";
+import type { TaskAssignmentResult, TaskAssigneeState } from "../lib/task-assignment-state";
 
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
@@ -136,44 +137,50 @@ export async function updateTask(formData: FormData) {
   ] as const);
   refresh();
 }
-export async function setTaskAssignee(formData: FormData) {
-  const member = await actor();
-  if (member.slug !== "patrick") throw new Error("Doar Patrick poate schimba responsabilii unei sarcini.");
-  const input = z.object({
-    id: z.coerce.number().int().positive(),
-    brand,
-    memberSlug,
-    assigned: z.enum(["true", "false"]).transform((value) => value === "true"),
-  }).parse(Object.fromEntries(formData));
-  const [task] = await db!.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
-  if (!task) throw new Error("Sarcina nu mai există.");
-  const [selectedMember] = await db!.select({ id: members.id }).from(members).where(eq(members.slug, input.memberSlug));
-  if (!selectedMember) throw new Error("Membrul nu mai este disponibil.");
-
-  const [lock, mutation] = taskAssignmentQueries(task.id, input.brand, selectedMember.id, input.assigned);
-  // A stale/repeated removal of the final assignee is a no-op, not a page error.
-  await db!.batch([db!.execute(lock), db!.execute(mutation)] as const);
-  refresh();
+async function changeTaskResponsibility(formData: FormData, kind: "assigned" | "completed"): Promise<TaskAssignmentResult> {
+  const member = await currentMember();
+  if (!member || !db) return { ok: false, error: "Sesiunea de membru a expirat. Reîncarcă pagina." };
+  if (member.slug !== "patrick") return { ok: false, error: "Doar Patrick poate modifica responsabilii." };
+  const parsed = z.object({
+    id: z.coerce.number().int().positive(), brand, memberSlug,
+    value: z.enum(["true", "false"]).transform(value => value === "true"),
+  }).safeParse({ ...Object.fromEntries(formData), value: formData.get(kind) });
+  if (!parsed.success) return { ok: false, error: "Datele modificării nu sunt valide." };
+  const input = parsed.data;
+  try {
+    const records = await db.select({ id: members.id, slug: members.slug }).from(members)
+      .where(inArray(members.slug, [member.slug, input.memberSlug]));
+    const actorRecord = records.find(record => record.slug === member.slug);
+    const target = records.find(record => record.slug === input.memberSlug);
+    if (!actorRecord || !target) return { ok: false, error: "Membrul nu mai este disponibil. Reîncarcă pagina." };
+    const [lock, mutation] = kind === "assigned"
+      ? taskAssignmentQueries(input.id, input.brand, target.id, input.value)
+      : taskCompletionQueries(input.id, input.brand, target.id, input.value, actorRecord.id);
+    const [task, changed, snapshot] = await db.batch([
+      db.execute(lock), db.execute(mutation), db.execute(taskAssigneeSnapshotQuery(input.id)),
+    ] as const);
+    if (!task.rows.length) return { ok: false, error: "Sarcina nu mai există." };
+    const assignees = snapshot.rows as TaskAssigneeState[];
+    const selected = assignees.find(assignment => assignment.memberId === target.id);
+    refresh();
+    if (kind === "assigned" && !input.value && selected) {
+      return { ok: false, assignees, error: "Sarcina trebuie să păstreze cel puțin un responsabil." };
+    }
+    if (kind === "completed" && !changed.rows.length) {
+      return { ok: false, assignees, error: "Responsabilii s-au schimbat între timp. Verifică lista și reîncearcă." };
+    }
+    return { ok: true, assignees };
+  } catch (error) {
+    console.error("Task responsibility save failed", error);
+    return { ok: false, error: "Modificarea nu a putut fi salvată. Încearcă din nou." };
+  }
 }
-export async function setTaskAssigneeCompletion(formData: FormData) {
-  const member = await actor();
-  if (member.slug !== "patrick") throw new Error("Doar Patrick poate schimba starea responsabililor.");
-  const input = z.object({
-    id: z.coerce.number().int().positive(),
-    brand,
-    memberSlug,
-    completed: z.enum(["true", "false"]).transform((value) => value === "true"),
-  }).parse(Object.fromEntries(formData));
-  const [task] = await db!.select({ id: tasks.id }).from(tasks).where(and(eq(tasks.id, input.id), eq(tasks.brand, input.brand), isNull(tasks.deletedAt)));
-  if (!task) throw new Error("Sarcina nu mai există.");
-  const [selectedMember] = await db!.select({ id: members.id }).from(members).where(eq(members.slug, input.memberSlug));
-  if (!selectedMember) throw new Error("Membrul nu mai este disponibil.");
-  await db!.update(taskAssignees).set({
-    completed: input.completed,
-    completedAt: input.completed ? new Date() : null,
-    completedBy: input.completed ? member.id : null,
-  }).where(and(eq(taskAssignees.taskId, task.id), eq(taskAssignees.memberId, selectedMember.id)));
-  refresh();
+
+export async function setTaskAssignee(formData: FormData): Promise<TaskAssignmentResult> {
+  return changeTaskResponsibility(formData, "assigned");
+}
+export async function setTaskAssigneeCompletion(formData: FormData): Promise<TaskAssignmentResult> {
+  return changeTaskResponsibility(formData, "completed");
 }
 export async function deleteRecord(formData: FormData) {
   const member = await actor(); const input = z.object({ id: z.coerce.number().int().positive(), brand, type: z.enum(["task", "update"]), title }).parse(Object.fromEntries(formData));
@@ -438,15 +445,14 @@ export async function activityData(filter: "all" | Brand, source: "internal" | "
 
 export async function taskWorkspaceData() {
   if (!db || !await currentMember()) return null;
-  for (const member of memberSeed) await db.insert(members).values(member).onConflictDoNothing();
-  const [allMembers, allTasks, allTaskAssignees, allComments, allReactions, allAttention] = await Promise.all([
+  const [allMembers, allTasks, allTaskAssignees, allComments, allReactions, allAttention] = await db.batch([
     db.select({ id: members.id, name: members.name, slug: members.slug }).from(members).orderBy(members.id),
     db.select({ task: tasks, author: members.name, authorSlug: members.slug }).from(tasks).innerJoin(members, eq(tasks.createdBy, members.id)).where(isNull(tasks.deletedAt)).orderBy(desc(tasks.updatedAt)),
     db.select({ assignment: taskAssignees, memberName: members.name, memberSlug: members.slug }).from(taskAssignees).innerJoin(tasks, eq(taskAssignees.taskId, tasks.id)).innerJoin(members, eq(taskAssignees.memberId, members.id)).where(isNull(tasks.deletedAt)).orderBy(taskAssignees.taskId, members.id),
     db.select({ comment: comments, author: members.name, authorSlug: members.slug }).from(comments).innerJoin(members, eq(comments.authorId, members.id)).where(and(eq(comments.entityType, "task"), isNull(comments.deletedAt))).orderBy(comments.createdAt),
     db.select({ reaction: commentReactions, memberName: members.name, memberSlug: members.slug }).from(commentReactions).innerJoin(comments, eq(commentReactions.commentId, comments.id)).innerJoin(members, eq(commentReactions.memberId, members.id)).where(and(eq(comments.entityType, "task"), isNull(comments.deletedAt))).orderBy(commentReactions.createdAt),
     db.select({ event: activity }).from(activity).where(and(eq(activity.entityType, "task"), eq(activity.action, "attention_requested"))).orderBy(activity.createdAt, activity.id),
-  ]);
+  ] as const);
   return {
     members: allMembers,
     tasks: allTasks,
