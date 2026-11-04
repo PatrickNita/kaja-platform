@@ -36,7 +36,7 @@ export function formatNewTaskMessages(entries: TaskDigestEntry[]): TelegramDiges
     const fresh = (): TelegramDigestMessage => ({ text: header, entities: [{ type: "bold", offset: 0, length: header.length }], eventIds: [] });
     let message = fresh();
     for (const task of group.tasks) {
-      const line = `\n- ${task.title.replace(/\s+/g, " ").trim()}`;
+      const line = `\n• ${task.title.replace(/\s+/g, " ").trim()}`;
       // Task titles are limited to 160 characters by the creation form.
       if (header.length + line.length > 4096) throw new Error("Task digest entry exceeds Telegram limit");
       if (message.text.length + line.length > 4096) {
