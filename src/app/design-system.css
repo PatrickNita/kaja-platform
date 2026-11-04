@@ -908,6 +908,8 @@ body .task-list-section > .modal-entry-grid-shell > .modal-entry-grid { display:
 body .task-list-group { display:grid; gap:8px; min-width:0; }
 body .task-list-heading { margin:0; font-size:14px; font-weight:600; line-height:1.45; color:#eee; letter-spacing:normal; }
 body .product-table--tasks { --product-columns:minmax(220px,1.3fr) minmax(100px,.6fr) minmax(240px,2fr) minmax(90px,.6fr) 16px; min-width:780px; }
+body .task-list-section .product-table-scroll { scrollbar-width:none; }
+body .task-list-section .product-table-scroll::-webkit-scrollbar { display:none; }
 body .product-table .task-list-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
 body .product-table .task-list-card:hover { border:0; box-shadow:none; }
 body .product-table--tasks .task-list-description { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
