@@ -25,7 +25,7 @@ import { MobileMenu } from "./mobile-menu";
 import { UploadLibrary } from "./upload-library";
 import { TaskComposer } from "./task-composer";
 import { TaskAssigneeManager, TaskResponsibilityProvider } from "./task-assignee-manager";
-import { groupTaskList, taskDescriptionPreview } from "../lib/task-list";
+import { groupTaskList, taskDescriptionPreview, taskMemberInitial } from "../lib/task-list";
 import { EntryGallery, GalleryComposer } from "./workspace-gallery";
 
 export const dynamic = "force-dynamic";
@@ -288,7 +288,7 @@ function TasksSection({ data, memberSlug, taskView, brandFilter }: { data: TaskD
             const commentCount = data.comments.filter(({ comment }) => comment.entityType === "task" && comment.entityId === task.id).length;
             return <article className="card-wrap task-list-card workspace-data-entry" key={task.id}>
               <EntryCard rowPreview={<div className="product-list-row workspace-data-row" role="row">
-                <span className="workspace-data-identity" role="cell"><span className="task-list-members">{assignments.map(({ assignment, memberName }) => <span key={assignment.memberId} className={`task-list-member ${assignment.completed ? "completed" : "incomplete"}`} role="img" aria-label={`${memberName}: ${assignment.completed ? "finalizat" : "nefinalizat"}`} title={`${memberName}: ${assignment.completed ? "finalizat" : "nefinalizat"}`}><span className="task-list-member-mark" aria-hidden="true">{assignment.completed ? "✓" : "×"}</span><span className="task-list-member-initial" aria-hidden="true">{Array.from(memberName.trim())[0]?.toLocaleUpperCase("ro")}</span></span>)}</span><strong className="workspace-data-title">{task.title}</strong>{attentionActive && <span className="attention-indicator" aria-label="Solicită mai multă atenție">⚠️</span>}</span>
+                <span className="workspace-data-identity" role="cell"><span className="task-list-members">{assignments.map(({ assignment, memberName, memberSlug }) => <span key={assignment.memberId} className={`task-list-member ${assignment.completed ? "completed" : "incomplete"}`} role="img" aria-label={`${memberName}: ${assignment.completed ? "finalizat" : "nefinalizat"}`} title={`${memberName}: ${assignment.completed ? "finalizat" : "nefinalizat"}`}><span className="task-list-member-initial" aria-hidden="true">{taskMemberInitial(memberSlug, memberName)}</span></span>)}</span><strong className="workspace-data-title">{task.title}</strong>{attentionActive && <span className="attention-indicator" aria-label="Solicită mai multă atenție">⚠️</span>}</span>
                 <span className="product-list-secondary" role="cell">{selectedBrandLabel(taskBrand)}</span>
                 <span className="product-list-secondary task-list-description" role="cell">{taskDescriptionPreview(task.body) || "—"}</span>
                 <span className="product-list-secondary" role="cell">{commentCount}</span>

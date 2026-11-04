@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { members, taskAssignees, tasks, telegramDebounce, telegramOutbox } from "./schema";
 import { deliverDigestMessages, formatNewTaskMessages, type TelegramDigestMessage } from "./telegram-task-digest";
+import { allowsTelegramNotification } from "./telegram-policy";
 
 export const TELEGRAM_DIGEST_TOPIC = "telegram-digest";
 export const TELEGRAM_DIGEST_DELAY_SECONDS = 30 * 60;
@@ -164,6 +165,7 @@ function groupDigestEvents(events: DigestEvent[]) {
 
 /** Pure formatter used by the queue consumer and easy to exercise without Vercel. */
 export function formatTelegramDigest(events: DigestEvent[]) {
+  events = events.filter(allowsTelegramNotification);
   if (!events.length) return null;
   const sections = groupDigestEvents(events);
   const totalEvents = events.length;
@@ -213,7 +215,7 @@ async function scheduleTelegramDigest(message: TelegramDigestQueueMessage, delay
  * isolated from the user-facing mutation that already succeeded.
  */
 export async function enqueueTelegramDigest(input: TelegramDigestEventInput) {
-  if (!db) return;
+  if (!db || !allowsTelegramNotification(input)) return;
   const now = new Date();
   const dueAt = new Date(now.getTime() + TELEGRAM_DIGEST_DELAY_SECONDS * 1000);
   const generation = randomUUID();
@@ -410,7 +412,7 @@ export async function processTelegramDigest(message: TelegramDigestQueueMessage)
     catalogueGroup: row.catalogueGroup,
     reactionType: row.reactionType,
     createdAt: row.createdAt,
-  }));
+  })).filter(allowsTelegramNotification);
   try {
     const newTaskEvents = events.filter((event) => event.entityType === "task" && event.action === "created");
     const taskIds = [...new Set(newTaskEvents.map((event) => event.entityId))];

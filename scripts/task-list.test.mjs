@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { groupTaskList, taskDescriptionPreview } from "../src/lib/task-list.ts";
+import { groupTaskList, taskDescriptionPreview, taskMemberInitial } from "../src/lib/task-list.ts";
 
 const row = (id, createdAt = id) => ({ task: { id, createdAt: new Date(createdAt * 1000) } });
 const assigned = (taskId, memberId, memberName, completed = false) => ({
@@ -10,11 +10,11 @@ const assignments = [assigned(1, 2, "Igor"), assigned(2, 1, "Andrei"), assigned(
   assigned(3, 1, "Andrei", true), assigned(4, 1, "Andrei"), assigned(4, 2, "Igor"), assigned(5, 3, "Patrick")];
 const groups = groupTaskList(rows, assignments);
 assert.deepEqual(groups.map(({ title }) => title), [
-  "Sarcini primite de Andrei", "Sarcini primite împreună de Andrei și Igor",
+  "Sarcini primite împreună de Andrei și Igor", "Sarcini primite de Andrei",
   "Sarcini primite de Igor", "Sarcini primite de Patrick",
 ]);
-assert.deepEqual(groups[1].entries.map(({ row }) => row.task.id), [3, 4]);
-assert.deepEqual(groups[1].entries[0].assignments.map(({ memberName }) => memberName), ["Andrei", "Igor"]);
+assert.deepEqual(groups[0].entries.map(({ row }) => row.task.id), [3, 4]);
+assert.deepEqual(groups[0].entries[0].assignments.map(({ memberName }) => memberName), ["Andrei", "Igor"]);
 assert.equal(new Set(groups.flatMap(({ entries }) => entries.map(({ row }) => row.task.id))).size, rows.length);
 assert.deepEqual(groupTaskList([], assignments), []);
 assert.equal(groupTaskList([row(9)], [])[0].title, "Sarcini fără responsabili");
@@ -31,3 +31,10 @@ assert.equal(groupTaskList(mine, assignments).find((g) => g.entries.some((e) => 
 const tie = groupTaskList([row(2, 1), row(1, 1)], [assigned(1, 1, "Ștefan 😀"), assigned(2, 1, "Ștefan 😀")]);
 assert.deepEqual(tie[0].entries.map(({ row }) => row.task.id), [1, 2]);
 console.log("Task list: exact groups, ordering, counts, all completion states, mine and empty lists passed.");
+
+assert.equal(taskMemberInitial("andrei", "Andrei"), "A");
+assert.equal(taskMemberInitial("igor", "Igor"), "IG");
+assert.equal(taskMemberInitial("patrick", "Patrick"), "P");
+assert.equal(taskMemberInitial("ionut", "Ionut"), "IO");
+const mixed=groupTaskList([row(1),row(2),row(3),row(4)], [assigned(1,1,"Andrei"), assigned(2,1,"Andrei"),assigned(2,2,"Igor"),assigned(3,2,"Igor"),assigned(3,3,"Patrick"),assigned(4,3,"Patrick")]);
+assert.deepEqual(mixed.map(g=>g.title),["Sarcini primite împreună de Andrei și Igor","Sarcini primite împreună de Igor și Patrick","Sarcini primite de Andrei","Sarcini primite de Patrick"]);

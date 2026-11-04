@@ -2,6 +2,11 @@ type TaskRow = { task: { id: number; createdAt: Date } };
 type AssigneeRow = { assignment: { taskId: number; memberId: number; completed: boolean }; memberName: string; memberSlug: string };
 
 const names = new Intl.Collator("ro", { sensitivity: "base" });
+const initials: Record<string, string> = { andrei: "A", igor: "IG", patrick: "P", ionut: "IO" };
+
+export function taskMemberInitial(slug: string, name: string) {
+  return initials[slug] ?? Array.from(name.trim())[0]?.toLocaleUpperCase("ro") ?? "?";
+}
 
 export function taskDescriptionPreview(body: string) {
   const characters = Array.from(body.replace(/\s+/g, " ").trim());
@@ -16,7 +21,7 @@ export function groupTaskList<T extends TaskRow, A extends AssigneeRow>(rows: T[
     current.push(assignment);
     byTask.set(assignment.assignment.taskId, current);
   }
-  const groups = new Map<string, { key: string; title: string; names: string; entries: { row: T; assignments: A[] }[] }>();
+  const groups = new Map<string, { key: string; title: string; names: string; memberCount: number; entries: { row: T; assignments: A[] }[] }>();
   for (const row of [...rows].sort((a, b) => a.task.createdAt.getTime() - b.task.createdAt.getTime() || a.task.id - b.task.id)) {
     const assigned = [...(byTask.get(row.task.id) ?? [])].sort((a, b) => names.compare(a.memberName, b.memberName) || a.assignment.memberId - b.assignment.memberId);
     const key = assigned.map(({ assignment }) => assignment.memberId).sort((a, b) => a - b).join(",") || "unassigned";
@@ -26,10 +31,12 @@ export function groupTaskList<T extends TaskRow, A extends AssigneeRow>(rows: T[
       key,
       title: label ? `Sarcini primite ${memberNames.length > 1 ? "împreună " : ""}de ${label}` : "Sarcini fără responsabili",
       names: memberNames.join(", "),
+      memberCount: assigned.length,
       entries: [],
     };
     group.entries.push({ row, assignments: assigned });
     groups.set(key, group);
   }
-  return [...groups.values()].sort((a, b) => names.compare(a.names, b.names) || a.key.localeCompare(b.key));
+  const priority = (count: number) => count > 1 ? 0 : count === 1 ? 1 : 2;
+  return [...groups.values()].sort((a, b) => priority(a.memberCount) - priority(b.memberCount) || names.compare(a.names, b.names) || a.key.localeCompare(b.key));
 }

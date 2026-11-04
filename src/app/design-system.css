@@ -911,11 +911,10 @@ body .product-table--tasks { --product-columns:minmax(220px,1.3fr) minmax(100px,
 body .product-table .task-list-card { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
 body .product-table .task-list-card:hover { border:0; box-shadow:none; }
 body .product-table--tasks .task-list-description { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-body .task-list-members { display:flex; flex-wrap:wrap; gap:4px; max-width:82px; flex-shrink:0; }
-body .task-list-member { display:inline-flex; align-items:center; gap:4px; }
-body .task-list-member-mark { display:grid; place-items:center; width:15px; height:15px; border-radius:50%; background:#a43d3d; color:#fff; font-size:12px; font-weight:800; line-height:1; }
-body .task-list-member.completed .task-list-member-mark { background:#2c8a58; }
-body .task-list-member-initial { display:grid; place-items:center; width:20px; height:20px; border:1px solid #464643; border-radius:50%; color:#ddd; font-size:11px; font-weight:600; line-height:1; }
+body .task-list-members { display:flex; flex-wrap:wrap; gap:4px; max-width:116px; flex-shrink:0; }
+body .task-list-member { display:inline-grid; place-items:center; width:26px; height:26px; flex:0 0 26px; border:1px solid #803d3d; border-radius:50%; background:#241414; color:#ffaaaa; font-size:10px; font-weight:700; line-height:1; }
+body .task-list-member.completed { border-color:#347252; background:#102119; color:#9de1ba; }
+body .task-list-member-initial { font:inherit; color:inherit; }
 body .task-assignee-manager .task-member-remove { width:auto; min-width:44px; padding:0 10px; font-size:11px; }
 body .task-list-section .modal-entry-grid-shell { min-width:0; }
 @media(max-width:800px) {
