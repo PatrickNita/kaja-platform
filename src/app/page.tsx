@@ -285,17 +285,18 @@ function TaskAssigneeManager({ brand, taskId, assignments, members: allMembers, 
           <input type="hidden" name="brand" value={brand} />
           <input type="hidden" name="memberSlug" value={member.slug} />
           <input type="hidden" name="completed" value={selected.assignment.completed ? "false" : "true"} />
-          <button className={`task-member-chip ${selected.assignment.completed ? "completed" : "incomplete"}`} aria-label={`${selected.assignment.completed ? "Marchează nefinalizat" : "Marchează finalizat"} pentru ${member.name}`}><span aria-hidden="true">{selected.assignment.completed ? "✓" : "×"}</span>{member.name}</button>
+          <button className={`task-member-chip ${selected.assignment.completed ? "completed" : "incomplete"}`} title={`${selected.assignment.completed ? "Marchează nefinalizat" : "Marchează finalizat"} pentru ${member.name}`} aria-label={`${selected.assignment.completed ? "Marchează nefinalizat" : "Marchează finalizat"} pentru ${member.name}`}><span aria-hidden="true">{selected.assignment.completed ? "✓" : "×"}</span>{member.name} · {selected.assignment.completed ? "Finalizat" : "De făcut"}</button>
         </form>
         <form action={setTaskAssignee}>
           <input type="hidden" name="id" value={taskId} />
           <input type="hidden" name="brand" value={brand} />
           <input type="hidden" name="memberSlug" value={member.slug} />
           <input type="hidden" name="assigned" value="false" />
-          <button className="task-member-remove" disabled={assignments.length <= 1} aria-label={`Elimină responsabilul ${member.name}`}>×</button>
+          <button className="task-member-remove" disabled={assignments.length <= 1} title={assignments.length <= 1 ? "Trebuie să rămână cel puțin un responsabil." : `Elimină responsabilul ${member.name}`} aria-label={`Elimină responsabilul ${member.name}`}>Elimină</button>
         </form>
       </div>;
     })}</div>
+    <p>Trebuie să rămână cel puțin un responsabil. Când toți sunt marcați finalizați, sarcina trece în Istoric.</p>
   </section>;
 }
 

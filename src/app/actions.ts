@@ -13,6 +13,7 @@ import { db, memberSeed } from "../lib/db";
 import { activity, attachments, commentReactions, comments, entryReactions, members, taskAssignees, tasks, updates, workspaceItemImages, workspaceItems } from "../lib/schema";
 import { resetTelegramDigestAfterCancellation } from "../lib/telegram";
 import { canManageWorkspaceItem, supportsImageGallery } from "../lib/workspace-permissions";
+import { taskAssignmentQueries } from "../lib/task-assignment-queries";
 
 const title = z.string().trim().min(1).max(160);
 const body = z.string().trim().min(1).max(4000);
@@ -149,13 +150,9 @@ export async function setTaskAssignee(formData: FormData) {
   const [selectedMember] = await db!.select({ id: members.id }).from(members).where(eq(members.slug, input.memberSlug));
   if (!selectedMember) throw new Error("Membrul nu mai este disponibil.");
 
-  if (input.assigned) {
-    await db!.insert(taskAssignees).values({ taskId: task.id, memberId: selectedMember.id }).onConflictDoNothing();
-  } else {
-    const assigned = await db!.select({ id: taskAssignees.id, memberId: taskAssignees.memberId }).from(taskAssignees).where(eq(taskAssignees.taskId, task.id));
-    if (assigned.length <= 1) throw new Error("O sarcină trebuie să păstreze cel puțin un responsabil.");
-    await db!.delete(taskAssignees).where(and(eq(taskAssignees.taskId, task.id), eq(taskAssignees.memberId, selectedMember.id)));
-  }
+  const [lock, mutation] = taskAssignmentQueries(task.id, input.brand, selectedMember.id, input.assigned);
+  // A stale/repeated removal of the final assignee is a no-op, not a page error.
+  await db!.batch([db!.execute(lock), db!.execute(mutation)] as const);
   refresh();
 }
 export async function setTaskAssigneeCompletion(formData: FormData) {
