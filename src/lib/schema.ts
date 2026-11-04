@@ -227,7 +227,7 @@ export const b2bProducts = pgTable('b2b_products', {
  stock:integer('stock').notNull().default(100),stockVersion:integer('stock_version').notNull().default(1),
 });
 export const b2bOrders = pgTable('b2b_orders', {
- orderNumber:integer('order_number').notNull().unique().default(sql`nextval('b2b_order_number_seq')`),
+ orderNumber:integer('order_number').notNull().unique(),
  id:serial('id').primaryKey(),locationId:integer('location_id').notNull().references(()=>b2bLocations.id),
  locationSnapshot:jsonb('location_snapshot').notNull(),author:varchar('author',{length:160}).notNull(),authorMemberId:integer('author_member_id').references(()=>members.id),
  requestKey:uuid('request_key').notNull().unique(),status:varchar('status',{length:20}).notNull().default('placed'),version:integer('version').notNull().default(1),total:integer('total').notNull(),
@@ -269,3 +269,16 @@ export const memberFeedbackSeen = pgTable("member_feedback_seen", {
   feedbackId: integer("feedback_id").notNull().references(() => productFeedback.id, { onDelete: "cascade" }),
   seenAt: timestamp("seen_at", { withTimezone: true }).defaultNow().notNull(),
 }, table => [primaryKey({ columns: [table.memberId, table.feedbackId] })]);
+
+// Assigned transactionally by the order insert trigger, rather than a sequence.
+export const b2bOrderCounter = pgTable("b2b_order_counter", {
+  id: integer("id").primaryKey(), nextNumber: integer("next_number").notNull(),
+});
+export const b2bOrderRejections = pgTable("b2b_order_rejections", {
+  id: uuid("id").primaryKey(), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  mode: varchar("mode", { length: 10 }), actorSlug: varchar("actor_slug", { length: 32 }),
+  locationId: integer("location_id").references(() => b2bLocations.id, { onDelete: "set null" }), locationName: text("location_name"),
+  orderId: integer("order_id"), requestKey: uuid("request_key"), httpStatus: integer("http_status").notNull(),
+  errorCode: varchar("error_code", { length: 32 }).notNull(), reason: text("reason").notNull(),
+  requestedItems: jsonb("requested_items").notNull().default(sql`'[]'::jsonb`), stockDetails: jsonb("stock_details"), diagnostics: jsonb("diagnostics"),
+}, table => [index("b2b_order_rejections_created").on(table.createdAt.desc())]);

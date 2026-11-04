@@ -1,3 +1,4 @@
+import { rejectionStatement, rejectionItems, stockFailureDetails, failureDiagnostics, type OrderRejectionContext } from "../../../lib/b2b/order-rejections";
 import { markOrderSeen } from "../../../lib/member-seen";
 import { b2bErrorCode, isStockError } from "../../../lib/b2b/errors";
 import { NextResponse } from "next/server";
@@ -53,16 +54,34 @@ function jsonResponse(data: { error?: string; [key: string]: unknown }, options?
 }
 
 export async function POST(request: Request) {
+  let rejection: OrderRejectionContext | null = null;
+  let failure: unknown;
+  let savedOrderResult: unknown;
+  async function respond(data: { error?: string; [key: string]: unknown }, options?: { status: number }) {
+    if (rejection && data.error && (options?.status ?? 200) >= 400) {
+      const attemptId = crypto.randomUUID(), status = options!.status;
+      const code = b2bErrorCode(data.error, status);
+      try { await query(rejectionStatement(rejection, attemptId, status, code, data.error, failure)); }
+      catch {
+        // A database outage must still leave a searchable, credential-free runtime record.
+        console.error("B2B_ORDER_REJECTION_AUDIT_FAILED", JSON.stringify({ attemptId, status, code, reason: data.error, locationId: rejection.locationId, actorSlug: rejection.actorSlug, items: rejectionItems(rejection.body), stock: stockFailureDetails(failure), diagnostics: failureDiagnostics(failure) }));
+      }
+      return jsonResponse({ ...data, attemptId }, options);
+    }
+    return jsonResponse(data, options);
+  }
   const expectedOrigin = `${new URL(request.url).protocol}//${request.headers.get("host")}`;
   if (request.headers.get("origin") !== expectedOrigin)
-    return jsonResponse(
+    return respond(
       { error: "Cerere neautorizată." },
       { status: 403 },
     );
   try {
     const body = await request.json();
+    if (body && typeof body === "object" && body.operation === "saveOrder") rejection = { body };
     const { mode, operation } = envelope.parse(body);
     const member = mode === "admin" ? await internalMember() : null;
+    if (rejection && member) rejection.actorSlug = member.slug;
     const location =
       mode === "portal"
         ? await currentLocation(
@@ -71,8 +90,9 @@ export async function POST(request: Request) {
               : id.parse(body.locationId),
           )
         : null;
+    if (rejection && location) rejection.locationId = location.id;
     if (mode === "portal" && !location)
-      return jsonResponse(
+      return respond(
         { error: SUPPORT, expired: true },
         { status: 401 },
       );
@@ -82,12 +102,12 @@ export async function POST(request: Request) {
     let seenOrder: { id: number; version: number } | undefined;
     if (operation === "createLocation" || operation === "editLocation") {
       if (!member)
-        return jsonResponse(
+        return respond(
           { error: "Acces neautorizat." },
           { status: 403 },
         );
       if (operation === "editLocation" && !manager)
-        return jsonResponse(
+        return respond(
           { error: "Doar Patrick și Ionut pot edita localuri." },
           { status: 403 },
         );
@@ -95,7 +115,7 @@ export async function POST(request: Request) {
         operation === "createLocation" &&
         (body.companyName !== undefined || body.idno !== undefined)
       )
-        return jsonResponse(
+        return respond(
           {
             error:
               "Datele interne se completează doar la modificarea localului.",
@@ -129,18 +149,18 @@ export async function POST(request: Request) {
         ),
       );
       if (!updated)
-        return jsonResponse({ error: conflict }, { status: 409 });
+        return respond({ error: conflict }, { status: 409 });
       result = updated;
     } else if (operation === "rotateLink") {
       if (!manager || !member)
-        return jsonResponse(
+        return respond(
           { error: "Doar Patrick și Ionut pot regenera linkuri." },
           { status: 403 },
         );
       const locationId = id.parse(body.locationId),
         version = id.parse(body.version);
       if (body.confirmed !== true || body.invalidateSessions !== true)
-        return jsonResponse(
+        return respond(
           { error: "Sunt necesare ambele confirmări." },
           { status: 400 },
         );
@@ -149,11 +169,11 @@ export async function POST(request: Request) {
         sql`update b2b_access_groups g set token_hash=${tokenHash(token)},token_cipher=${encryptToken(token)},version=g.version+1 where g.id=${id.parse(body.groupId)} and g.version=${version} and exists(select 1 from b2b_locations l where l.id=${locationId} and l.access_group_id=g.id) returning g.id`,
       );
       if (!updated)
-        return jsonResponse({ error: conflict }, { status: 409 });
+        return respond({ error: conflict }, { status: 409 });
     } else if (operation === "changeOrderLocation") {
-      if (mode !== "portal" || !location) return jsonResponse({ error: "Acces neautorizat." }, { status: 403 });
+      if (mode !== "portal" || !location) return respond({ error: "Acces neautorizat." }, { status: 403 });
       const orderId = id.parse(body.orderId), version = id.parse(body.version), destinationId = id.parse(body.destinationLocationId);
-      if (destinationId === location.id) return jsonResponse({ error: conflict }, { status: 409 });
+      if (destinationId === location.id) return respond({ error: conflict }, { status: 409 });
       const [updated] = await query<{ order: unknown; notification_id: number }>(sql`
         with authorized as materialized (
           select l.* from b2b_locations l join b2b_access_groups g on g.id=l.access_group_id
@@ -179,16 +199,17 @@ export async function POST(request: Request) {
           'location_snapshot',c.location_snapshot,'author',c.author,'status',c.status,'version',c.version,'total',c.total,
           'created_at',c.created_at,'cashback',0,'items',p.lines) as "order",n.id as notification_id
           from changed c join previous p on p.id=c.id join notified n on n.order_id=c.id`);
-      if (!updated) return jsonResponse({ error: conflict }, { status: 409 });
+      if (!updated) return respond({ error: conflict }, { status: 409 });
       result = { order: updated.order };
       notificationId = updated.notification_id;
     } else if (operation === "saveOrder") {
       if (mode === "admin" && !manager)
-        return jsonResponse(
+        return respond(
           { error: "Doar Patrick și Ionut pot plasa sau modifica comenzi." },
           { status: 403 },
         );
       const locationId = location?.id ?? id.parse(body.locationId);
+      if (rejection) rejection.locationId = locationId;
       const selected = quantities.parse(body.quantities);
       const catalog = await query<Product>(
         sql`select id,name,flavor,grams,price from b2b_products`,
@@ -204,7 +225,7 @@ export async function POST(request: Request) {
         0,
       );
       if (!Number.isSafeInteger(total) || total > 2147483647)
-        return jsonResponse(
+        return respond(
           { error: "Cantitatea totală este prea mare." },
           { status: 400 },
         );
@@ -248,7 +269,7 @@ export async function POST(request: Request) {
           returning id,order_id
         ) select c.id,c.order_number,n.id as notification_id from changed c left join notified n on n.order_id=c.id`);
         if (!updated)
-          return jsonResponse({ error: conflict }, { status: 409 });
+          return respond({ error: conflict }, { status: 409 });
         result = { id: orderId, order_number: updated.order_number };
         seenOrder = { id: orderId, version: version + 1 };
         notificationId = updated.notification_id ?? undefined;
@@ -282,14 +303,15 @@ export async function POST(request: Request) {
             sql`with authorized as materialized (${authorized}) select o.id,o.order_number from b2b_orders o join authorized l on l.id=o.location_id where o.request_key=${requestKey}::uuid and o.location_id=${locationId} ${access}`,
           );
           if (!existing)
-            return jsonResponse({ error: conflict }, { status: 409 });
+            return respond({ error: conflict }, { status: 409 });
           result = existing;
           seenOrder = { id: existing.id, version: 1 };
         }
       }
+      savedOrderResult = result;
     } else if (operation === "status") {
       if (!manager || !member)
-        return jsonResponse(
+        return respond(
           { error: "Doar Patrick și Ionut pot schimba starea comenzilor." },
           { status: 403 },
         );
@@ -309,7 +331,7 @@ export async function POST(request: Request) {
           select id,location_id,(total*0.05)::integer,${member.id} from paid returning order_id
         ) select order_id as id from credited`);
       if (!updated)
-        return jsonResponse({ error: conflict }, { status: 409 });
+        return respond({ error: conflict }, { status: 409 });
     }
     if (member && operation === "status") seenOrder = { id: id.parse(body.orderId), version: id.parse(body.version) + 1 };
     if (member && seenOrder) {
@@ -319,11 +341,16 @@ export async function POST(request: Request) {
     if (notificationId) await enqueueOrderNotification(notificationId);
     revalidatePath("/b2b");
     revalidatePath("/comenzi");
-    return jsonResponse({ ok: true, result });
+    return respond({ ok: true, result });
   } catch (error) {
-    if (isStockError(error)) return jsonResponse({ error: "Stoc insuficient pentru cantitatea solicitată. Reîncarcă stocul și verifică produsele." }, { status:409 });
+    if (savedOrderResult !== undefined) {
+      console.error("B2B_ORDER_POST_COMMIT_FAILURE", JSON.stringify(savedOrderResult));
+      return jsonResponse({ ok: true, result: savedOrderResult });
+    }
+    failure = error;
+    if (isStockError(error)) return respond({ error: "Stoc insuficient pentru cantitatea solicitată. Reîncarcă stocul și verifică produsele." }, { status:409 });
     if (error instanceof z.ZodError)
-      return jsonResponse(
+      return respond(
         {
           error:
             "Verifică datele introduse. Completează toate câmpurile și selectează cantități valide.",
@@ -331,8 +358,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     if (error instanceof Error && error.message === "Acces neautorizat.")
-      return jsonResponse({ error: error.message }, { status: 403 });
-    return jsonResponse(
+      return respond({ error: error.message }, { status: 403 });
+    return respond(
       {
         error:
           "Operația nu a reușit. Încearcă din nou; datele introduse au fost păstrate.",

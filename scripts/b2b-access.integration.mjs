@@ -46,6 +46,7 @@ let member = { slug: "patrick", name: "Patrick" },
   cookie = "";
 const cache = new Map();
 const notificationQueue = [];
+let failEnqueue = false;
 function load(path) {
   path = resolve(path);
   if (cache.has(path)) return cache.get(path);
@@ -61,6 +62,7 @@ function load(path) {
     if (name === "../../../lib/b2b/telegram")
       return {
         enqueueOrderNotification: async (eventId) => {
+          if (failEnqueue) throw Error("Simulated queue outage");
           notificationQueue.push(eventId);
         },
       };
@@ -195,6 +197,9 @@ try {
   const stockMigration = readFileSync("drizzle/0022_b2b_stock.sql","utf8").split("--> statement-breakpoint");
   await db.transaction(stockMigration.map(q => db.query(q)));
   await db.transaction(readFileSync("drizzle/0025_b2b_order_numbers.sql", "utf8").split("--> statement-breakpoint").map(q => db.query(q)));
+  const reliabilityMigration=readFileSync("drizzle/0026_b2b_order_reliability.sql","utf8").split("--> statement-breakpoint");
+  await db.transaction(reliabilityMigration.map(q=>db.query(q)));
+  stockMigration.push(reliabilityMigration.at(-1));
   assert.equal((await db.query("select count(*)::int as n from b2b_products where stock=100"))[0].n,25);
   await db.query("update b2b_products set stock=100000");
   server = load("src/lib/b2b/server.ts");
@@ -848,6 +853,25 @@ try {
   );
   member = {slug:"patrick",name:"Patrick"};
   await verifyInventory({db, api, load, setMember:value => {member=value;}, base, stockMigration});
+  const failureKey=randomUUID();
+  const failed=await api({mode:"admin",operation:"saveOrder",locationId:2,requestKey:failureKey,quantities:[{productId:1,quantity:1}]},409);
+  const [failureAudit]=await db.query("select * from b2b_order_rejections where id=$1",[failed.attemptId]);
+  assert.equal(failureAudit.error_code,"stock");assert.equal(failureAudit.actor_slug,"patrick");assert.equal(failureAudit.location_id,2);assert.equal(failureAudit.request_key,failureKey);assert.equal(failureAudit.stock_details.productId,1);assert.equal(failureAudit.stock_details.available,0);assert.equal(failureAudit.requested_items[0].quantity,1);
+  const [counterBefore]=await db.query("select next_number from b2b_order_counter");
+  const invalid=await api({mode:"admin",operation:"saveOrder",locationId:2,requestKey:randomUUID(),quantities:[]},400);
+  assert.equal((await db.query("select error_code from b2b_order_rejections where id=$1",[invalid.attemptId]))[0].error_code,"invalid");
+  assert.equal((await db.query("select next_number from b2b_order_counter"))[0].next_number,counterBefore.next_number);
+  const receiptKey=randomUUID();failEnqueue=true;
+  const accepted=await api({mode:"admin",operation:"saveOrder",locationId:2,requestKey:receiptKey,quantities:[{productId:2,quantity:1}]});failEnqueue=false;
+  assert.equal(accepted.result.order_number,counterBefore.next_number);
+  assert.equal((await db.query("select count(*)::int n from b2b_order_rejections where request_key=$1",[receiptKey]))[0].n,0);
+  assert.equal((await db.query("select count(*)::int n from b2b_orders where request_key=$1",[receiptKey]))[0].n,1);
+  const queryBefore=server.query, fallbackLogs=[], logBefore=console.error;
+  server.query=async statement=>{const q=dialect.sqlToQuery(statement);if(q.sql.includes("insert into b2b_order_rejections"))throw Error("Simulated audit outage");return queryBefore(statement);};
+  console.error=(...args)=>fallbackLogs.push(args.join(" "));
+  try {const denied=await api({mode:"admin",operation:"saveOrder",locationId:2,requestKey:randomUUID(),quantities:[],token:"DO_NOT_LOG"},400);assert(denied.attemptId);assert(fallbackLogs.some(x=>x.includes("B2B_ORDER_REJECTION_AUDIT_FAILED")));assert(!fallbackLogs.join().includes("DO_NOT_LOG"));}
+  finally{server.query=queryBefore;console.error=logBefore;}
+  console.log("PASS: real API rejection audit, stock details, validation, safe runtime fallback and successful receipt after post-commit failure.");
   await (await import("./b2b-order-location.scenarios.mjs")).verifyOrderLocation({db,api,route,base,crypto,setCookie:value=>{cookie=value;},setMember:value=>{member=value;}});
   console.log(
     "PASS: " +
